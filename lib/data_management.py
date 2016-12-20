@@ -19,9 +19,10 @@ def save_IQMX_calibration(iqmx_calibration):
 
 		try:
 			cal_for_known_attenuation = known_cal_data[iqmx_calibration.get_mixer_parameters()["iq_attenuation"]]
-			cal_for_known_attenuation[iqmx_calibration.get_radiation_parameters()] = iqmx_calibration
+			cal_for_known_attenuation[frozenset(iqmx_calibration.get_radiation_parameters().items())] = iqmx_calibration
 		except KeyError:
-			known_cal_data[iqmx_calibration.get_mixer_parameters()["iq_attenuation"]] = {frozenset(iqmx_calibration.get_radiation_parameters().items()):iqmx_calibration}
+			known_cal_data[iqmx_calibration.get_mixer_parameters()["iq_attenuation"]] = \
+				{frozenset(iqmx_calibration.get_radiation_parameters().items()):iqmx_calibration}
 
 		with open(directory+"\\"+filename+'.pkl', 'wb') as f:
 			pkl.dump(known_cal_data, f)

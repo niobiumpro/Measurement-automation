@@ -1,4 +1,4 @@
-import numpy as np
+`import numpy as np
 import time
 from datetime import datetime
 from time import sleep
@@ -21,8 +21,6 @@ def sweep2D(vna, param1_vals, param1_setter, param2_vals, param2_setter, filenam
 
 	measurement = Measurement("pna-p2D-3D" if min(len(param1_vals), len(param2_vals))>1 else "pna-p2D-2D",
 	 	(param1_vals, param2_vals, vna.get_frequencies(), data_amp, data_phas), start_datetime, context)
-
-
 
 	try:
 		nop = vna.get_nop()

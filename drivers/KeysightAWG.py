@@ -37,39 +37,71 @@ class WaveformType(Enum):
 
 
 class PulseSequence():
-	def __init__(self):
+	def __init__(self, waveform = ndarray(0), pulses = []):
 
-		self._waveform = ndarray(0)
-		self._pulses = []
+		self._waveform = waveform
+		self._pulses = pulses
 
 	def append_pulse(self, points):
 		self._pulses.append(dict(start=len(self._waveform), end=len(self._waveform)+len(points)))
 		self._waveform = concatenate((self._waveform, points))
 
 	def get_pulse(self, pulse_idx):
-		return self._waveform[self._pulses[idx]["start"], self._pulses[idx]["end"]]
+		return self._waveform[self._pulses[pulse_idx]["start"]:self._pulses[pulse_idx]["end"]]
 
 	def modulate_pulse(self, pulse_idx, modulation):
 		unmodulated_pulse = self.get_pulse(pulse_idx)
-		if unmodulated_pulse.shape != modulation:
-			raise ValueError("Modulation for the pulse should have same length")
+		if unmodulated_pulse.shape != modulation.shape:
+			raise ValueError("Modulation and the pulse should have same length")
 		modulated_pulse = unmodulated_pulse*modulation
-		self._waveform[self._pulses[idx]["start"]:self._pulses[idx]["end"]] = modulated_pulse
+		self._waveform[self._pulses[pulse_idx]["start"]:self._pulses[pulse_idx]["end"]] = modulated_pulse
+
+	def total_points(self):
+		return len(self._waveform)
+
+	def get_waveform(self):
+		return self._waveform
+
+	def copy(self):
+		return PulseSequence(self._waveform.copy(), self._pulses.copy())
+
+	def plot(self, sequence_duration, **kwargs):
+		times = linspace(0, sequence_duration, len(self._waveform))
+		plt.plot(times, self._waveform*5, **kwargs)
+
+
+class IQPulseSequence():
+	"""
+	Class whose instances can be loaded directly to the AWG via AWG's ouptut_iq_pulse_sequence() method
+	"""
+	def __init__(self, pulse_sequence_I, pulse_sequence_Q, sequence_duration):
+		self._i = pulse_sequence_I
+		self._q = pulse_sequence_Q
+		self._duration = sequence_duration
+
+	def get_I_waveform(self):
+		return self._i.get_waveform()
+
+	def get_Q_waveform(self):
+		return self._q.get_waveform()
+
+	def get_duration(self):
+		return self._duration
 
 	def plot(self):
-		plt.plot(self._waveform*5)
+		self._i.plot(self._duration, label="I")
+		self._q.plot(self._duration, label="Q")
+		plt.legend()
 
 
 class PulseBuilder():
 
-	def __init__(self, awg, iqmx_calibration, grid_resolution=1):
+	def __init__(self, iqmx_calibration, grid_resolution=1):
 		'''
-		Build a PulseBuilder instance for a previously created KeysigtAWG.
+		Build a PulseBuilder instance for a previously calibrated IQ mixer.
 
 		Parameters:
 		-----------
-		awg: KeysightAWG
-			An instance of the KeysightAWG for which the waveforms will be defined
 		iqmx_calibration: IQCalibrationData
 			Calibration data for the IQ mixer that will be used to send out the pulse sequence.
 			Make sure that the radiation parameters of this calibration are in match with your actual settings
@@ -78,7 +110,6 @@ class PulseBuilder():
 			Can't be shorter then 0.5 ns
 		'''
 
-		self._awg = awg
 		self._iqmx_calibration = iqmx_calibration
 		self._grid_resolution = grid_resolution
 		self._pulse_seq_I = PulseSequence()
@@ -99,6 +130,21 @@ class PulseBuilder():
 		self._pulse_seq_Q.append_pulse(zeros(int(duration/self._grid_resolution))+vdc2/5)
 		return self
 
+	def modulate_rectangle(self, amplitude):
+		pulse_length = len(self._pulse_seq_I.get_pulse(-1))
+		modulation = amplitude*ones(pulse_length)
+		self._pulse_seq_I.modulate_pulse(-1, modulation)
+		self._pulse_seq_Q.modulate_pulse(-1, modulation)
+		return self
+
+	def modulate_gauss(self, amplitude, sigma):
+		pulse_length = len(self._pulse_seq_I.get_pulse(-1))
+		X = linspace(-pulse_length/2*self._grid_resolution, pulse_length/2*self._grid_resolution, pulse_length)
+		modulation = amplitude*exp(-X**2/sigma**2) 
+		self._pulse_seq_I.modulate_pulse(-1, modulation)
+		self._pulse_seq_Q.modulate_pulse(-1, modulation)
+		return self
+
 	def add_sine_pulse(self, duration, phase):
 		"""
 		Adds a pulse with amplitude defined by the iqmx_calibration at frequency f_lo-f_if and some phase to the sequence
@@ -114,12 +160,20 @@ class PulseBuilder():
 		if_amp1, if_amp2 = self._iqmx_calibration.get_optimization_results()[0]["if_amplitudes"]
 		if_phase = self._iqmx_calibration.get_optimization_results()[0]["if_phase"]
 		frequency = self._iqmx_calibration.get_radiation_parameters()["if_frequency"]
-		self._pulse_seq_I.append_pulse(if_amp1/5*sin(2*pi*frequency/1e9*linspace(0,duration,duration/self._grid_resolution)+if_phase+phase) + if_offs1/5)
-		self._pulse_seq_Q.append_pulse(if_amp2/5*sin(2*pi*frequency/1e9*linspace(0,duration,duration/self._grid_resolution)+phase) + if_offs2/5)
+		self._pulse_seq_I.append_pulse(if_amp1/5*sin(2*pi*frequency/1e9*\
+							linspace(0,duration,duration/self._grid_resolution)+if_phase+phase) + if_offs1/5)
+		self._pulse_seq_Q.append_pulse(if_amp2/5*sin(2*pi*frequency/1e9*\
+							linspace(0,duration,duration/self._grid_resolution)+phase) + if_offs2/5)
 		return self
 
 	def build(self):
-		return dict(I=self._pulse_seq_I, Q=self._pulse_seq_Q)
+		'''
+		Returns a dictionary containing I and Q pulse sequences and the total duration of the pulse sequence in ns
+		'''
+		to_return = IQPulseSequence(self._pulse_seq_I, self._pulse_seq_Q, self._grid_resolution*self._pulse_seq_I.total_points())
+		self._pulse_seq_I = PulseSequence()
+		self._pulse_seq_Q = PulseSequence()
+		return to_return
 
 class KeysightAWG(Instrument):
 
@@ -185,7 +239,23 @@ class KeysightAWG(Instrument):
 		self.prepare_waveform(WaveformType.arbitrary, frequency, 5, 0, channel)
 		self.set_output(channel, 1)
 
+	def output_pulse_sequence(self, pulse_sequence):
+		'''
+		Load and output given IQPulseSequence.
 
+		Parameters:
+		-----------
+		pulse_sequence: IQPulseSequence instance
+
+		'''
+		self.load_arbitrary_waveform_to_volatile_memory(pulse_sequence.get_I_waveform(), 1)
+		self.load_arbitrary_waveform_to_volatile_memory(pulse_sequence.get_Q_waveform(), 2)
+		frequency = 1/pulse_sequence.get_duration()*1e9
+		self.prepare_waveform(WaveformType.arbitrary, frequency, 5, 0, 1)
+		self.prepare_waveform(WaveformType.arbitrary, frequency, 5, 0, 2)
+
+		self.set_outp1(1)
+		self.set_outp2(1)
 
 	# Basic low-level functions
 

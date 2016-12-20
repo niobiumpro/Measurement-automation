@@ -92,7 +92,7 @@ class IQCalibrator():
             self._awg.output_continuous_wave(frequency=if_frequency, amplitude=amp2, phase=0, offset=vdc2, channel=2)
             self._sa.prepare_for_stb();self._sa.sweep_single();self._sa.wait_for_stb()
             data = self._sa.get_tracedata()
-            answer =  data[2] + abs(ssb_power - data[0])*10
+            answer =  data[2] + 10*abs(ssb_power - data[0])
             print("\rAmplitudes: ", amplitudes, data, end=", ", flush=True)
             return answer
         def loss_function_if_phase(phase, args):
@@ -109,11 +109,11 @@ class IQCalibrator():
         def iterate_minimization(prev_results, n=2):
 
             res_if_offs = minimize(loss_function_if_offsets, prev_results["if_offsets"], args=[prev_results["if_amplitudes"], prev_results["if_phase"]],
-                              method="Nelder-Mead", options={"maxiter":minimize_iterlimit, "xatol":1e-4, "fatol":10})
+                              method="Nelder-Mead", options={"maxiter":minimize_iterlimit, "xatol":1e-3, "fatol":10})
             res_amps = minimize(loss_function_if_amplitudes, prev_results["if_amplitudes"], args=[res_if_offs.x, prev_results["if_phase"]],
-                                method="Nelder-Mead", options={"maxiter":minimize_iterlimit, "xatol":1e-4, "fatol":10})
+                                method="Nelder-Mead", options={"maxiter":minimize_iterlimit, "xatol":1e-3, "fatol":10})
             res_phase = minimize(loss_function_if_phase, prev_results["if_phase"], args=[res_if_offs.x, res_amps.x],
-                                 method="Nelder-Mead", options={"maxiter":minimize_iterlimit, "xatol":1e-4, "fatol":10})
+                                 method="Nelder-Mead", options={"maxiter":minimize_iterlimit, "xatol":1e-3, "fatol":10})
             results["if_offsets"] = res_if_offs.x
             results["if_amplitudes"] = res_amps.x
             results["if_phase"] = res_phase.x
@@ -129,14 +129,14 @@ class IQCalibrator():
 
         self._sa.setup_list_sweep([lo_frequency], [sa_res_bandwidth])
 
-        res_dc_offs = minimize(loss_function_dc_offsets, (0.1,0.1),
-                      method="Nelder-Mead", options={"maxiter":minimize_iterlimit*iterations,"xatol":1e-4, "fatol":10})
+        res_dc_offs = minimize(loss_function_dc_offsets, initial_guess["dc_offsets"],
+                      method="Nelder-Mead", options={"maxiter":minimize_iterlimit*iterations,"xatol":1e-3, "fatol":100})
 
         self._sa.setup_list_sweep([lo_frequency-if_frequency, lo_frequency, lo_frequency+if_frequency], [sa_res_bandwidth]*3)
 
         results = None
         if initial_guess==None:
-            results = {"if_offsets":(0.1, 0.1), "if_amplitudes":(0.2,0.2), "if_phase":-pi*0.54}
+            results = {"if_offsets":res_dc_offs.x, "if_amplitudes":(0.5,0.5), "if_phase":-pi*0.54}
         else:
             results = initial_guess
 
