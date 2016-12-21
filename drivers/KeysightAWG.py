@@ -37,14 +37,14 @@ class WaveformType(Enum):
 
 
 class PulseSequence():
-	def __init__(self, waveform = ndarray(0), pulses = []):
+	def __init__(self, waveform = ndarray(1), pulses = []):
 
 		self._waveform = waveform
 		self._pulses = pulses
 
 	def append_pulse(self, points):
-		self._pulses.append(dict(start=len(self._waveform), end=len(self._waveform)+len(points)))
-		self._waveform = concatenate((self._waveform, points))
+		self._pulses.append(dict(start=len(self._waveform)-1, end=len(self._waveform)-1+len(points)))
+		self._waveform = concatenate((self._waveform[:-1], points))
 
 	def get_pulse(self, pulse_idx):
 		return self._waveform[self._pulses[pulse_idx]["start"]:self._pulses[pulse_idx]["end"]]
@@ -88,9 +88,9 @@ class IQPulseSequence():
 	def get_duration(self):
 		return self._duration
 
-	def plot(self):
-		self._i.plot(self._duration, label="I")
-		self._q.plot(self._duration, label="Q")
+	def plot(self, **kwargs):
+		self._i.plot(self._duration, label="I", **kwargs)
+		self._q.plot(self._duration, label="Q", **kwargs)
 		plt.legend()
 
 
@@ -160,17 +160,20 @@ class PulseBuilder():
 		if_amp1, if_amp2 = self._iqmx_calibration.get_optimization_results()[0]["if_amplitudes"]
 		if_phase = self._iqmx_calibration.get_optimization_results()[0]["if_phase"]
 		frequency = self._iqmx_calibration.get_radiation_parameters()["if_frequency"]
+		N_time_steps = duration/self._grid_resolution
+
 		self._pulse_seq_I.append_pulse(if_amp1/5*sin(2*pi*frequency/1e9*\
-							linspace(0,duration,duration/self._grid_resolution)+if_phase+phase) + if_offs1/5)
+							linspace(0, duration, N_time_steps+1)+if_phase+phase) + if_offs1/5)
+
 		self._pulse_seq_Q.append_pulse(if_amp2/5*sin(2*pi*frequency/1e9*\
-							linspace(0,duration,duration/self._grid_resolution)+phase) + if_offs2/5)
+							linspace(0,duration, N_time_steps+1)+phase) + if_offs2/5)
 		return self
 
 	def build(self):
 		'''
 		Returns a dictionary containing I and Q pulse sequences and the total duration of the pulse sequence in ns
 		'''
-		to_return = IQPulseSequence(self._pulse_seq_I, self._pulse_seq_Q, self._grid_resolution*self._pulse_seq_I.total_points())
+		to_return = IQPulseSequence(self._pulse_seq_I, self._pulse_seq_Q, self._grid_resolution*(self._pulse_seq_I.total_points()-1))
 		self._pulse_seq_I = PulseSequence()
 		self._pulse_seq_Q = PulseSequence()
 		return to_return
@@ -234,7 +237,7 @@ class KeysightAWG(Instrument):
 			channel which witll output the wave
 		'''
 
-		waveform =amplitude/5*sin(2*pi*linspace(0,1,100)+phase) + offset/5
+		waveform =amplitude/5*sin(2*pi*linspace(0,1,101)+phase) + offset/5
 		self.load_arbitrary_waveform_to_volatile_memory(waveform, channel)
 		self.prepare_waveform(WaveformType.arbitrary, frequency, 5, 0, channel)
 		self.set_output(channel, 1)
@@ -381,8 +384,10 @@ class KeysightAWG(Instrument):
 		else:
 			array_string = "".join([str(num)+", " for num in waveform_array])[:-2]
 
+		# waveform_array = around(waveform_array*8191).astype(int)
 		self._visainstrument.write("*OPC")
 		self._visainstrument.write(":DATA%d VOLATILE, "%channel+array_string)
+		# self._visainstrument.write_binary_values(":DATA%d:DAC VOLATILE,"%channel, waveform_array, datatype="h")
 		self._visainstrument.query("*OPC?")
 
 

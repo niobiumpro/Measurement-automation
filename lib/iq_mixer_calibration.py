@@ -63,6 +63,31 @@ class IQCalibrator():
 
 
     def calibrate(self, lo_frequency, if_frequency, lo_power, ssb_power, initial_guess=None, sa_res_bandwidth=500, iterations=5, minimize_iterlimit=20):
+        '''
+        Perform the calibration routine to suppress LO and upper sideband LO+IF while maintaining the lower sideband at ssb_power. 
+
+        Parameters:
+        ----------
+        lo_frequency: float
+            Frequency of the local oscillator
+        if_frequency: float
+            Frequency of the awg-generated wavefomrs, i.e. intermediate frequency
+        ssb_power: float
+            The power which the remaining sideband LO-IF will have after the optimization
+        initial_guess=None : IQCalibrationData
+            It's possible to specify the initial guess by passing the IQCalibrationData object from previous calibrations
+        sa_res_bandwisth=500: float
+            The bandwidth that spectrum analyser will use during the calibration
+        iterations=5: int
+            The number of iterations of the cycle {optimize_if_offsets, optimize_if_amolitudes, optimize_if_phase}.
+            For the dc offsets interation limit is iterations*minimize_iterlimit
+        minimize_iterlimit=20: int
+            Iteration limit for the minimize function used in each routine listed above    
+
+        Returns:
+        iqmx_calibration: IQCalibrationData
+            Object containing the parameters and results of the optimization
+        '''
 
         def loss_function_dc_offsets(voltages):
             vdc1, vdc2 = voltages
@@ -127,19 +152,20 @@ class IQCalibrator():
         self._lo.set_frequency(lo_frequency)
         self._lo.set_output_state("ON")
 
+        results = None
+        if initial_guess==None:
+            results = {"dc_offsets":(0.1,0.1), "if_offsets":(0.1,0.1), "if_amplitudes":(0.5,0.5), "if_phase":pi*0.54}
+        else:
+            results = initial_guess
+
         self._sa.setup_list_sweep([lo_frequency], [sa_res_bandwidth])
 
-        res_dc_offs = minimize(loss_function_dc_offsets, initial_guess["dc_offsets"],
+        res_dc_offs = minimize(loss_function_dc_offsets, results["dc_offsets"],
                       method="Nelder-Mead", options={"maxiter":minimize_iterlimit*iterations,"xatol":1e-3, "fatol":100})
 
         self._sa.setup_list_sweep([lo_frequency-if_frequency, lo_frequency, lo_frequency+if_frequency], [sa_res_bandwidth]*3)
 
-        results = None
-        if initial_guess==None:
-            results = {"if_offsets":res_dc_offs.x, "if_amplitudes":(0.5,0.5), "if_phase":-pi*0.54}
-        else:
-            results = initial_guess
-
+        results["if_offsets"]=res_dc_offs.x
         iterate_minimization(results, iterations)
 
         spectral_values = {"dc":res_dc_offs.fun, "if":self._sa.get_tracedata()}
