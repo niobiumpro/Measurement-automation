@@ -32,11 +32,11 @@ class Agilent_PNA_L(Instrument):
 
     Usage:
     Initialise with
-    <name> = instruments.create('<name>', address='<GPIB address>', reset=<bool>)
+    <name> = instruments.create(address='<GPIB address>', reset=<bool>)
     
     '''
 
-    def __init__(self, name, address, channel_index = 1):
+    def __init__(self, address, channel_index = 1):
         '''
         Initializes 
 
@@ -48,8 +48,7 @@ class Agilent_PNA_L(Instrument):
         self.logger = logging.getLogger()
         self.logger.setLevel(logging.WARNING)
 
-        self.logger.info(__name__ + ' : Initializing instrument')
-        Instrument.__init__(self, name, tags=['physical'])
+        Instrument.__init__(self, "", tags=['physical'])
 
         self._address = address
         rm = visa.ResourceManager()
@@ -81,6 +80,11 @@ class Agilent_PNA_L(Instrument):
             flags=Instrument.FLAG_GETSET)   
                     
         self.add_parameter('centerfreq', type=float,
+            flags=Instrument.FLAG_GETSET,
+            minval=0, maxval=20e9,
+            units='Hz', tags=['sweep'])
+
+        self.add_parameter('center', type=float,
             flags=Instrument.FLAG_GETSET,
             minval=0, maxval=20e9,
             units='Hz', tags=['sweep'])
@@ -122,7 +126,9 @@ class Agilent_PNA_L(Instrument):
         
         # sets the S21 setting in the PNA X
         # self.define_S21()
-        self.select_default_trace()
+        # self.set_S21()
+        # self.select_default_trace()
+
         
         # Implement functions
         self.add_function('get_frequencies')
@@ -198,10 +204,11 @@ class Agilent_PNA_L(Instrument):
         defines the S21 measurement in the PNA X
         '''
         self._visainstrument.write( "CALCulate:PARameter:EXT 'CH1_S21_1','S21'")
-        
-    
+
+
+
     def autoscale_all(self):
-        windows = pna_l._visainstrument.query(" Disp:Cat?").replace('"', "").replace("\n", "").split(",")
+        windows = self._visainstrument.query(" Disp:Cat?").replace('"', "").replace("\n", "").split(",")
         for window in windows:
             self._visainstrument.write("DISP:WIND%s:TRAC:Y:AUTO"%window)
 
@@ -465,7 +472,13 @@ class Agilent_PNA_L(Instrument):
         '''
         self.logger.debug(__name__ + ' : getting power')
         return float(self._visainstrument.ask('SOUR%i:POW1:LEV:IMM:AMPL?' % (self._ci)))
-                
+     
+    def do_set_center(self, f):
+        self.do_set_centerfreq(f)
+
+    def do_get_center(self):
+        return self.do_get_centerfreq()
+
     def do_set_centerfreq(self,cf):
         '''
         Set the center frequency
@@ -481,6 +494,7 @@ class Agilent_PNA_L(Instrument):
         self.get_startfreq();
         self.get_stopfreq();
         self.get_span();
+
     def do_get_centerfreq(self):
         '''
         Get the center frequency

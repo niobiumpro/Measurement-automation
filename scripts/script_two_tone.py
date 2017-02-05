@@ -6,46 +6,47 @@ from time import sleep
 
 def detect_resonator_frequency_at_the_sweet_spot():
 
-    znb.set_nop(100)
+    vna.set_nop(100)
     # current.set_current(???) # manual value for non-symmetric scans
     current.set_current(mean((currents[0], currents[-1]))) # for symmetric scans
-    current.output_on()
+    current.set_status(1)
 
-    znb.avg_clear()
-    znb.prepare_for_stb()
-    znb.sweep_single()
-    znb.wait_for_stb()
-    res_freq1 = RD.detect_resonator(znb, type="AMP")[0]
+    vna.avg_clear()
+    vna.prepare_for_stb()
+    vna.sweep_single()
+    vna.wait_for_stb()
+    res_freq1 = RD.detect_resonator(vna, type="FIT")[0]
 
-    znb.set_nop(1)
-    znb.set_center(res_freq1)
-    znb.prepare_for_stb()
-    znb.sweep_single()
-    znb.wait_for_stb()
+    vna.set_nop(1)
+    vna.set_center(res_freq1)
+    vna.prepare_for_stb()
+    vna.sweep_single()
+    vna.wait_for_stb()
 
-    print(znb.get_frequencies(), 20*log10(abs(znb.get_sdata())))
+    print(vna.get_frequencies(), 20*log10(abs(vna.get_sdata())))
 
 try:
+    start_center_freq = RD.detect_resonator(vna, type="AMP")[0]
+    start_center_freq2 = RD.detect_resonator(vna, type="FIT")
+    print("Idle amplitude center freq", start_center_freq, "vs fitresult center frequency:", start_center_freq2)
 
-    start_center_freq = RD.detect_resonator(znb, type="AMP")[0]
-    start_center_freq2 = RD.detect_resonator(znb, type="FIT")
-    print("Idle cetnter freq", start_center_freq, "vs fitresult:", start_center_freq2)
-
-    currents = np.linspace(-8.5e-3, 0.65e-3, 200)
-    mw_src_freqs = np.linspace(9e9, 9.7e9, 200)
+    # currents = np.linspace(-58.5e-6-7e-6,-58.5e-6+7e-6, 100)
+    # mw_src_freqs = np.linspace(10.3e9, 10.5e9, 100)
+    currents = np.linspace(0e-3, 7.5e-3, 20)
+    mw_src_freqs = np.linspace(5e9, 8e9, 20)
 
     center_freqs = None
     # Should we use adaptive center frequencies
     adaptive_center_freqs = False
 
-    current.set_range(max(abs(currents)))
-    current.set_compliance(5)
+    current.set_appropriate_range(max(abs(currents)))
+    current.set_voltage_compliance(5)
 
-    znb.set_averages(5)
-    znb.set_bandwidth(10)
-    znb.set_power(-40)
+    vna.set_averages(1)
+    vna.set_bandwidth(50)
+    vna.set_power(-20)
 
-    mw_src.set_power(10)
+    mw_src.set_power(0)
 
     if adaptive_center_freqs:
         print("Using adaptive center frequencies estimated before")
@@ -54,23 +55,24 @@ try:
         detect_resonator_frequency_at_the_sweet_spot()
 
 
-    znb.set_nop(1)
+    vna.set_nop(1)
 
-    current.output_on()
+    current.set_status(1)
     mw_src.set_output_state("ON")
-    measurement = ps.sweep2D(znb, currents, current.set_current, mw_src_freqs, mw_src.set_frequency, center_freqs=center_freqs)#, "xmon_al_bmstu_1-I-spectrum-upper-high-res")
+    measurement = ps.sweep2D(vna, currents, current.set_current, mw_src_freqs, mw_src.set_frequency, center_freqs=center_freqs)#, "xmon_al_bmstu_1-I-spectrum-upper-high-res")
 
 
 
 finally:
     current.set_current(0)
-    current.output_off()
+    current.set_status(0)
     mw_src.set_output_state("OFF")
-    znb.avg_clear()
-    znb.set_averages(10)
-    znb.set_nop(200)
+    vna.avg_clear()
+    vna.set_averages(1)
+    vna.set_nop(200)
     #lo1.set_status(0)
-    znb.set_freq_center_span(start_center_freq, 5e6)
-    znb.set_bandwidth(50)
-    znb.set_power(-60)
-    znb.sweep_single()
+    vna.set_center(start_center_freq)
+    vna.set_span(70e6)
+    vna.set_bandwidth(50)
+    vna.set_power(-30)
+    vna.sweep_single()

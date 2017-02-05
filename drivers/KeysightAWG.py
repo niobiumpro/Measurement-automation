@@ -23,6 +23,7 @@ import visa
 import types
 import time
 import logging
+from scipy.signal import *
 
 from enum import Enum
 
@@ -51,9 +52,10 @@ class PulseSequence():
 
 	def modulate_pulse(self, pulse_idx, modulation):
 		unmodulated_pulse = self.get_pulse(pulse_idx)
+		offset = mean(unmodulated_pulse)
 		if unmodulated_pulse.shape != modulation.shape:
-			raise ValueError("Modulation and the pulse should have same length")
-		modulated_pulse = unmodulated_pulse*modulation
+			raise ValueError("The modulation and the pulse should have same length")
+		modulated_pulse = (unmodulated_pulse-offset)*modulation + offset
 		self._waveform[self._pulses[pulse_idx]["start"]:self._pulses[pulse_idx]["end"]] = modulated_pulse
 
 	def total_points(self):
@@ -96,7 +98,7 @@ class IQPulseSequence():
 
 class PulseBuilder():
 
-	def __init__(self, iqmx_calibration, grid_resolution=1):
+	def __init__(self, iqmx_calibration):
 		'''
 		Build a PulseBuilder instance for a previously calibrated IQ mixer.
 
@@ -105,13 +107,10 @@ class PulseBuilder():
 		iqmx_calibration: IQCalibrationData
 			Calibration data for the IQ mixer that will be used to send out the pulse sequence.
 			Make sure that the radiation parameters of this calibration are in match with your actual settings
-		grid_resolution: float, ns
-			The minimal time step available for the pulse sequences created by this builder. 
-			Can't be shorter then 0.5 ns
 		'''
 
 		self._iqmx_calibration = iqmx_calibration
-		self._grid_resolution = grid_resolution
+		self._waveform_resolution = iqmx_calibration.get_radiation_parameters()["waveform_resolution"]
 		self._pulse_seq_I = PulseSequence()
 		self._pulse_seq_Q = PulseSequence()
 
@@ -126,8 +125,8 @@ class PulseBuilder():
 			Duration of the pulse in nanoseconds
 		'''
 		vdc1, vdc2 = self._iqmx_calibration.get_optimization_results()[0]["dc_offsets"]
-		self._pulse_seq_I.append_pulse(zeros(int(duration/self._grid_resolution))+vdc1/5)
-		self._pulse_seq_Q.append_pulse(zeros(int(duration/self._grid_resolution))+vdc2/5)
+		self._pulse_seq_I.append_pulse(zeros(int(duration/self._waveform_resolution))+vdc1/5)
+		self._pulse_seq_Q.append_pulse(zeros(int(duration/self._waveform_resolution))+vdc2/5)
 		return self
 
 	def modulate_rectangle(self, amplitude):
@@ -137,10 +136,25 @@ class PulseBuilder():
 		self._pulse_seq_Q.modulate_pulse(-1, modulation)
 		return self
 
+	def modulate_chebwin(self, lobe_attenuation=70):
+		pulse_length = len(self._pulse_seq_I.get_pulse(-1))
+		modulation = chebwin(pulse_length, lobe_attenuation)
+		self._pulse_seq_I.modulate_pulse(-1, modulation)
+		self._pulse_seq_Q.modulate_pulse(-1, modulation)
+		return self
+
+	def modulate_hamming(self, amplitude=1):
+		pulse_length = len(self._pulse_seq_I.get_pulse(-1))
+		X = array(range(0, pulse_length))
+		modulation = amplitude*.5*(1-cos(2*pi*X/(pulse_length-1)))
+		self._pulse_seq_I.modulate_pulse(-1, modulation)
+		self._pulse_seq_Q.modulate_pulse(-1, modulation)
+		return self
+
 	def modulate_gauss(self, amplitude, sigma):
 		pulse_length = len(self._pulse_seq_I.get_pulse(-1))
-		X = linspace(-pulse_length/2*self._grid_resolution, pulse_length/2*self._grid_resolution, pulse_length)
-		modulation = amplitude*exp(-X**2/sigma**2) 
+		X = linspace(-pulse_length/2*self._waveform_resolution, pulse_length/2*self._waveform_resolution, pulse_length)
+		modulation = amplitude*exp(-X**2/sigma**2)
 		self._pulse_seq_I.modulate_pulse(-1, modulation)
 		self._pulse_seq_Q.modulate_pulse(-1, modulation)
 		return self
@@ -160,7 +174,7 @@ class PulseBuilder():
 		if_amp1, if_amp2 = self._iqmx_calibration.get_optimization_results()[0]["if_amplitudes"]
 		if_phase = self._iqmx_calibration.get_optimization_results()[0]["if_phase"]
 		frequency = self._iqmx_calibration.get_radiation_parameters()["if_frequency"]
-		N_time_steps = duration/self._grid_resolution
+		N_time_steps = duration/self._waveform_resolution
 
 		self._pulse_seq_I.append_pulse(if_amp1/5*sin(2*pi*frequency/1e9*\
 							linspace(0, duration, N_time_steps+1)+if_phase+phase) + if_offs1/5)
@@ -173,7 +187,7 @@ class PulseBuilder():
 		'''
 		Returns a dictionary containing I and Q pulse sequences and the total duration of the pulse sequence in ns
 		'''
-		to_return = IQPulseSequence(self._pulse_seq_I, self._pulse_seq_Q, self._grid_resolution*(self._pulse_seq_I.total_points()-1))
+		to_return = IQPulseSequence(self._pulse_seq_I, self._pulse_seq_Q, self._waveform_resolution*(self._pulse_seq_I.total_points()-1))
 		self._pulse_seq_I = PulseSequence()
 		self._pulse_seq_Q = PulseSequence()
 		return to_return
@@ -186,6 +200,8 @@ class KeysightAWG(Instrument):
 		self._address = address
 		rm = visa.ResourceManager()
 		self._visainstrument = rm.open_resource(self._address)
+
+		self._visainstrument.write(":DIG:TRAN:INT 1")
 
 
 		self.add_parameter('outp1', 
@@ -219,7 +235,7 @@ class KeysightAWG(Instrument):
 
 	# High-level functions
 
-	def output_continuous_wave(self, frequency=100e6, amplitude=0.1, phase=0, offset=0, channel=1):
+	def output_continuous_wave(self, frequency=100e6, amplitude=0.1, phase=0, offset=0, waveform_resolution=1,  channel=1):
 		'''
 		Prepare and output a sine wave of the form: y = A*sin(2*pi*frequency + phase) + offset
 
@@ -233,11 +249,14 @@ class KeysightAWG(Instrument):
 			phase in radians of the iutput wave
 		offset: float
 			voltage offset of the waveform
+		waveform_resolution: float, ns
+			resolution in time of the arbitrary waveform representing one period of the wave
 		chanel:1 or 2
 			channel which witll output the wave
 		'''
 
-		waveform =amplitude/5*sin(2*pi*linspace(0,1,101)+phase) + offset/5
+		N_points = 1/frequency/waveform_resolution*1e9+1 if frequency !=0 else 3
+		waveform =amplitude/5*sin(2*pi*linspace(0,1,N_points)+phase) + offset/5
 		self.load_arbitrary_waveform_to_volatile_memory(waveform, channel)
 		self.prepare_waveform(WaveformType.arbitrary, frequency, 5, 0, channel)
 		self.set_output(channel, 1)
@@ -261,6 +280,11 @@ class KeysightAWG(Instrument):
 		self.set_outp2(1)
 
 	# Basic low-level functions
+
+	def set_channel_coupling(self, state):
+		self._visainstrument.write(":TRAC:CHAN1:%s"%("ON" if state==True else "OFF"))
+		self._visainstrument.write(":TRAC:CHAN2:%s"%("ON" if state==True else "OFF"))
+
 
 	def apply_waveform(self, waveform, freq, amp, offset, channel=1):
 		'''
@@ -306,7 +330,7 @@ class KeysightAWG(Instrument):
 
 		'''
 		self._visainstrument.write("*OPC")
-		self._visainstrument.write(":FUNC{0} {1}; :FREQ{0} {2}; :VOLT{0} {3}; :VOLT:OFFS{0} {4}".format(channel, waveform.value, freq, amp, offset))
+		self._visainstrument.write(":FUNC{0} {1}; :FREQ{0} {2}; :VOLT{0} {3}; :VOLT{0}:OFFS {4}".format(channel, waveform.value, freq, amp, offset))
 		self._visainstrument.write("*OPC?")
 
 	def list_arbitrary_waveforms(self, channel=1):
@@ -379,15 +403,15 @@ class KeysightAWG(Instrument):
 			channel index where the waveform will be stored
 
 		'''
-		if max(waveform_array) > 1:
-			array_string = "".join([str(num)+", " for num in waveform_array/max(waveform_array)])[:-2]
-		else:
-			array_string = "".join([str(num)+", " for num in waveform_array])[:-2]
+		# if max(waveform_array) > 1:
+		# 	array_string = "".join([str(num)+", " for num in waveform_array/max(waveform_array)])[:-2]
+		# else:
+		# 	array_string = "".join([str(num)+", " for num in waveform_array])[:-2]
 
-		# waveform_array = around(waveform_array*8191).astype(int)
+		waveform_array = around(waveform_array*8191).astype(int)
 		self._visainstrument.write("*OPC")
-		self._visainstrument.write(":DATA%d VOLATILE, "%channel+array_string)
-		# self._visainstrument.write_binary_values(":DATA%d:DAC VOLATILE,"%channel, waveform_array, datatype="h")
+		# self._visainstrument.write(":DATA%d VOLATILE, "%channel+array_string)
+		self._visainstrument.write_binary_values(":DATA%d:DAC VOLATILE,"%channel, waveform_array, "h", True)
 		self._visainstrument.query("*OPC?")
 
 

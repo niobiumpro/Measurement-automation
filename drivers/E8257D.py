@@ -1,9 +1,9 @@
 import drivers.instr as instr
 
-class E8257D(instr.Instr):
+class MXG(instr.Instr):
 
     def __init__(self, ip_address):
-        super(E8257D, self).__init__(ip_address)
+        super(MXG, self).__init__(ip_address)
         # self.cls()
 
     def use_internal_clock(self, is_clock_internal):
@@ -40,10 +40,10 @@ class E8257D(instr.Instr):
         return output
 
     def set_power(self, power_dBm):
-        if (power_dBm >= -20) & (power_dBm <= 14):
+        if (power_dBm >= -130) & (power_dBm <= 14):
             self.write(":SOURce:POWer {0}DBM".format(power_dBm))
         else:
-            print("Error: power must be between -20 and 14 dBm")
+            print("Error: power must be between -130 and 14 dBm")
 
     def get_power(self):
         bla = self.query(":SOURce:POWer?")

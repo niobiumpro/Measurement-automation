@@ -4,62 +4,63 @@ from time import sleep
 
 def detect_resonator_frequency_at_the_sweet_spot():
 
-    znb.set_nop(100)
-    old_avg = znb.get_averages()
-    old_bw = znb.get_bandwidth()
-    znb.set_bandwidth(10)
-    znb.set_averages(5)
-    current.output_on()
+    vna.set_nop(100)
+    old_avg = vna.get_averages()
+    old_bw = vna.get_bandwidth()
+    vna.set_bandwidth(10)
+    vna.set_averages(1)
+    current.set_status(1)
 
-    znb.avg_clear()
-    znb.prepare_for_stb()
-    znb.sweep_single()
-    znb.wait_for_stb()
-    res_freq1 = RD.detect_resonator(znb, type="FIT")[0]
+    vna.avg_clear()
+    vna.prepare_for_stb()
+    vna.sweep_single()
+    vna.wait_for_stb()
+    res_freq1 = RD.detect_resonator(vna, type="FIT")[0]
 
-    znb.set_averages(old_avg)
-    znb.set_bandwidth(old_bw)
-    znb.set_nop(1)
-    znb.set_center(res_freq1)
-    znb.prepare_for_stb()
-    znb.sweep_single()
-    znb.wait_for_stb()
+    vna.set_averages(old_avg)
+    vna.set_bandwidth(old_bw)
+    vna.set_nop(1)
+    vna.set_center(res_freq1)
+    vna.prepare_for_stb()
+    vna.sweep_single()
+    vna.wait_for_stb()
 
-    print(znb.get_frequencies(), 20*log10(abs(znb.get_sdata())))
+    print(vna.get_frequencies(), 20*log10(abs(vna.get_sdata())))
 
 
 try:
 
-    start_center_freq = RD.detect_resonator(znb)[0]
+    start_center_freq = RD.detect_resonator(vna)[0]
 
-    mw_src_freqs = np.linspace(9.495e9, 9.5e9, 100)
+    mw_src_freqs = np.linspace(10.38e9, 10.46e9, 100)
     mw_src.set_power(-5)
 
-    powers = linspace(-5, 14, 35)
+    powers = linspace(-30, 0, 31)
 
-    current.set_current(-4.13e-3)
-    current.output_on()
+    current.set_current(-58e-6)
+    current.set_status(1)
 
-    znb.set_averages(5)
-    znb.set_bandwidth(1)
-    znb.set_power(-50)
+    vna.set_averages(15)
+    vna.set_bandwidth(1)
+    vna.set_power(-20)
 
     detect_resonator_frequency_at_the_sweet_spot()
 
     mw_src.set_output_state("ON")
-    measurement = ps.sweep2D(znb, powers, mw_src.set_power, mw_src_freqs, mw_src.set_frequency)
+    measurement = ps.sweep2D(vna, powers, mw_src.set_power, mw_src_freqs, mw_src.set_frequency)
 
 
 
 finally:
     current.set_current(0)
-    current.output_off()
+    current.set_status(0)
     mw_src.set_output_state("OFF")
-    znb.avg_clear()
-    znb.set_averages(10)
-    znb.set_nop(200)
+    vna.avg_clear()
+    vna.set_averages(10)
+    vna.set_nop(200)
     #lo1.set_status(0)
-    znb.set_freq_center_span(start_center_freq, 5e6)
-    znb.set_bandwidth(50)
-    znb.set_power(-60)
-    znb.sweep_single()
+    vna.set_center(start_center_freq)
+    vna.set_span(50e6)
+    vna.set_bandwidth(50)
+    vna.set_power(-20)
+    vna.sweep_single()

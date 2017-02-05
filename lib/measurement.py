@@ -27,7 +27,7 @@ class Measurement():
         elif type_str  == "pna-p2D-2D":
             self.__type__ = 4
         else:
-            raise ValueError("Wrong type: %s"&type_str)
+            raise ValueError("Wrong type: %s"%type_str)
 
     def get_type_str(self):
         if self.__type__ == 1:
@@ -79,7 +79,7 @@ class Measurement():
         '''
         Returns a shallow copy!
         '''
-        copy = Measurement()
+        copy = Measurement(type_str = self.get_type_str())
         copy.set_data(self.__data__)
         copy.set_type(self.__type__)
         copy.set_datetime(self.__datetime__)
@@ -94,7 +94,6 @@ class Measurement():
         Returns: measurement : Measurement
                                     normalized measurement
         '''
-
         new = self.copy()
         if self.__type__ in [2,3]:
             new_amps = new.get_data()[2].copy()
@@ -120,7 +119,6 @@ class Measurement():
         Returns:    measurement : Measurement
                                     measurement with no background
         '''
-
         new = self.copy()
 
         if self.__type__ == 2:
