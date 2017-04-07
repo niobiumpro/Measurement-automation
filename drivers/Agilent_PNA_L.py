@@ -1,6 +1,6 @@
 # Agilent_PNA_L.py
 # Gleb Fedorov <vdrhtc@gmail.com>
-# Derived from Agilent PNA X made by Marcus Jerger, 2012 
+# Derived from Agilent PNA X made by Marcus Jerger, 2012
 # Derived from Anritsu_VNA.py hacked by Hannes Rotzinger hannes.rotzinger@kit.edu, 2011
 # derived from Anritsu_VNA.py (and whatever this is derived from)
 # Pascal Macha <pascalmacha@googlemail.com>, 2010
@@ -24,7 +24,7 @@ import visa
 import types
 import logging
 from time import sleep
-import numpy 
+import numpy
 
 class Agilent_PNA_L(Instrument):
     '''
@@ -33,18 +33,18 @@ class Agilent_PNA_L(Instrument):
     Usage:
     Initialise with
     <name> = instruments.create(address='<GPIB address>', reset=<bool>)
-    
+
     '''
 
     def __init__(self, address, channel_index = 1):
         '''
-        Initializes 
+        Initializes
 
         Input:
             name (string)    : name of the instrument
             address (string) : GPIB address
         '''
-        
+
         self.logger = logging.getLogger()
         self.logger.setLevel(logging.WARNING)
 
@@ -55,30 +55,30 @@ class Agilent_PNA_L(Instrument):
         self._visainstrument = rm.open_resource(self._address)# no term_chars for GPIB!!!!!
         self._zerospan = False
         self._freqpoints = 0
-        self._ci = channel_index 
+        self._ci = channel_index
         self._start = 0
         self._stop = 0
         self._nop = 0
 
         # Implement parameters
-		
+
         self.add_parameter('nop', type=int,
             flags=Instrument.FLAG_GETSET,
             minval=1, maxval=100000,
             tags=['sweep'])
-        
+
         self.add_parameter('bandwidth', type=float,
             flags=Instrument.FLAG_GETSET,
             minval=0, maxval=1e9,
-            units='Hz', tags=['sweep']) 
+            units='Hz', tags=['sweep'])
 
         self.add_parameter('averages', type=int,
             flags=Instrument.FLAG_GETSET,
-            minval=1, maxval=1024, tags=['sweep'])                    
+            minval=1, maxval=1024, tags=['sweep'])
 
         self.add_parameter('average', type=bool,
-            flags=Instrument.FLAG_GETSET)   
-                    
+            flags=Instrument.FLAG_GETSET)
+
         self.add_parameter('centerfreq', type=float,
             flags=Instrument.FLAG_GETSET,
             minval=0, maxval=20e9,
@@ -88,12 +88,12 @@ class Agilent_PNA_L(Instrument):
             flags=Instrument.FLAG_GETSET,
             minval=0, maxval=20e9,
             units='Hz', tags=['sweep'])
-            
+
         self.add_parameter('startfreq', type=float,
             flags=Instrument.FLAG_GETSET,
             minval=0, maxval=20e9,
-            units='Hz', tags=['sweep'])            
-            
+            units='Hz', tags=['sweep'])
+
         self.add_parameter('stopfreq', type=float,
             flags=Instrument.FLAG_GETSET,
             minval=0, maxval=20e9,
@@ -102,13 +102,13 @@ class Agilent_PNA_L(Instrument):
         self.add_parameter('CWfreq', type=float,
             flags=Instrument.FLAG_GETSET,
             minval=300e3, maxval=20e9,
-            units='Hz', tags=['sweep'])                        
-            
+            units='Hz', tags=['sweep'])
+
         self.add_parameter('span', type=float,
             flags=Instrument.FLAG_GETSET,
             minval=0, maxval=20e9,
-            units='Hz', tags=['sweep'])        
-            
+            units='Hz', tags=['sweep'])
+
         self.add_parameter('power', type=float,
             flags=Instrument.FLAG_GETSET,
             minval=-90, maxval=12,
@@ -116,20 +116,20 @@ class Agilent_PNA_L(Instrument):
 
         self.add_parameter('zerospan', type=bool,
             flags=Instrument.FLAG_GETSET)
-            
+
         self.add_parameter('channel_index', type=int,
-            flags=Instrument.FLAG_GETSET)            
-                    
+            flags=Instrument.FLAG_GETSET)
+
         #Triggering Stuff
         self.add_parameter('trigger_source', type=bytes,
             flags=Instrument.FLAG_GETSET)
-        
+
         # sets the S21 setting in the PNA X
         # self.define_S21()
         # self.set_S21()
-        # self.select_default_trace()
+        self.select_default_trace()
 
-        
+
         # Implement functions
         self.add_function('get_frequencies')
         self.add_function("get_freqpoints")
@@ -151,15 +151,15 @@ class Agilent_PNA_L(Instrument):
 
         #self.add_function('avg_clear')
         #self.add_function('avg_status')
-        
+
         #self._oldspan = self.get_span()
         #self._oldnop = self.get_nop()
         #if self._oldspan==0.002:
         #  self.set_zerospan(True)
-        
+
         self.get_all()
-    
-    def get_all(self):        
+
+    def get_all(self):
         self.get_nop()
         self.get_power()
         self.get_centerfreq()
@@ -170,24 +170,24 @@ class Agilent_PNA_L(Instrument):
         self.get_trigger_source()
         self.get_average()
         self.get_averages()
-        self.get_frequencies()   
+        self.get_frequencies()
         self.get_channel_index()
         #self.get_zerospan()
-        
+
     ###
     #Communication with device
-    ###	
-    
+    ###
+
     def init(self):
         if self._zerospan:
           self._visainstrument.write('INIT1;*wai')
         else:
           if self.get_average():
-            for i in range(self.get_averages()):            
+            for i in range(self.get_averages()):
               self._visainstrument.write('INIT1;*wai')
           else:
               self._visainstrument.write('INIT1;*wai')
-	
+
     def select_default_trace(self):
         available_traces = self._visainstrument.query("CALC:PAR:CAT?").replace('"', "").split(",")
         self._visainstrument.write("CALC:PAR:SEL '%s'"%available_traces[0])
@@ -205,8 +205,6 @@ class Agilent_PNA_L(Instrument):
         '''
         self._visainstrument.write( "CALCulate:PARameter:EXT 'CH1_S21_1','S21'")
 
-
-
     def autoscale_all(self):
         windows = self._visainstrument.query(" Disp:Cat?").replace('"', "").replace("\n", "").split(",")
         for window in windows:
@@ -215,13 +213,13 @@ class Agilent_PNA_L(Instrument):
     def reset_windows(self):
         self._visainstrument.write('DISP:WIND Off')
         self._visainstrument.write('DISP:WIND On')
-    
+
     def set_autoscale(self):
         self._visainstrument.write("DISP:WIND:TRAC:Y:AUTO")
-    
+
     def get_sweep(self):
         self._visainstrument.write( "ABORT; INITiate:IMMediate;*wai")
-        
+
     def avg_clear(self):
         self._visainstrument.write(':SENS%i:AVER:CLE' %(self._ci))
 
@@ -229,22 +227,22 @@ class Agilent_PNA_L(Instrument):
         # this does not work the same way than the VNA:
         #return int(self._visainstrument.ask(':SENS%i:AVER:COUN?' %(self._ci))
         pass
-        
+
     def get_avg_status(self):
         return self._visainstrument.ask('STAT:OPER:AVER1:COND?')
-            
-    def still_avg(self): 
+
+    def still_avg(self):
         if int(self.get_avg_status()) == 1: return True
-        else: return False 
+        else: return False
 
     def get_sdata(self):
         self._visainstrument.write(':FORMAT:DATA REAL,32; :FORMat:BORDer SWAP;')
-        data = self._visainstrument.ask_for_values("CALCulate:DATA? SDATA") 
+        data = self._visainstrument.ask_for_values("CALCulate:DATA? SDATA")
         data_size = numpy.size(data)
         datareal = numpy.array(data[0:data_size:2])
         dataimag = numpy.array(data[1:data_size:2])
         return datareal+1j*dataimag
-        
+
     def get_tracedata(self, format = 'AmpPha'):
         '''
         Get the data of the current trace
@@ -256,15 +254,15 @@ class Agilent_PNA_L(Instrument):
             'AmpPha':_ Amplitude and Phase
         '''
         self._visainstrument.write(':FORMAT:DATA REAL,32; :FORMat:BORDer SWAP;')
-        #data = self._visainstrument.ask_for_values(':FORMAT REAL,32; FORMat:BORDer SWAP;*CLS; CALC:DATA? SDATA;*OPC',format=visa.single) 
-        #data = self._visainstrument.ask_for_values(':FORMAT REAL,32;CALC:DATA? SDATA;',format=visa.double) 
-        #data = self._visainstrument.ask_for_values('FORM:DATA REAL; FORM:BORD SWAPPED; CALC%i:SEL:DATA:SDAT?'%(self._ci), format = visa.double)      
+        #data = self._visainstrument.ask_for_values(':FORMAT REAL,32; FORMat:BORDer SWAP;*CLS; CALC:DATA? SDATA;*OPC',format=visa.single)
+        #data = self._visainstrument.ask_for_values(':FORMAT REAL,32;CALC:DATA? SDATA;',format=visa.double)
+        #data = self._visainstrument.ask_for_values('FORM:DATA REAL; FORM:BORD SWAPPED; CALC%i:SEL:DATA:SDAT?'%(self._ci), format = visa.double)
         #test
-        data = self._visainstrument.ask_for_values("CALCulate:DATA? SDATA") 
+        data = self._visainstrument.ask_for_values("CALCulate:DATA? SDATA")
         data_size = numpy.size(data)
         datareal = numpy.array(data[0:data_size:2])
         dataimag = numpy.array(data[1:data_size:2])
-        
+
         #print datareal,dataimag,len(datareal),len(dataimag)
         if format.upper() == 'REALIMAG':
           if self._zerospan:
@@ -283,17 +281,17 @@ class Agilent_PNA_L(Instrument):
             datapha = numpy.arctan2(dataimag,datareal)
             return dataamp, datapha
         else:
-          raise ValueError('get_tracedata(): Format must be AmpPha or RealImag') 
-      
+          raise ValueError('get_tracedata(): Format must be AmpPha or RealImag')
 
-    def get_freqpoints(self, query = False): 
+
+    def get_freqpoints(self, query = False):
         '''
         Deprecated
-        '''    
+        '''
         return self.get_frequencies()
 
-    def get_frequencies(self, query = False):      
-      #if query == True:        
+    def get_frequencies(self, query = False):
+      #if query == True:
         #self._freqpoints = numpy.array(self._visainstrument.ask_for_values('SENS%i:FREQ:DATA:SDAT?'%self._ci,format=1)) / 1e9
         #self._freqpoints = numpy.array(self._visainstrument.ask_for_values(':FORMAT REAL,32;*CLS;CALC1:DATA:STIM?;*OPC',format=1)) / 1e9
       self._freqpoints = numpy.linspace(self._start,self._stop,self._nop)
@@ -307,22 +305,22 @@ class Agilent_PNA_L(Instrument):
 
     def set_xlim(self, start, stop):
         self.logger.debug(__name__ + ' : setting start freq to %s Hz' % start)
-        self._visainstrument.write('SENS%i:FREQ:STAR %f' % (self._ci,start))   
+        self._visainstrument.write('SENS%i:FREQ:STAR %f' % (self._ci,start))
         self._start = start
         self.get_centerfreq();
         self.get_stopfreq();
         self.get_span();
-        
+
         self.logger.debug(__name__ + ' : setting stop freq to %s Hz' % stop)
-        self._visainstrument.write('SENS%i:FREQ:STOP %f' % (self._ci,stop))  
+        self._visainstrument.write('SENS%i:FREQ:STOP %f' % (self._ci,stop))
         self._stop = stop
         self.get_startfreq();
         self.get_centerfreq();
         self.get_span();
-		
+
     def get_xlim(self):
         return self._start, self._stop
-	
+
     def do_set_CWfreq(self,freq):
         '''
         Set CW frequancy valid if sweepind in CW mode.
@@ -341,7 +339,7 @@ class Agilent_PNA_L(Instrument):
     def get_sweep_time(self):
         """
         Get the time needed for one sweep
-		
+
         Returns:
             out: float
                 time in ms
@@ -350,7 +348,7 @@ class Agilent_PNA_L(Instrument):
     ###
     # SET and GET functions
     ###
-    
+
     def do_set_nop(self, nop):
         '''
         Set Number of Points (nop) for sweep
@@ -364,8 +362,8 @@ class Agilent_PNA_L(Instrument):
         self.logger.debug(__name__ + ' : setting Number of Points to %s ' % (nop))
         self._visainstrument.write(':SENS%i:SWE:POIN %i' %(self._ci,nop))
         self._nop = nop
-        self.get_frequencies() #Update List of frequency points  
-        
+        self.get_frequencies() #Update List of frequency points
+
     def do_get_nop(self):
         '''
         Get Number of Points (nop) for sweep
@@ -379,9 +377,9 @@ class Agilent_PNA_L(Instrument):
         if self._zerospan:
           return 1
         else:
-            self._nop = int(self._visainstrument.ask(':SENS%i:SWE:POIN?' %(self._ci)))    
-        return self._nop 
-    
+            self._nop = int(self._visainstrument.ask(':SENS%i:SWE:POIN?' %(self._ci)))
+        return self._nop
+
     def do_set_average(self, status):
         '''
         Set status of Average
@@ -414,7 +412,7 @@ class Agilent_PNA_L(Instrument):
         '''
         self.logger.debug(__name__ + ' : getting average status')
         return bool(int(self._visainstrument.ask('SENS%i:AVER:STAT?' %(self._ci))))
-                    
+
     def do_set_averages(self, av):
         '''
         Set number of averages
@@ -447,7 +445,7 @@ class Agilent_PNA_L(Instrument):
           return int(self._visainstrument.ask('SWE%i:POIN?' % self._ci))
         else:
           return int(self._visainstrument.ask('SENS%i:AVER:COUN?' % self._ci))
-                
+
     def do_set_power(self,pow):
         '''
         Set probe power
@@ -459,7 +457,7 @@ class Agilent_PNA_L(Instrument):
             None
         '''
         self.logger.debug(__name__ + ' : setting power to %s dBm' % pow)
-        self._visainstrument.write('SOUR%i:POW1:LEV:IMM:AMPL %.2f' % (self._ci,pow))    
+        self._visainstrument.write('SOUR%i:POW1:LEV:IMM:AMPL %.2f' % (self._ci,pow))
     def do_get_power(self):
         '''
         Get probe power
@@ -472,7 +470,7 @@ class Agilent_PNA_L(Instrument):
         '''
         self.logger.debug(__name__ + ' : getting power')
         return float(self._visainstrument.ask('SOUR%i:POW1:LEV:IMM:AMPL?' % (self._ci)))
-     
+
     def do_set_center(self, f):
         self.do_set_centerfreq(f)
 
@@ -507,7 +505,7 @@ class Agilent_PNA_L(Instrument):
         '''
         self.logger.debug(__name__ + ' : getting center frequency')
         return  float(self._visainstrument.ask('SENS%i:FREQ:CENT?'%(self._ci)))
-        
+
     def do_set_span(self,span):
         '''
         Set Span
@@ -519,14 +517,14 @@ class Agilent_PNA_L(Instrument):
             None
         '''
         self.logger.debug(__name__ + ' : setting span to %s Hz' % span)
-        self._visainstrument.write('SENS%i:FREQ:SPAN %i' % (self._ci,span))   
+        self._visainstrument.write('SENS%i:FREQ:SPAN %i' % (self._ci,span))
         self.get_startfreq();
         self.get_stopfreq();
-        self.get_centerfreq();   
+        self.get_centerfreq();
     def do_get_span(self):
         '''
         Get Span
-        
+
         Input:
             None
 
@@ -546,7 +544,7 @@ class Agilent_PNA_L(Instrument):
     def sweep_single(self):
         # self.write("SENSe{0}:SWEep:MODE SINGle".format(self.current_channel))
         self.write("SENS%i:SWE:MODE GROUPS"%(self._ci))
-	
+
     def do_set_startfreq(self,val):
         '''
         Set Start frequency
@@ -558,7 +556,7 @@ class Agilent_PNA_L(Instrument):
             None
         '''
         self.logger.debug(__name__ + ' : setting start freq to %s Hz' % val)
-        self._visainstrument.write('SENS%i:FREQ:STAR %f' % (self._ci,val))   
+        self._visainstrument.write('SENS%i:FREQ:STAR %f' % (self._ci,val))
         self._start = val
         self.get_centerfreq();
         self.get_stopfreq();
@@ -567,7 +565,7 @@ class Agilent_PNA_L(Instrument):
     def do_get_startfreq(self):
         '''
         Get Start frequency
-        
+
         Input:
             None
 
@@ -589,7 +587,7 @@ class Agilent_PNA_L(Instrument):
             None
         '''
         self.logger.debug(__name__ + ' : setting stop freq to %s Hz' % val)
-        self._visainstrument.write('SENS%i:FREQ:STOP %f' % (self._ci,val))  
+        self._visainstrument.write('SENS%i:FREQ:STOP %f' % (self._ci,val))
         self._stop = val
         self.get_startfreq();
         self.get_centerfreq();
@@ -598,7 +596,7 @@ class Agilent_PNA_L(Instrument):
     def do_get_stopfreq(self):
         '''
         Get Stop frequency
-        
+
         Input:
             None
 
@@ -608,7 +606,7 @@ class Agilent_PNA_L(Instrument):
         self.logger.debug(__name__ + ' : getting stop frequency')
         self._stop = float(self._visainstrument.ask('SENS%i:FREQ:STOP?' %(self._ci) ))
         return  self._stop
-               
+
     def do_set_bandwidth(self,band):
         '''
         Set Bandwidth
@@ -633,7 +631,7 @@ class Agilent_PNA_L(Instrument):
         '''
         self.logger.debug(__name__ + ' : getting bandwidth')
         # getting value from instrument
-        return  float(self._visainstrument.ask('SENS%i:BWID:RES?'%self._ci))              
+        return  float(self._visainstrument.ask('SENS%i:BWID:RES?'%self._ci))
 
     def do_set_zerospan(self,val):
         '''
@@ -648,14 +646,14 @@ class Agilent_PNA_L(Instrument):
         '''
         #self.logger.debug(__name__ + ' : setting status to "%s"' % status)
         if val not in [True, False]:
-            raise ValueError('set_zerospan(): can only set True or False')        
+            raise ValueError('set_zerospan(): can only set True or False')
         if val:
           self._oldnop = self.get_nop()
           self._oldspan = self.get_span()
           if self.get_span() > 0.002:
-            Warning('Setting ZVL span to 2Hz for zerospan mode')            
+            Warning('Setting ZVL span to 2Hz for zerospan mode')
             self.set_span(0.002)
-            
+
         av = self.get_averages()
         self._zerospan = val
         if val:
@@ -663,13 +661,13 @@ class Agilent_PNA_L(Instrument):
             self.set_averages(av)
             if av<2:
               av = 2
-        else: 
+        else:
           self.set_Average(True)
           self.set_span(self._oldspan)
           self.set_nop(self._oldnop)
           self.get_averages()
         self.get_nop()
-               
+
     def do_get_zerospan(self):
         '''
         Check weather the virtual zerospan mode is turned on
@@ -694,7 +692,7 @@ class Agilent_PNA_L(Instrument):
         '''
         self.logger.debug(__name__ + ' : setting trigger source to "%s"' % source)
         if source.upper() in [AUTO, MAN, EXT, REM]:
-            self._visainstrument.write('TRIG:SOUR %s' % source.upper())        
+            self._visainstrument.write('TRIG:SOUR %s' % source.upper())
         else:
             raise ValueError('set_trigger_source(): must be AUTO | MANual | EXTernal | REMote')
     def do_get_trigger_source(self):
@@ -708,8 +706,8 @@ class Agilent_PNA_L(Instrument):
             source (string) : AUTO | MANual | EXTernal | REMote
         '''
         self.logger.debug(__name__ + ' : getting trigger source')
-        return self._visainstrument.ask('TRIG:SOUR?')        
-        
+        return self._visainstrument.ask('TRIG:SOUR?')
+
 
     def do_set_channel_index(self,val):
         '''
@@ -724,7 +722,7 @@ class Agilent_PNA_L(Instrument):
         self.logger.debug(__name__ + ' : setting channel index to "%i"' % int)
         nop = self._visainstrument.read('DISP:COUN?')
         if val < nop:
-            self._ci = val 
+            self._ci = val
         else:
             raise ValueError('set_channel_index(): index must be < nop channels')
     def do_get_channel_index(self):
@@ -739,7 +737,7 @@ class Agilent_PNA_L(Instrument):
         '''
         self.logger.debug(__name__ + ' : getting channel index')
         return self._ci
-  
+
     def prepare_for_stb(self):
         # Clear the instrument's Status Byte
         self._visainstrument.write("*CLS")
@@ -768,6 +766,6 @@ class Agilent_PNA_L(Instrument):
     def read(self):
         return self._visainstrument.read()
     def write(self,msg):
-        return self._visainstrument.write(msg)    
+        return self._visainstrument.write(msg)
     def ask(self,msg):
         return self._visainstrument.ask(msg)

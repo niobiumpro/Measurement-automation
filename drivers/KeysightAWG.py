@@ -114,10 +114,26 @@ class PulseBuilder():
 		self._pulse_seq_I = PulseSequence()
 		self._pulse_seq_Q = PulseSequence()
 
+	def add_dc_pulse(self, duration, dc_voltage):
+		'''
+		Adds a pulse by putting a dc voltage at the I and Q inputs of the mixer
+
+		Parameters:
+		-----------
+		duration: float, ns
+			Duration of the pulse in nanoseconds
+		dc_voltage: float, volts
+			The value of the dc voltage applied at the IQ mixer ports during the
+			pulse
+		'''
+		vdc1, vdc2 = dc_voltage, dc_voltage
+		self._pulse_seq_I.append_pulse(zeros(int(duration/self._waveform_resolution)+1)+vdc1/5)
+		self._pulse_seq_Q.append_pulse(zeros(int(duration/self._waveform_resolution)+1)+vdc2/5)
+		return self
 
 	def add_zero_pulse(self, duration):
 		'''
-		Adds a pulse with zero amplitude at frequency f_lo-f_if to the sequence
+		Adds a pulse with zero amplitude to the sequence
 
 		Parameters:
 		-----------
@@ -125,8 +141,8 @@ class PulseBuilder():
 			Duration of the pulse in nanoseconds
 		'''
 		vdc1, vdc2 = self._iqmx_calibration.get_optimization_results()[0]["dc_offsets"]
-		self._pulse_seq_I.append_pulse(zeros(int(duration/self._waveform_resolution))+vdc1/5)
-		self._pulse_seq_Q.append_pulse(zeros(int(duration/self._waveform_resolution))+vdc2/5)
+		self._pulse_seq_I.append_pulse(zeros(int(duration/self._waveform_resolution)+1)+vdc1/5)
+		self._pulse_seq_Q.append_pulse(zeros(int(duration/self._waveform_resolution)+1)+vdc2/5)
 		return self
 
 	def modulate_rectangle(self, amplitude):
@@ -204,28 +220,28 @@ class KeysightAWG(Instrument):
 		self._visainstrument.write(":DIG:TRAN:INT 1")
 
 
-		self.add_parameter('outp1', 
+		self.add_parameter('outp1',
 		flags = Instrument.FLAG_GETSET, units = '', type = int)
 
-		self.add_parameter('outp2', 
+		self.add_parameter('outp2',
 		flags = Instrument.FLAG_GETSET, units = '', type = int)
 
-		self.add_parameter('outp1_compl', 
+		self.add_parameter('outp1_compl',
 		flags = Instrument.FLAG_GETSET, units = '', type = int)
 
-		self.add_parameter('outp2_compl', 
+		self.add_parameter('outp2_compl',
 		flags = Instrument.FLAG_GETSET, units = '', type = int)
 
-		self.add_parameter('2nd_delay', 
+		self.add_parameter('2nd_delay',
 		flags = Instrument.FLAG_GETSET, units = '', type = float)
 
-		self.add_parameter('1st_delay', 
+		self.add_parameter('1st_delay',
 		flags = Instrument.FLAG_GETSET, units = '', type = float)
 
-		self.add_parameter('2nd_width', 
+		self.add_parameter('2nd_width',
 		flags = Instrument.FLAG_GETSET, units = '', type = float)
 
-		self.add_parameter('1st_width', 
+		self.add_parameter('1st_width',
 		flags = Instrument.FLAG_GETSET, units = '', type = float)
 
 
@@ -243,7 +259,7 @@ class KeysightAWG(Instrument):
 		-----------
 		frequency: float
 			frequency of the output wave
-		amplitude: float 
+		amplitude: float
 			amplitude of the output wave
 		phase: float
 			phase in radians of the iutput wave
@@ -288,7 +304,7 @@ class KeysightAWG(Instrument):
 
 	def apply_waveform(self, waveform, freq, amp, offset, channel=1):
 		'''
-		Set one of the pre-loaded waveforms as output and output it. 
+		Set one of the pre-loaded waveforms as output and output it.
 		This function will turn both + and - outputs of the channel. If you don't want this behaviour,
 		you may use the prepare_waveform fucntion.
 
@@ -348,19 +364,19 @@ class KeysightAWG(Instrument):
 
 	def select_arbitary_waveform(self, waveform_name, channel=1):
 		'''
-		Select one of the seven built-in arbitrary waveforms, 
-		one of the four userdefined waveforms, or the waveform currently 
-		downloaded to volatile memory. 
-		This command does not output the selected arbitrary waveform. 
+		Select one of the seven built-in arbitrary waveforms,
+		one of the four userdefined waveforms, or the waveform currently
+		downloaded to volatile memory.
+		This command does not output the selected arbitrary waveform.
 		Use the apply_waveform command with WaveformType.arbitrary
 		to output the selected waveform.
 
 		Parameters:
 		-----------
 		waveform_name: string
-			one of the waveform names returned by 
+			one of the waveform names returned by
 			list_arbitrary_waveforms method
-		channel=1: int 
+		channel=1: int
 			channel for which the waveform will be selected, 1 or 2
 
 		'''
@@ -377,7 +393,7 @@ class KeysightAWG(Instrument):
 
 		Parameters:
 		-----------
-		channel=1: int 
+		channel=1: int
 			channel for which the waveform name will aquired, 1 or 2
 
 		'''
@@ -389,7 +405,7 @@ class KeysightAWG(Instrument):
 		'''
 		Load an arbitrary waveform as an array into volatile memory.
 		It then will be available in select_arbitrary_waveform method.
-		
+
 		The actual timescale and amplitude of the waveform will be defined by
 		its frequency and amplitude as specified in apply_waveform method.
 
@@ -447,8 +463,8 @@ class KeysightAWG(Instrument):
 
 	def do_get_outp1(self):
 		'''Check if first output channnel is turned on'''
-		return self._visainstrument.query("OUTP1?") 
-	
+		return self._visainstrument.query("OUTP1?")
+
 	def do_set_outp2(self, status):
 		'''
 		Turn second output channnel on and off.
@@ -463,7 +479,7 @@ class KeysightAWG(Instrument):
 
 	def do_get_outp2(self):
 		'''Check if second output channnel is turned on'''
-		return self._visainstrument.query("OUTP2?") 
+		return self._visainstrument.query("OUTP2?")
 
 	def do_set_outp1_compl(self, status):
 		'''
@@ -479,8 +495,8 @@ class KeysightAWG(Instrument):
 
 	def do_get_outp1_compl(self):
 		'''Check if first output complement channnel is turned on'''
-		return self._visainstrument.query("OUTP1:COMP?") 
-	
+		return self._visainstrument.query("OUTP1:COMP?")
+
 	def do_set_outp2_compl(self, status):
 		'''
 		Turn second output complement channnel on and off.
@@ -495,7 +511,7 @@ class KeysightAWG(Instrument):
 
 	def do_get_outp2_compl(self):
 		'''Check if second output complement channel is turned on'''
-		return self._visainstrument.query("OUTP2:COMP?") 
+		return self._visainstrument.query("OUTP2:COMP?")
 
 	def do_set_2nd_delay(self,delay):
 		'''
@@ -568,5 +584,3 @@ class KeysightAWG(Instrument):
 		Get a delay from 2nd channel
 		'''
 		return self._visainstrument.query("FUNC1:PULS:WIDT?")
-
-

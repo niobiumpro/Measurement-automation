@@ -1,5 +1,6 @@
 import drivers.instr as instr
 
+
 class MXG(instr.Instr):
 
     def __init__(self, ip_address):
@@ -40,10 +41,10 @@ class MXG(instr.Instr):
         return output
 
     def set_power(self, power_dBm):
-        if (power_dBm >= -130) & (power_dBm <= 14):
+        if (power_dBm >= -130) & (power_dBm <= 15):
             self.write(":SOURce:POWer {0}DBM".format(power_dBm))
         else:
-            print("Error: power must be between -130 and 14 dBm")
+            print("Error: power must be between -130 and 15 dBm")
 
     def get_power(self):
         bla = self.query(":SOURce:POWer?")
@@ -54,3 +55,10 @@ class MXG(instr.Instr):
             output = -1.0
         return output
 
+class EXG(MXG):
+
+    def set_power(self, power_dBm):
+        if (power_dBm >= -20) & (power_dBm <= 19):
+            self.write(":SOURce:POWer {0}DBM".format(power_dBm))
+        else:
+            print("Error: power must be between -20 and 19 dBm")

@@ -2,7 +2,7 @@
 Possible types are:
 pna-p1D-2D : 1D parameter set with 1 point sweep of PNA ---------------------------------------- 1
 pna-p2D-2D : 2D parameter set with 1 point sweep of PNA and 1 point of one of the parameters --- 4
-pna-p1D-3D : 1D parameter set with 1 point sweep of PNA ---------------------------------------- 2
+pna-p1D-3D : 1D parameter set with many-point sweep of PNA ---------------------------------------- 2
 pna-p2D-3D : 2D parameter set with 1 point sweep of PNA ---------------------------------------- 3
 
 Numbers needed for backwards compatibility with Python 3 pickle and because of lack of enum class
@@ -10,24 +10,15 @@ Numbers needed for backwards compatibility with Python 3 pickle and because of l
 
 class Measurement():
 
-    def __init__(self, type_str="", data=None, datetime=None, context={}, recording_time=0):
-        self.set_type_from_string(type_str)
+    TYPES = {"pna-p1D-2D":1, "pna-p1D-3D":2, "pna-p2D-3D":3, "pna-p2D-2D":4}
+
+    def __init__(self, type = None, data=None, datetime=None, context={}, recording_time=0):
+        self.__type__ = type
         self.__data__ = data
         self.__context__ = context
         self.__datetime__ = datetime
         self.__recording_time__ = recording_time
 
-    def set_type_from_string(self, type_str):
-        if type_str == "pna-p1D-2D":
-            self.__type__ = 1
-        elif type_str  == "pna-p1D-3D":
-            self.__type__ = 2
-        elif type_str  == "pna-p2D-3D":
-            self.__type__ = 3
-        elif type_str  == "pna-p2D-2D":
-            self.__type__ = 4
-        else:
-            raise ValueError("Wrong type: %s"%type_str)
 
     def get_type_str(self):
         if self.__type__ == 1:
@@ -79,7 +70,7 @@ class Measurement():
         '''
         Returns a shallow copy!
         '''
-        copy = Measurement(type_str = self.get_type_str())
+        copy = Measurement()
         copy.set_data(self.__data__)
         copy.set_type(self.__type__)
         copy.set_datetime(self.__datetime__)

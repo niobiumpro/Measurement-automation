@@ -4,18 +4,47 @@ from datetime import datetime
 from time import sleep
 import sys
 from lib import data_management as dm
-from matplotlib import pyplot as plt
+from matplotlib import pyplot as plt, colorbar
 from lib.measurement import Measurement
 import traceback as tb
 
+def update_2D_plot(X, Y, data, ax_amps, ax_phas, cax_amps, cax_phas):
+	XX, YY = np.meshgrid(X, Y)
+	ax_amps.clear()
+	ax_phas.clear()
+	cax_amps.clear()
+	cax_phas.clear()
+	amps_map = ax_amps.pcolormesh(XX, YY, np.real(data[0].T), vmax=np.real(np.max(data[0][data[0]!=1j])), vmin=np.real(np.min(data[0][data[0]!=1j])), cmap="RdBu_r")
+	plt.colorbar(amps_map, cax = cax_amps)
+	recorded_phas_data = np.unwrap(np.unwrap(np.real(data[1][data[1]!=1j])).T)
+	phas_map = ax_phas.pcolormesh(XX, YY, np.unwrap(np.unwrap(np.real(data[1])).T), vmax=np.max(recorded_phas_data), vmin=np.min(recorded_phas_data), cmap="RdBu_r")
+	plt.colorbar(phas_map, cax = cax_phas)
+	ax_amps.axis("tight")
+	ax_phas.axis("tight")
+	ax_phas.set_title("Phase")
+	ax_amps.set_title("Amplitude")
+	plt.pause(0.01)
+
+
 def sweep2D(vna, param1_vals, param1_setter, param2_vals, param2_setter, filename=None, center_freqs = None, averages=None):
+
+	plt.ion()
+
+	fig, axes = plt.subplots(1,2,figsize=(15,7))
+	ax_amps, ax_phas = axes
+	ax_amps.ticklabel_format(axis='x', style='sci', scilimits=(-2,2))
+	ax_phas.ticklabel_format(axis='x', style='sci', scilimits=(-2,2))
+	ax_amps.grid()
+	ax_phas.grid()
+	cax_amps, kw = colorbar.make_axes(ax_amps)
+	cax_phas, kw = colorbar.make_axes(ax_phas)
 
 	start_datetime = datetime.now()
 
 	print("Started at: ", start_datetime.ctime())
 
-	data_amp = np.zeros((len(param1_vals), len(param2_vals)))
-	data_phas = np.zeros((len(param1_vals), len(param2_vals)))
+	data_amp = 1j+np.zeros((len(param1_vals), len(param2_vals)))
+	data_phas = 1j+np.zeros((len(param1_vals), len(param2_vals)))
 
 	context =  {"vna_power":vna.get_power(), "bandwidth":vna.get_bandwidth(), "averages":vna.get_averages()}
 
@@ -64,10 +93,14 @@ def sweep2D(vna, param1_vals, param1_setter, param2_vals, param2_setter, filenam
 
 				done_sweeps += 1
 				avg_time = (datetime.now() - start_datetime).total_seconds()/done_sweeps
+
 				print("\rTime left: "+format_time_delta( \
 					avg_time*(total_sweeps-done_sweeps))+", parameter values (1,2): "+str(("%.3e"%value1, "%.3e"%value2))+\
 						", average cycle time: "+str(round(avg_time, 2))+" s          ", end="", flush=True)
 				j+=1
+
+			update_2D_plot(param1_vals, param2_vals, measurement.remove_background(-1,"x").get_data()[3:], ax_amps, ax_phas, cax_amps, cax_phas)
+
 			i+=1
 
 		elapsed_time = format_time_delta((datetime.now() - start_datetime).total_seconds())
@@ -75,22 +108,34 @@ def sweep2D(vna, param1_vals, param1_setter, param2_vals, param2_setter, filenam
 		measurement.set_recording_time(elapsed_time)
 		measurement.get_context()["recording_time"] = elapsed_time
 		measurement.get_context()["resolution_xy"] = (len(param1_vals), len(param2_vals))
+		curs, freqs, freq, amps, phas = measurement.get_data()
+		measurement.set_data((curs, freqs, freq, real(amps), real(phas)))
 
 		if filename!=None:
 			directory = dm.save_measurement(measurement, filename)
 	except:
 		print("\nUnexpected error:", tb.print_exc())
 	finally:
+		plt.close("all")
 		return measurement
 
 def sweep1D(vna, param_vals, param_setter, filename=None):
+
+	plt.ion()
+
+	fig, axes = plt.subplots(1,2,figsize=(15,7))
+	ax_amps, ax_phas = axes
+	ax_amps.ticklabel_format(axis='x', style='sci', scilimits=(-2,2))
+	ax_phas.ticklabel_format(axis='x', style='sci', scilimits=(-2,2))
+	ax_amps.grid()
+	ax_phas.grid()
 
 	start_datetime = datetime.now()
 
 	print("Started at: ", start_datetime.ctime())
 
-	data_amp = np.zeros((len(param_vals), vna.get_nop()))
-	data_phas = np.zeros((len(param_vals), vna.get_nop()))
+	data_amp = 1j+np.zeros((len(param_vals), vna.get_nop()))
+	data_phas = 1j+np.zeros((len(param_vals), vna.get_nop()))
 
 	context =  {"power":vna.get_power(), "bandwidth":vna.get_bandwidth(), "averages":vna.get_averages()}
 	measurement = Measurement(Measurement.TYPES["pna-p1D-3D"], (param_vals, vna.get_frequencies(), data_amp, data_phas), start_datetime, context)
@@ -121,6 +166,9 @@ def sweep1D(vna, param_vals, param_setter, filename=None):
 
 			done_sweeps += 1
 			avg_time = (datetime.now() - start_datetime).total_seconds()/done_sweeps
+
+			update_2D_plot(param_vals, vna.get_frequencies(), measurement.get_data()[2:], ax_amps, ax_phas)
+
 			print("\rTime left: "+format_time_delta( \
 				avg_time*(total_sweeps-done_sweeps))+", parameter value: "+"%.3e"%value+", average cycle time: "+str(round(avg_time, 2))+" s          ", end="", flush=True)
 
@@ -129,7 +177,6 @@ def sweep1D(vna, param_vals, param_setter, filename=None):
 		measurement.set_recording_time(elapsed_time)
 		measurement.get_context()["recording_time"] = elapsed_time
 		measurement.get_context()["resolution_xy"] = (total_sweeps, vna.get_nop())
-
 
 		if filename != None:
 			dm.save_measurement(measurement, filename)

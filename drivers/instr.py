@@ -20,8 +20,6 @@ class Instr(object):
         # self.visa_instr.values_format = "ascii"
         # self.visa_instr.lock = NI_NO_LOCK
 
-    def __del__(self):
-        self.visa_instr.close()
 
     def idn(self):
         print(self.visa_instr.query("*IDN?"))

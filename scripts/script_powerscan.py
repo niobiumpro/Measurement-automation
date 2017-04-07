@@ -1,5 +1,5 @@
 from lib import ResonatorDetector as RD
-from lib import parametric_sweep as ps
+from lib import parametric_sweep_with_plot as ps
 from time import sleep
 
 def detect_resonator_frequency_at_the_sweet_spot():
@@ -7,7 +7,7 @@ def detect_resonator_frequency_at_the_sweet_spot():
     vna.set_nop(100)
     old_avg = vna.get_averages()
     old_bw = vna.get_bandwidth()
-    vna.set_bandwidth(10)
+    vna.set_bandwidth(100)
     vna.set_averages(1)
     current.set_status(1)
 
@@ -32,17 +32,16 @@ try:
 
     start_center_freq = RD.detect_resonator(vna)[0]
 
-    mw_src_freqs = np.linspace(10.38e9, 10.46e9, 100)
-    mw_src.set_power(-5)
+    mw_src_freqs = np.linspace(9.22e9, 9.226e9, 100)
 
-    powers = linspace(-30, 0, 31)
+    powers = linspace(-10, -11, 2)
 
-    current.set_current(-58e-6)
+    current.set_current(.285e-3)
     current.set_status(1)
 
-    vna.set_averages(15)
-    vna.set_bandwidth(1)
-    vna.set_power(-20)
+    vna.set_averages(10)
+    vna.set_bandwidth(10)
+    vna.set_power(-35)
 
     detect_resonator_frequency_at_the_sweet_spot()
 
@@ -60,7 +59,7 @@ finally:
     vna.set_nop(200)
     #lo1.set_status(0)
     vna.set_center(start_center_freq)
-    vna.set_span(50e6)
+    vna.set_span(10e6)
     vna.set_bandwidth(50)
     vna.set_power(-20)
     vna.sweep_single()
