@@ -321,6 +321,25 @@ class Agilent_PNA_L(Instrument):
     def get_xlim(self):
         return self._start, self._stop
 
+    def get_freq_limits(self):
+        return self._start, self._stop
+
+    def set_freq_limits(self, start, stop):
+        self.logger.debug(__name__ + ' : setting start freq to %s Hz' % start)
+        self._visainstrument.write('SENS%i:FREQ:STAR %f' % (self._ci,start))
+        self._start = start
+        self.get_centerfreq();
+        self.get_stopfreq();
+        self.get_span();
+
+        self.logger.debug(__name__ + ' : setting stop freq to %s Hz' % stop)
+        self._visainstrument.write('SENS%i:FREQ:STOP %f' % (self._ci,stop))
+        self._stop = stop
+        self.get_startfreq();
+        self.get_centerfreq();
+        self.get_span();
+
+
     def do_set_CWfreq(self,freq):
         '''
         Set CW frequancy valid if sweepind in CW mode.
