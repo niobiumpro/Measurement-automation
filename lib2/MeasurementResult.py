@@ -26,6 +26,7 @@ Classes implementing this interface should implement following features:
 
 from numpy import *
 import copy
+
 import os, fnmatch
 import pickle
 from threading import Lock
@@ -85,13 +86,15 @@ class MeasurementResult():
         folder and prompts user to resolve any ambiguities.
 
         Returns:
-            an instance of the a child class containing the specific measurement
+            an instance of the child class containing the specific measurement
             result
 
         Example usage:
         >>> from lib2.MeasurementResult import MeasurementResult
-        >>> result = MeasurementResult.load("<sample_name", "<name>")
+        >>> result = MeasurementResult.load("<sample_name>", "<name>")
 
+        If the user hits EOF (*nix: Ctrl-D, Windows: Ctrl-Z+Return), raise EOFError.
+        On *nix systems, readline is used if available.
         '''
         paths = find(name+'.pkl', 'data/'+sample_name)
         path = None
@@ -104,7 +107,7 @@ class MeasurementResult():
         elif len(paths) == 1:
             path = paths[0]
         else:
-            print("Measurement result %s for the sample %s not found"%(name, sample_name))
+            print("Measurement result '%s' for the sample '%s' not found"%(name, sample_name))
             return
 
         with open(path, "rb") as f:
@@ -144,7 +147,7 @@ class MeasurementResult():
         structure if necessary.
 
         The path is structured as follows:
-            data/DD MMM YYYY/HH-MM-SS - <name>/
+            data/<sample name>/DD MM YYYY/HH-MM-SS - <name>/
 
         At least <name>.pkl with serialized object, <name>_raw_data.pkl with raw
         data only and human-readable context will be stored, though

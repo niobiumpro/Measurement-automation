@@ -4,8 +4,23 @@ import drivers.instr as instr
 class MXG(instr.Instr):
 
     def __init__(self, ip_address):
-        super(MXG, self).__init__(ip_address)
-        # self.cls()
+        super().__init__(ip_address)
+        self.set_output_state("ON")
+
+    def get_parameters(self):
+        '''
+        Returns a dictionary containing frequency and power currently used
+        by the device
+        '''
+        return {"power":self.get_power(), "frequency":self.get_frequency()}
+
+    def set_parameters(self, parameters_dict):
+        '''
+        Method allowing to set all of the VNA parameters at once (bandwidth, nop,
+        power, averages and freq_limits)
+        '''
+        self.set_power(parameters_dict["power"])
+        self.set_frequency(parameters_dict["frequency"])
 
     def use_internal_clock(self, is_clock_internal):
         if is_clock_internal:

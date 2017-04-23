@@ -7,18 +7,18 @@ passed to the SingleToneSpectroscopy class when it is created.
 '''
 
 
-
 from numpy import *
 from lib2.MeasurementResult import *
 from datetime import datetime as dt
 from matplotlib import pyplot as plt, colorbar
 from threading import Thread
+from resonator_tools import circuit
 
 
 def format_time_delta(delta):
-	hours, remainder = divmod(delta, 3600)
-	minutes, seconds = divmod(remainder, 60)
-	return '%s h %s m %s s' % (int(hours), int(minutes), round(seconds, 2))
+    hours, remainder = divmod(delta, 3600)
+    minutes, seconds = divmod(remainder, 60)
+    return '%s h %s m %s s' % (int(hours), int(minutes), round(seconds, 2))
 
 class SingleToneSpectroscopy():
 
@@ -28,7 +28,7 @@ class SingleToneSpectroscopy():
         self._name = name
         self._sample_name = sample_name
         self._vna = vna
-        self._parameter_name = parameter_name.lower()
+        self._parameter_name = parameter_name
         self._parameter_setter = parameter_setter
         self._measurement_result = SingleToneSpectroscopyResult(name,
                     sample_name, parameter_name)
@@ -38,38 +38,25 @@ class SingleToneSpectroscopy():
     def setup_control_parameters(self, vna_parameters, parameter_values):
         self._vna_parameters = vna_parameters
         self._parameter_values = parameter_values
-        self._pre_measurement_vna_parameters = {"bandwidth":self._vna.get_bandwidth(),
-                                          "nop":self._vna.get_nop(),
-                                          "power":self._vna.get_power(),
-                                          "averages":self._vna.get_averages(),
-                                          "freq_limits":self._vna.get_freq_limits()}
+        self._pre_measurement_vna_parameters = self._vna.get_parameters()
         start, stop = vna_parameters["freq_limits"]
         self._frequencies = linspace(start, stop, vna_parameters["nop"])
-
-    def _setup_vna(self, vna_parameters):
-        self._vna.set_bandwidth(vna_parameters["bandwidth"])
-        self._vna.set_averages(vna_parameters["averages"])
-        self._vna.set_power(vna_parameters["power"])
-        self._vna.set_nop(vna_parameters["nop"])
-        self._vna.set_freq_limits(*vna_parameters["freq_limits"])
+        self._measurement_result.set_start_datetime(dt.now())
+        self._measurement_result.get_context() \
+             .get_equipment()["vna"] = self._vna_parameters
 
     def launch(self):
         plt.ion()
 
-        start_datetime = dt.now()
+        start_datetime = self._measurement_result.get_start_datetime()
         print("Started at: ", start_datetime.ctime())
 
-        self._measurement_result.set_start_datetime(start_datetime)
-        self._measurement_result.get_context() \
-                                .get_equipment()["vna"] = self._vna_parameters
-
-        self._setup_vna(self._vna_parameters)
         t = Thread(target=self._record_data)
         t.start()
         try:
             while not self._measurement_result.is_finished():
                 self._measurement_result._visualize_dynamic()
-                plt.pause(1)
+                plt.pause(5)
         except KeyboardInterrupt:
             self._interrupted = True
 
@@ -79,9 +66,13 @@ class SingleToneSpectroscopy():
 
     def _record_data(self):
         vna = self._vna
+
+        vna.set_parameters(self._vna_parameters)
+
         start_datetime = self._measurement_result.get_start_datetime()
 
-        raw_s_data = zeros((len(self._parameter_values), self._vna_parameters["nop"]), dtype=complex_)
+        raw_s_data = zeros((len(self._parameter_values),
+                        self._vna_parameters["nop"]), dtype=complex_)
 
         done_sweeps = 0
         total_sweeps = len(self._parameter_values)
@@ -90,13 +81,14 @@ class SingleToneSpectroscopy():
         for idx, value in enumerate(self._parameter_values):
             if self._interrupted:
                 self._interrupted = False
+                self._vna.set_parameters(self._pre_measurement_vna_parameters)
                 return
 
             self._parameter_setter(value)
             vna.avg_clear(); vna.prepare_for_stb(); vna.sweep_single(); vna.wait_for_stb();
             raw_s_data[idx]=vna.get_sdata()
-            raw_data = {"frequencies":self._frequencies,
-                        self._parameter_name+"s":self._parameter_values,
+            raw_data = {"frequency":self._frequencies,
+                        self._parameter_name:self._parameter_values,
                         "s_data":raw_s_data}
             self._measurement_result.set_data(raw_data)
             done_sweeps += 1
@@ -107,7 +99,21 @@ class SingleToneSpectroscopy():
                     str(round(avg_time, 2))+" s          ",
                     end="", flush=True)
 
+        self._vna.set_parameters(self._pre_measurement_vna_parameters)
         self._measurement_result.set_is_finished(True)
+
+    def _detect_resonator(self):
+        """
+        Finds frequency of the resonator visible on the VNA screen
+        """
+        vna = self._vna
+        vna.avg_clear(); vna.prepare_for_stb(); vna.sweep_single(); vna.wait_for_stb()
+        port = circuit.notch_port(vna.get_frequencies(), vna.get_sdata())
+        port.autofit()
+        port.plotall()
+        min_idx = argmin(abs(port.z_data_sim))
+        return (vna.get_frequencies()[min_idx],
+                    min(abs(port.z_data_sim)), angle(port.z_data_sim)[min_idx])
 
 
 class SingleToneSpectroscopyResult(MeasurementResult):
@@ -117,6 +123,7 @@ class SingleToneSpectroscopyResult(MeasurementResult):
         self._parameter_name = parameter_name
         self._context = ContextBase()
         self._is_finished = False
+        self._phase_units = "rad"
 
     def _prepare_figure(self):
         fig, axes = plt.subplots(1, 2, figsize=(15,7), sharey=True)
@@ -126,14 +133,26 @@ class SingleToneSpectroscopyResult(MeasurementResult):
         ax_amps.set_xlabel(self._parameter_name[0].upper()+self._parameter_name[1:])
         ax_phas.ticklabel_format(axis='x', style='sci', scilimits=(-2,2))
         ax_phas.set_xlabel(self._parameter_name[0].upper()+self._parameter_name[1:])
-        ax_amps.grid()
-        ax_phas.grid()
         cax_amps, kw = colorbar.make_axes(ax_amps)
         cax_phas, kw = colorbar.make_axes(ax_phas)
         cax_amps.set_title("$|S_{21}|$")
-        cax_phas.set_title("$\\angle S_{21}$ [rad]")
+        cax_phas.set_title("$\\angle S_{21}$ [%s]"%self._phase_units)
 
         return fig, axes, (cax_amps, cax_phas)
+
+    def set_phase_units(self, units):
+        '''
+        Sets the units of the phase in the plots
+
+        Parameters:
+        -----------
+        units: "rad" or "deg"
+            units in which the phase will be displayed
+        '''
+        if units in ["deg", "rad"]:
+            self._phase_units = units
+        else:
+            print("Phase units invalid")
 
     def _plot(self, axes, caxes):
         ax_amps, ax_phas = axes
@@ -143,24 +162,32 @@ class SingleToneSpectroscopyResult(MeasurementResult):
         if data is None:
             return
 
-        s_data = self._remove_delay(data["frequencies"], data["s_data"])
+        XX, YY, Z = self._prepare_data_for_plot(data)
 
-        XX, YY = generate_mesh(data[self._parameter_name+"s"],
-                        data["frequencies"]/1e9)
-
-        max_amp = max(abs(s_data)[abs(s_data)!=0])
-        min_amp = min(abs(s_data)[abs(s_data)!=0])
-        amps_map = ax_amps.pcolormesh(XX,YY, abs(s_data).T, cmap="RdBu_r",
+        max_amp = max(abs(Z)[abs(Z)!=0])
+        min_amp = min(abs(Z)[abs(Z)!=0])
+        amps_map = ax_amps.pcolormesh(XX, YY, abs(Z).T, cmap="RdBu_r",
                                     vmax=max_amp, vmin=min_amp)
         plt.colorbar(amps_map, cax = cax_amps)
 
-        max_phas = max(angle(s_data)[angle(s_data)!=0])
-        min_phas = min(angle(s_data)[angle(s_data)!=0])
-        phas_map = ax_phas.pcolormesh(XX, YY, angle(s_data.T), cmap="RdBu_r")
+        phases = unwrap(unwrap(angle(Z))).T
+        phases = phases if self._phase_units == "rad" else phases*180/pi
+        max_phas = max(phases[phases!=0])
+        min_phas = min(phases[phases!=0])
+        phas_map = ax_phas.pcolormesh(XX, YY, phases,
+                    cmap="RdBu_r", vmin=min_phas, vmax=max_phas)
         plt.colorbar(phas_map, cax = cax_phas)
-
+        ax_amps.grid()
+        ax_phas.grid()
         ax_amps.axis("tight")
         ax_phas.axis("tight")
+
+    def _prepare_data_for_plot(self, data):
+        s_data = self._remove_delay(data["frequency"], data["s_data"])
+        #s_data = data["s_data"]
+        XX, YY = generate_mesh(data[self._parameter_name],
+                        data["frequency"]/1e9)
+        return XX, YY, s_data
 
     def save(self):
         super().save()
@@ -174,8 +201,10 @@ class SingleToneSpectroscopyResult(MeasurementResult):
         copy.get_data()["s_data"] = self._remove_delay(frequencies, s_data)
         return copy
 
-    def _remove_delay(self, frequencies, s_data):
-        phases = unwrap(angle(s_data[0]))
-        k, b = polyfit(frequencies, phases, 1)
+    def _remove_delay(self,frequencies, s_data):
+        phases = unwrap(angle(s_data*exp(2*pi*1j*50e-9*frequencies)))
+        k, b = polyfit(frequencies, phases[0], 1)
         phases = phases - k*frequencies - b
-        return abs(s_data)*exp(1j*phases)
+        corr_s_data = abs(s_data)*exp(1j*phases)
+        corr_s_data[abs(corr_s_data)<1e-14] = 0
+        return corr_s_data
