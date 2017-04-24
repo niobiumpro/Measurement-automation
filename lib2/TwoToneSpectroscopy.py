@@ -92,5 +92,5 @@ class AcStarkTwoToneSpectroscopy(TwoToneSpectroscopyBase):
         powers = self._parameter_values
         start_averages = self._vna_parameters["averages"]
         avg_factor = exp((power - powers[0])/powers[0]*log(start_averages))
-        self._vna.set_averages(start_averages*avg_factor)
+        self._vna.set_averages(round(start_averages*avg_factor))
         self._vna.set_power(power)
