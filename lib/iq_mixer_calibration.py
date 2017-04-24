@@ -2,6 +2,7 @@
 from numpy import *
 from scipy.optimize import minimize
 from datetime import datetime
+from IPython.display import clear_output
 
 
 class IQCalibrationData():
@@ -103,6 +104,7 @@ class IQCalibrator():
             self._sa.prepare_for_stb();self._sa.sweep_single();self._sa.wait_for_stb()
             data = self._sa.get_tracedata()
             answer =  data[0]
+            clear_output()
             print("\rDC offsets: ", format_number_list(voltages), format_number_list(data), end=", ", flush=True)
             return answer
         def loss_function_if_offsets(voltages, args):
@@ -114,7 +116,8 @@ class IQCalibrator():
             self._sa.prepare_for_stb();self._sa.sweep_single();self._sa.wait_for_stb()
             data = self._sa.get_tracedata()
             answer =  data[1]
-            print("\rIF offsets: ", format_number_list(voltages), format_number_list(data), end="       ", flush=True)
+            clear_output()
+            print("\rIF offsets: ", format_number_list(voltages), format_number_list(data), end="            ", flush=True)
             return answer
         def loss_function_if_amplitudes(amplitudes, args):
             amp1, amp2 = amplitudes
@@ -125,7 +128,8 @@ class IQCalibrator():
             self._sa.prepare_for_stb();self._sa.sweep_single();self._sa.wait_for_stb()
             data = self._sa.get_tracedata()
             answer =  data[2] + 10*abs(ssb_power - data[0])+ 0 if abs(abs(amp1)-abs(amp2))<1 else 10**(abs(abs(amp1)-abs(amp2)))
-            print("\rAmplitudes: ", format_number_list(amplitudes), format_number_list(data), end="     ", flush=True)
+            clear_output()
+            print("\rAmplitudes: ", format_number_list(amplitudes), format_number_list(data), end="          ", flush=True)
             return answer
         def loss_function_if_phase(phase, args):
             vdc1, vdc2 = args[0]
@@ -135,7 +139,7 @@ class IQCalibrator():
             self._sa.prepare_for_stb();self._sa.sweep_single();self._sa.wait_for_stb()
             data = self._sa.get_tracedata()
             answer =  data[2] - data[0]
-            print("\rPhase: ", "%2.4f"%(phase/pi), format_number_list(data), end="      ", flush=True)
+            print("\rPhase: ", "%2.4f"%(phase/pi), format_number_list(data), end="             ", flush=True)
             return answer
 
         def iterate_minimization(prev_results, n=2):

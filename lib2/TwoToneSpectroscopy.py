@@ -68,7 +68,7 @@ class AcStarkTwoToneSpectroscopy(TwoToneSpectroscopyBase):
             line_attenuation_db = 60):
 
         super().__init__(name, sample_name, vna, mw_src, "Readout power [dBm]",
-                vna.set_power, line_attenuation_db)
+                self._power_and_averages_setter, line_attenuation_db)
         self._current_setter = current_setter
 
     def setup_control_parameters(self, vna_parameters, mw_src_parameters,
@@ -87,3 +87,10 @@ class AcStarkTwoToneSpectroscopy(TwoToneSpectroscopyBase):
         self._vna_parameters["freq_limits"] = (res_freq, res_freq)
         self._measurement_result.get_context() \
             .get_equipment()["vna"] = self._vna_parameters
+
+    def _power_and_averages_setter(self, power):
+        powers = self._parameter_values
+        start_averages = self._vna_parameters["averages"]
+        avg_factor = exp((power - powers[0])/powers[0]*log(start_averages))
+        self._vna.set_averages(start_averages*avg_factor)
+        self._vna.set_power(power)
