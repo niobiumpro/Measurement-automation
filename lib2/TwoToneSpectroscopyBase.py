@@ -12,15 +12,13 @@ from lib2.SingleToneSpectroscopy import *
 from datetime import datetime as dt
 
 
-class TwoToneSpectroscopyBase(SingleToneSpectroscopy):
+class TwoToneSpectroscopyBase(Measurement):
 
-    def __init__(self, name, sample_name, vna, mw_src, parameter_name,
-            parameter_setter, line_attenuation_db = 60):
+    def __init__(self, name, sample_name, parameter_name,
+            parameter_setter, line_attenuation_db = 60, vna_name = "vna2",
+            mw_src_name = "mxg"):
+        super().__init__(name, sample_name, devs_names = [vna_name, mw_src_name])
 
-        self._name = name
-        self._sample_name = sample_name
-        self._vna = vna
-        self._mw_src = mw_src
         self._parameter_name = parameter_name
         self._parameter_setter = parameter_setter
         self._measurement_result = TwoToneSpectroscopyResult(name,
@@ -45,13 +43,12 @@ class TwoToneSpectroscopyBase(SingleToneSpectroscopy):
         return super()._detect_resonator()
 
     def _record_data(self):
+        super()._record_data()
         vna = self._vna
         mw_src = self._mw_src
 
         vna.set_parameters(self._vna_parameters)
         mw_src.set_parameters(self._mw_src_parameters)
-
-        start_datetime = self._measurement_result.get_start_datetime()
 
         raw_s_data = zeros((len(self._parameter_values), len(self._mw_src_frequencies)), dtype=complex_)
 

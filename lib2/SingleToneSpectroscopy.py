@@ -15,25 +15,16 @@ from threading import Thread
 from resonator_tools import circuit
 
 
-def format_time_delta(delta):
-    hours, remainder = divmod(delta, 3600)
-    minutes, seconds = divmod(remainder, 60)
-    return '%s h %s m %s s' % (int(hours), int(minutes), round(seconds, 2))
 
-class SingleToneSpectroscopy():
+class SingleToneSpectroscopy(Measurement):
 
-    def __init__(self, name, sample_name, vna, parameter_name,
-            parameter_setter, line_attenuation_db = 60):
-
-        self._name = name
-        self._sample_name = sample_name
-        self._vna = vna
+    def __init__(self, name, sample_name, parameter_name,
+            parameter_setter, line_attenuation_db = 60, vna="vna2",):
+        super().__init__(name, sample_name, devs_names=[vna])
         self._parameter_name = parameter_name
         self._parameter_setter = parameter_setter
         self._measurement_result = SingleToneSpectroscopyResult(name,
                     sample_name, parameter_name)
-
-        self._interrupted = False
 
     def setup_control_parameters(self, vna_parameters, parameter_values):
         self._vna_parameters = vna_parameters
@@ -45,31 +36,11 @@ class SingleToneSpectroscopy():
         self._measurement_result.get_context() \
              .get_equipment()["vna"] = self._vna_parameters
 
-    def launch(self):
-        plt.ion()
-
-        start_datetime = self._measurement_result.get_start_datetime()
-        print("Started at: ", start_datetime.ctime())
-
-        t = Thread(target=self._record_data)
-        t.start()
-        try:
-            while not self._measurement_result.is_finished():
-                self._measurement_result._visualize_dynamic()
-                plt.pause(5)
-        except KeyboardInterrupt:
-            self._interrupted = True
-
-        self._measurement_result.finalize()
-        return self._measurement_result
-
-
     def _record_data(self):
+        super()._record_data()
+
         vna = self._vna
-
         vna.set_parameters(self._vna_parameters)
-
-        start_datetime = self._measurement_result.get_start_datetime()
 
         raw_s_data = zeros((len(self._parameter_values),
                         self._vna_parameters["nop"]), dtype=complex_)
@@ -92,7 +63,7 @@ class SingleToneSpectroscopy():
                         "s_data":raw_s_data}
             self._measurement_result.set_data(raw_data)
             done_sweeps += 1
-            avg_time = (dt.now() - start_datetime).total_seconds()/done_sweeps
+            avg_time = (dt.now() - self._start_datetime).total_seconds()/done_sweeps
             print("\rTime left: "+format_time_delta(avg_time*(total_sweeps-done_sweeps))+\
                     ", parameter value: "+\
                     "%.3e"%value+", average cycle time: "+\
@@ -101,19 +72,6 @@ class SingleToneSpectroscopy():
 
         self._vna.set_parameters(self._pre_measurement_vna_parameters)
         self._measurement_result.set_is_finished(True)
-
-    def _detect_resonator(self):
-        """
-        Finds frequency of the resonator visible on the VNA screen
-        """
-        vna = self._vna
-        vna.avg_clear(); vna.prepare_for_stb(); vna.sweep_single(); vna.wait_for_stb()
-        port = circuit.notch_port(vna.get_frequencies(), vna.get_sdata())
-        port.autofit()
-        port.plotall()
-        min_idx = argmin(abs(port.z_data_sim))
-        return (vna.get_frequencies()[min_idx],
-                    min(abs(port.z_data_sim)), angle(port.z_data_sim)[min_idx])
 
 
 class SingleToneSpectroscopyResult(MeasurementResult):
