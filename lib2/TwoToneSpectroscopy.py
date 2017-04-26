@@ -12,16 +12,19 @@ from lib2.TwoToneSpectroscopyBase import *
 
 class FluxTwoToneSpectroscopy(TwoToneSpectroscopyBase):
 
-    def __init__(self, name, sample_name, vna, mw_src,
-            current_setter, line_attenuation_db = 60):
+    def __init__(self, name, sample_name, line_attenuation_db = 60,
+        vna_name = "vna2", mw_src_name = "mxg", current_src_name = "yok3"):
 
-        super().__init__(name, sample_name, vna, mw_src, "Current [A]",
-                current_setter, line_attenuation_db)
+        super().__init__(name, sample_name, "Current [A]",
+                line_attenuation_db, vna_name, mw_src_name, current_src_name)
+        self._parameter_setter = self._current_src.set_current
 
     def setup_control_parameters(self, vna_parameters, mw_src_parameters,
                 mw_src_frequencies, current_values, sweet_spot_current = None):
         super().setup_control_parameters(vna_parameters, mw_src_parameters,
                     mw_src_frequencies, current_values)
+
+        self._mw_src.set_output_state("OFF")
 
         if sweet_spot_current is None:
             sweet_spot_current = mean((current_values[-1], current_values[0]))
@@ -37,21 +40,24 @@ class FluxTwoToneSpectroscopy(TwoToneSpectroscopyBase):
         self._measurement_result.get_context() \
             .get_equipment()["vna"] = self._vna_parameters
 
+        self._mw_src.set_output_state("ON")
+
+
 class PowerTwoToneSpectroscopy(TwoToneSpectroscopyBase):
 
-    def __init__(self, name, sample_name, vna, mw_src, current_setter,
-            mw_src_power_setter, line_attenuation_db = 60):
-
-        super().__init__(name, sample_name, vna, mw_src, "Power [dBm]",
-                mw_src_power_setter, line_attenuation_db)
-        self._current_setter = current_setter
+    def __init__(self, name, sample_name, line_attenuation_db = 60,
+                vna_name = "vna2", mw_src_name = "mxg", current_src_name = "yok3"):
+        super().__init__(name, sample_name, "Power [dBm]",
+                line_attenuation_db, vna_name, mw_src_name, current_src_name)
+        self._parameter_setter = self._mw_src.set_power
 
     def setup_control_parameters(self, vna_parameters, mw_src_parameters,
                 mw_src_frequencies, mw_src_power_values, current):
         super().setup_control_parameters(vna_parameters, mw_src_parameters,
                     mw_src_frequencies, mw_src_power_values)
 
-        self._current_setter(current)
+        self._mw_src.set_output_state("OFF")
+        self._current_src.set_current(current)
 
         print("Detecting a resonator within provided frequency range of the VNA %s\
                     at current of %.2f mA"%(str(vna_parameters["freq_limits"]),
@@ -61,15 +67,16 @@ class PowerTwoToneSpectroscopy(TwoToneSpectroscopyBase):
         self._vna_parameters["freq_limits"] = (res_freq, res_freq)
         self._measurement_result.get_context() \
             .get_equipment()["vna"] = self._vna_parameters
+        self._mw_src.set_output_state("ON")
 
 class AcStarkTwoToneSpectroscopy(TwoToneSpectroscopyBase):
 
-    def __init__(self, name, sample_name, vna, mw_src, current_setter,
-            line_attenuation_db = 60):
+    def __init__(self, name, sample_name, line_attenuation_db = 60,
+            vna_name = "vna2", mw_src_name = "mxg", current_src_name = "yok3"):
 
-        super().__init__(name, sample_name, vna, mw_src, "Readout power [dBm]",
-                self._power_and_averages_setter, line_attenuation_db)
-        self._current_setter = current_setter
+        super().__init__(name, sample_name, "Readout power [dBm]",
+                line_attenuation_db, vna_name, mw_src_name, current_src_name)
+        self._parameter_setter = self._power_and_averages_setter
 
     def setup_control_parameters(self, vna_parameters, mw_src_parameters,
                         mw_src_frequencies, vna_power_values, current):
@@ -77,7 +84,8 @@ class AcStarkTwoToneSpectroscopy(TwoToneSpectroscopyBase):
         super().setup_control_parameters(vna_parameters, mw_src_parameters,
                     mw_src_frequencies, vna_power_values)
 
-        self._current_setter(current)
+        self._mw_src.set_output_state("OFF")
+        self._current_src.set_current(current)
 
         print("Detecting a resonator within provided frequency range of the VNA %s\
                     at current of %.2f mA"%(str(vna_parameters["freq_limits"]),
@@ -87,6 +95,8 @@ class AcStarkTwoToneSpectroscopy(TwoToneSpectroscopyBase):
         self._vna_parameters["freq_limits"] = (res_freq, res_freq)
         self._measurement_result.get_context() \
             .get_equipment()["vna"] = self._vna_parameters
+
+        self._mw_src.set_output_state("ON")
 
     def _power_and_averages_setter(self, power):
         powers = self._parameter_values

@@ -8,7 +8,7 @@ from IPython.display import clear_output
 class IQCalibrationData():
 
     def __init__(self, mixer_id, iq_attenuation, lo_frequency, lo_power, if_frequency, ssb_power, waveform_resolution, dc_offsets,
-                        if_offsets, if_amplitudes, if_phase, spectral_values, optimization_time, end_date):
+                        dc_offsets_open, if_offsets, if_amplitudes, if_phase, spectral_values, optimization_time, end_date):
         self._mixer_id = mixer_id
         self._iq_attenuation = iq_attenuation
         self._lo_frequency = lo_frequency
@@ -18,6 +18,7 @@ class IQCalibrationData():
         self._waveform_resolution = waveform_resolution
 
         self._dc_offsets = dc_offsets
+        self._dc_offsets_open = dc_offsets_open
         self._if_offsets = if_offsets
         self._if_amplitudes = if_amplitudes
         self._if_phase = if_phase
@@ -33,8 +34,9 @@ class IQCalibrationData():
         Returns:
             parameters, results: tuple
         '''
-        return dict(dc_offsets=self._dc_offsets, if_offsets=self._if_offsets,
-            if_amplitudes=self._if_amplitudes, if_phase=self._if_phase), self._spectral_values
+        return dict(dc_offsets=self._dc_offsets, dc_offsets_open=self._dc_offsets_open,
+            if_offsets=self._if_offsets, if_amplitudes=self._if_amplitudes,
+                if_phase=self._if_phase), self._spectral_values
 
     def get_radiation_parameters(self):
         return dict(lo_frequency=self._lo_frequency, lo_power=self._lo_power,
@@ -72,6 +74,9 @@ class IQCalibrator():
         '''
         Perform the calibration routine to suppress LO and upper sideband LO+IF while maintaining the lower sideband at ssb_power.
 
+        In case of if_frequency equal to zero the DC calibration is performed. The ssb_power parameter will be then treated as
+        the power of the LO when the mixer is in the open state
+
         Parameters:
         ----------
         lo_frequency: float
@@ -79,7 +84,8 @@ class IQCalibrator():
         if_frequency: float
             Frequency of the awg-generated wavefomrs, i.e. intermediate frequency
         ssb_power: float
-            The power which the remaining sideband LO-IF will have after the optimization
+            The power which the remaining sideband LO-IF will have after the optimization or
+            the power of the LO in the "open" state if if_freq is equal to zero
         waveform_resolution: float, ns
             The resolution in time of the arbitrary waveform representing one period of the continuous wave used in calibration
         initial_guess=None : IQCalibrationData
@@ -107,6 +113,18 @@ class IQCalibrator():
             clear_output()
             print("\rDC offsets: ", format_number_list(voltages), format_number_list(data), end=", ", flush=True)
             return answer
+
+        def loss_function_dc_offsets_open(voltages):
+            vdc1, vdc2 = voltages
+            self._awg.output_continuous_wave(frequency=0, amplitude=0, phase=0, offset=vdc1, waveform_resolution=waveform_resolution, channel=1)
+            self._awg.output_continuous_wave(frequency=0, amplitude=0, phase=0, offset=vdc2, waveform_resolution=waveform_resolution, channel=2)
+            self._sa.prepare_for_stb();self._sa.sweep_single();self._sa.wait_for_stb()
+            data = self._sa.get_tracedata()
+            answer = abs(data[0]-ssb_power)+10*abs(vdc1-vdc2)
+            clear_output()
+            print("\rDC offsets open: ", format_number_list(voltages), format_number_list(data), end=", ", flush=True)
+            return answer
+
         def loss_function_if_offsets(voltages, args):
             vdc1, vdc2 = voltages
             amp1, amp2 = args[0]
@@ -119,6 +137,7 @@ class IQCalibrator():
             clear_output()
             print("\rIF offsets: ", format_number_list(voltages), format_number_list(data), end="            ", flush=True)
             return answer
+
         def loss_function_if_amplitudes(amplitudes, args):
             amp1, amp2 = amplitudes
             vdc1, vdc2 = args[0]
@@ -131,6 +150,7 @@ class IQCalibrator():
             clear_output()
             print("\rAmplitudes: ", format_number_list(amplitudes), format_number_list(data), end="          ", flush=True)
             return answer
+
         def loss_function_if_phase(phase, args):
             vdc1, vdc2 = args[0]
             amp1, amp2 = args[1]
@@ -177,21 +197,28 @@ class IQCalibrator():
 
             res_dc_offs = minimize(loss_function_dc_offsets, results["dc_offsets"],
                           method="Nelder-Mead", options={"maxiter":minimize_iterlimit*iterations,"xatol":1e-3, "fatol":100})
+            if if_frequency == 0:
+                res_dc_offs_open = minimize(loss_function_dc_offsets_open, results["dc_offsets"],
+                              method="Nelder-Mead", options={"maxiter":minimize_iterlimit*iterations,"xatol":1e-3, "fatol":100})
+                spectral_values = {"dc":res_dc_offs.fun, "dc_open":self._sa.get_tracedata()}
+                elapsed_time = (datetime.now() - start).total_seconds()
+                return IQCalibrationData(self._mixer_id, self._iq_attenuation, lo_frequency, lo_power, if_frequency, ssb_power, waveform_resolution,
+                    res_dc_offs.x, res_dc_offs_open.x, None, None, None, spectral_values, elapsed_time, datetime.now())
 
-            self._sa.setup_list_sweep([lo_frequency-if_frequency, lo_frequency, lo_frequency+if_frequency], [sa_res_bandwidth]*3)
+            else:
+                self._sa.setup_list_sweep([lo_frequency-if_frequency, lo_frequency, lo_frequency+if_frequency], [sa_res_bandwidth]*3)
+                results["if_offsets"]=res_dc_offs.x
+                iterate_minimization(results, iterations)
+                spectral_values = {"dc":res_dc_offs.fun, "if":self._sa.get_tracedata()}
+                elapsed_time = (datetime.now() - start).total_seconds()
+                return IQCalibrationData(self._mixer_id, self._iq_attenuation, lo_frequency, lo_power, if_frequency, ssb_power, waveform_resolution,
+                    res_dc_offs.x, None, results["if_offsets"], results["if_amplitudes"], results["if_phase"], spectral_values, elapsed_time, datetime.now())
 
-            results["if_offsets"]=res_dc_offs.x
-            iterate_minimization(results, iterations)
-
-            spectral_values = {"dc":res_dc_offs.fun, "if":self._sa.get_tracedata()}
-            elapsed_time = (datetime.now() - start).total_seconds()
-
-            return IQCalibrationData( self._mixer_id, self._iq_attenuation, lo_frequency, lo_power, if_frequency, ssb_power, waveform_resolution,
-            res_dc_offs.x, results["if_offsets"], results["if_amplitudes"], results["if_phase"], spectral_values, elapsed_time, datetime.now())
         except KeyboardInterrupt:
             pass
+
         finally:
-             self._sa.setup_swept_sa(lo_frequency, 2.5*if_frequency, nop=1001, rbw=1e4)
+             self._sa.setup_swept_sa(lo_frequency, 5*if_frequency, nop=1001, rbw=2e4)
              self._sa.set_continuous()
 
 def format_number_list(number_list):

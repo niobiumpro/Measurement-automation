@@ -114,7 +114,7 @@ class PulseBuilder():
 		self._pulse_seq_I = PulseSequence()
 		self._pulse_seq_Q = PulseSequence()
 
-	def add_dc_pulse(self, duration, dc_voltage):
+	def add_dc_pulse(self, duration, dc_voltage=None):
 		'''
 		Adds a pulse by putting a dc voltage at the I and Q inputs of the mixer
 
@@ -124,9 +124,10 @@ class PulseBuilder():
 			Duration of the pulse in nanoseconds
 		dc_voltage: float, volts
 			The value of the dc voltage applied at the IQ mixer ports during the
-			pulse
+			pulse. If not specified, calibration data will be used
 		'''
-		vdc1, vdc2 = dc_voltage, dc_voltage
+		vdc1, vdc2 = self._iqmx_calibration.get_optimization_results()[0]["dc_offsets_open"] \
+							if dc_voltage is None else (dc_voltage, dc_voltage)
 		self._pulse_seq_I.append_pulse(zeros(int(duration/self._waveform_resolution)+1)+vdc1/5)
 		self._pulse_seq_Q.append_pulse(zeros(int(duration/self._waveform_resolution)+1)+vdc2/5)
 		return self

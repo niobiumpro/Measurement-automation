@@ -10,28 +10,36 @@ passed to the SingleToneSpectroscopy class when it is created.
 from numpy import *
 from lib2.SingleToneSpectroscopy import *
 from datetime import datetime as dt
+from lib2.Measurement import *
 
 
 class TwoToneSpectroscopyBase(Measurement):
 
-    def __init__(self, name, sample_name, parameter_name,
-            parameter_setter, line_attenuation_db = 60, vna_name = "vna2",
-            mw_src_name = "mxg"):
-        super().__init__(name, sample_name, devs_names = [vna_name, mw_src_name])
+    def __init__(self, name, sample_name, parameter_name, line_attenuation_db,
+                    vna_name, mw_src_name, current_src_name):
+        devs_names = [vna_name, mw_src_name, current_src_name]
+        super().__init__(name, sample_name, devs_names)
+        self._vna = self._actual_devices[vna_name]
+        self._mw_src = self._actual_devices[mw_src_name]
+        self._current_src = self._actual_devices[current_src_name]
 
         self._parameter_name = parameter_name
-        self._parameter_setter = parameter_setter
         self._measurement_result = TwoToneSpectroscopyResult(name,
                     sample_name, parameter_name)
-
         self._interrupted = False
 
     def setup_control_parameters(self, vna_parameters, mw_src_parameters,
                 mw_src_frequencies, parameter_values):
-        super().setup_control_parameters(vna_parameters, parameter_values)
+
+        self._vna_parameters = vna_parameters
+        self._parameter_values = parameter_values
+        self._pre_measurement_vna_parameters = self._vna.get_parameters()
+
         self._mw_src_parameters = mw_src_parameters
         self._mw_src_frequencies = mw_src_frequencies
 
+        self._measurement_result.get_context() \
+            .get_equipment()["vna"] = self._vna_parameters
         self._measurement_result.get_context()\
                 .get_equipment()["mw_src"] = self._mw_src_parameters
 
@@ -43,7 +51,6 @@ class TwoToneSpectroscopyBase(Measurement):
         return super()._detect_resonator()
 
     def _record_data(self):
-        super()._record_data()
         vna = self._vna
         mw_src = self._mw_src
 
@@ -78,8 +85,9 @@ class TwoToneSpectroscopyBase(Measurement):
                             "s_data":raw_s_data}
                 self._measurement_result.set_data(raw_data)
                 done_sweeps += 1
-                avg_time = (dt.now() - start_datetime).total_seconds()/done_sweeps
-                print("\rTime left: "+format_time_delta(avg_time*(total_sweeps-done_sweeps))+\
+                avg_time = (dt.now() -  self._measurement_result.get_start_datetime())\
+                                .total_seconds()/done_sweeps
+                print("\rTime left: "+self._format_time_delta(avg_time*(total_sweeps-done_sweeps))+\
                         ", parameter value: "+\
                         "%.3e"%value+", average cycle time: "+\
                         str(round(avg_time, 2))+" s          ",

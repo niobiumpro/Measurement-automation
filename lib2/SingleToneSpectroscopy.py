@@ -11,16 +11,17 @@ from numpy import *
 from lib2.MeasurementResult import *
 from datetime import datetime as dt
 from matplotlib import pyplot as plt, colorbar
-from threading import Thread
 from resonator_tools import circuit
+from lib2.Measurement import *
 
 
 
 class SingleToneSpectroscopy(Measurement):
 
     def __init__(self, name, sample_name, parameter_name,
-            parameter_setter, line_attenuation_db = 60, vna="vna2",):
-        super().__init__(name, sample_name, devs_names=[vna])
+            parameter_setter, line_attenuation_db = 60, vna_name="vna2",):
+        super().__init__(name, sample_name, devs_names=[vna_name])
+        self._vna = self._actual_devices[vna_name]
         self._parameter_name = parameter_name
         self._parameter_setter = parameter_setter
         self._measurement_result = SingleToneSpectroscopyResult(name,
@@ -32,7 +33,6 @@ class SingleToneSpectroscopy(Measurement):
         self._pre_measurement_vna_parameters = self._vna.get_parameters()
         start, stop = vna_parameters["freq_limits"]
         self._frequencies = linspace(start, stop, vna_parameters["nop"])
-        self._measurement_result.set_start_datetime(dt.now())
         self._measurement_result.get_context() \
              .get_equipment()["vna"] = self._vna_parameters
 
@@ -63,9 +63,10 @@ class SingleToneSpectroscopy(Measurement):
                         "s_data":raw_s_data}
             self._measurement_result.set_data(raw_data)
             done_sweeps += 1
-            avg_time = (dt.now() - self._start_datetime).total_seconds()/done_sweeps
-            print("\rTime left: "+format_time_delta(avg_time*(total_sweeps-done_sweeps))+\
-                    ", parameter value: "+\
+            avg_time = (dt.now() - self._measurement_result.get_start_datetime())\
+                                            .total_seconds()/done_sweeps
+            print("\rTime left: "+self._format_time_delta(avg_time*(total_sweeps-done_sweeps))+\
+                    ", %s: "%self._parameter_name+\
                     "%.3e"%value+", average cycle time: "+\
                     str(round(avg_time, 2))+" s          ",
                     end="", flush=True)
