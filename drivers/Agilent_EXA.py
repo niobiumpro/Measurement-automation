@@ -103,6 +103,7 @@ class Agilent_EXA_N9010A(Instrument):
         self.add_function('wait_for_stb')
         self.add_function('set_electrical_delay')
         self.add_function("setup_list_sweep")
+        self.add_function("set_parameters")
         #self.add_function('avg_clear')
         #self.add_function('avg_status')
 
@@ -112,7 +113,7 @@ class Agilent_EXA_N9010A(Instrument):
         #  self.set_zerospan(True)
 
         self.get_all()
-        self.setup_swept_sa()
+        #self.setup_swept_sa()
 
 
     def get_all(self):
@@ -144,6 +145,28 @@ class Agilent_EXA_N9010A(Instrument):
           else:
               self._visainstrument.write('INIT1')
 
+    def get_parameters(self):
+        '''
+        Returns a dictionary containing bandwidth, nop, power, averages and
+        freq_limits currently used by the EXA
+        '''
+        return {"bandwidth":self.get_bandwidth(),
+                  "nop":self.get_nop(),
+                  "centerfreq":self.get_centerfreq(),
+                  "span":self.get_span(),
+                  "avs":self.get_averages(),
+                  "av_status":self.get_average()}
+
+    def set_parameters(self, parameters_dict):
+        '''
+        Method allowing to set all of the EXA parameters at once (bandwidth, nop,
+        centerfreq, spanfreq, averages and averaging status)
+        '''
+        self.set_bandwidth(parameters_dict["bandwidth"])
+        self.set_averages(parameters_dict["averages"])
+        self.set_power(parameters_dict["power"])
+        self.set_nop(parameters_dict["nop"])
+        self.set_freq_limits(*parameters_dict["freq_limits"])
 
 
     def reset_windows(self):
@@ -587,6 +610,12 @@ class Agilent_EXA_N9010A(Instrument):
             channel_index (int) : 1-16
         '''
         return self._ci
+
+    def make_sweep_get_data(self):
+        self.prepare_for_stb()
+        self.sweep_single()
+        self.wait_for_stb()
+        return self.get_tracedata()
 
     def prepare_for_stb(self):
         # Clear the instrument's Status Byte

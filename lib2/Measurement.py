@@ -94,7 +94,7 @@ class Measurement():
 
         with _ added in front for a variable of a class
 
-        if key is not recognised returns a mistake
+        if key is not recognised doesn't returns a mistake
 
         '''
 
@@ -113,16 +113,23 @@ class Measurement():
                 # devices present in VISA
 
         for name in self._devs_names:
+            if name in Measurement._actual_devices.keys():
+                print(name + ' is already initialized')
+                continue
             for device_alias in self._devs_info:
-                if name in Measurement._actual_devices.keys():
-                    return Measurement._actual_devices[name]
-                elif (name in Measurement._devs_dict.keys()) \
+                if (name in Measurement._devs_dict.keys()) \
                         and (device_alias in Measurement._devs_dict[name][0]):
                     device_object = getattr(*Measurement._devs_dict[name][1])(device_alias)
                     Measurement._actual_devices[name]=device_object
                     print("The device %s is detected as %s"%(name, device_alias))
                     #getattr(self,"_"+name)._visainstrument.query("*IDN?")
                     break
+
+    def close_devs(self,devs_to_close):
+        for name in devs_to_close:
+            if name in self._actual_devices.keys():
+                self._actual_devices.pop(name)._visainstrument.close()
+
 
     def launch(self):
         plt.ion()
@@ -159,6 +166,7 @@ class Measurement():
         Finds frequency of the resonator visible on the VNA screen
         """
         vna = self._vna
+        vna.set_nop(200)
         vna.avg_clear(); vna.prepare_for_stb(); vna.sweep_single(); vna.wait_for_stb()
         port = circuit.notch_port(vna.get_frequencies(), vna.get_sdata())
         port.autofit()
@@ -167,6 +175,11 @@ class Measurement():
         return (vna.get_frequencies()[min_idx],
                     min(abs(port.z_data_sim)), angle(port.z_data_sim)[min_idx])
 
+    def detect_qubit(self):
+        '''
+        To find a peak/dip from a qubit in line automatically (to be implemented)
+        '''
+        pass
 
     def _format_time_delta(self, delta):
         hours, remainder = divmod(delta, 3600)

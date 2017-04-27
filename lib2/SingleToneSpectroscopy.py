@@ -17,6 +17,27 @@ from lib2.Measurement import *
 
 
 class SingleToneSpectroscopy(Measurement):
+    '''
+    Class provides all the necssary methods for single-tone spectrscopy with VNA.
+    Current is changed with Yokohawa GS-210
+
+    ---------------
+    Methods:
+         -- __init__(self, name, sample_name, parameter_name,parameter_setter, line_attenuation_db = 60, vna_name="vna2")
+         -- setup_control_parameters(self, vna_parameters,parameter_values)
+         -- _record_data(self)
+         Class SingleToneSpectroscopyResult(MeasurementResult):
+            -- __init__(self, name, sample_name, parameter_name)
+            --  _prepare_figure(self)
+            --  set_phase_units(self, units)
+            -- _plot(self, axes, caxes):
+            -- _prepare_data_for_plot(self, data):
+            -- _prepare_data_for_plot(self, data):
+            --  save(self)
+            --  remove_delay(self)
+            --  _remove_delay(self,frequencies, s_data)
+    ----------------
+    '''
 
     def __init__(self, name, sample_name, parameter_name,
             parameter_setter, line_attenuation_db = 60, vna_name="vna2",):

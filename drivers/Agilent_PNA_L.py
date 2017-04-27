@@ -199,11 +199,23 @@ class Agilent_PNA_L(Instrument):
         '''
         self._visainstrument.write("CALC:PAR:SEL 'CH1_S21_1'")
 
+    def del_all_meas(self):
+        '''
+        Deletes all the windows and measurements present in the VNA
+        '''
+        self._visainstrument.write("CALC:PAR:DEL:ALL")
+
     def define_S21(self):
         '''
         defines the S21 measurement in the PNA X
         '''
-        self._visainstrument.write( "CALCulate:PARameter:EXT 'CH1_S21_1','S21'")
+        self._visainstrument.write( "CALCulate:PARameter:DEF:EXT 'CH1_S21_1','S21'")
+
+    def define_Sij(self,i=2,j=1):
+        '''
+        defines the Sij measurement in the PNA X
+        '''
+        self._visainstrument.write( "CALCulate:PARameter:DEF:EXT "+'CH1_S%s%s_1'%(i,j)+', S%s%s'%(i,j))
 
     def autoscale_all(self):
         windows = self._visainstrument.query(" Disp:Cat?").replace('"', "").replace("\n", "").split(",")

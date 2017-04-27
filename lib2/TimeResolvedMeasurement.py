@@ -21,13 +21,11 @@ class TimeResolvedMeasurementContext(ContextBase):
     def get_pulse_sequence_parameters(self):
         return self._pulse_sequence_parameters
 
-    def get_equipment(self):
-        return self._equipment
-
     def to_string(self):
-        return "Equipment with parameters:\n"+str(self._equipment)+\
-            "\nPulse sequence parameters:\n"+str(self._pulse_sequence_parameters)+\
-            "\nComment:\n"+self._comment
+
+        return "Pulse sequence parameters:\n"+str(self._pulse_sequence_parameters)+\
+            super().to_string()
+
 
 class DispersiveRabiOscillations(Measurement):
 
