@@ -13,41 +13,42 @@ class FourWaveMixingBase(Measurement):
     This one must do:
         create Measurement object, set up all devices and take them from the class;
         set up all the parameters
-        make measurements
+        make measurements:
+         -- sweep power/frequency of one/another/both of generators
+            and/or central frequency of EXA and measure single trace / list sweep for certain frequencies
+         -- 
 
 
     '''
-    def __init__(self, name, sample_name, line_attenuation_db,
-                    exa_name, mw_src1_name, mw_src2_name, vna_name, current_src_name):
+    def __init__(self, name, sample_name, line_attenuation_db, **devs_aliases):
         '''
         name: name of current measurement
+        list_devs_names: {exa_name: default_name, src_plus_name: default_name,
+                             src_minus_name: default_name, vna_name: default_name, current_name: default_name}
         sample_name: name of measured sample_name
+        swept_par: dictionary {'name1': setter1, 'name2' setter2, ...} 
+        swept_par_setter: list of fuctions setting the parameters to be changed during the measurement
+
+        vna and current source is optional 
 
         '''
+        self._devs_aliases = list(devs_aliases.keys())
+        super().__init__(name, sample_name, list(devs_aliases.values()))
 
-        devs_names = [vna_name, mw_src1_name, current_src_name, exa_name, mw_src2_name]
-        super().__init__(name, sample_name, devs_names)
-
-        self._vna = self._actual_devices[vna_name]
-        self._src_plus = self._actual_devices[mw_src1_name]
-        self._src_minus = self._actual_devices[mw_src2_name]
-        self._exa = self._actual_devices[exa_name]
-        self._bias = self._actual_devices[current_src_name]
+        for alias, name in devs_aliases.items():
+            self.__setattr__("_"+alias,self._actual_devices[name]) 
 
         self._measurement_result = FourWaveMixingResult(name,
-                    sample_name, parameter_name)
+                    sample_name)
         self._interrupted = False
 
-    def setup_control_parameters(self, exa_parameters, mw_src_parameters, mw_src_frequencies, parameter_values):
+    def _recording_iteration(self):
+        self._exa.make_trace_get_data()
 
-        self._exa_parameters = exa_parameters
-        self._parameter_values = parameter_values
-        self._pre_measurement_exa_parameters = self._exa.get_parameters()
 
-        self._mw_src_parameters = mw_src_parameters
-        self._mw_src_frequencies = mw_src_frequencies
 
-        self._measurement_result.get_context() \
-            .get_equipment()["vna"] = self._vna_parameters
-        self._measurement_result.get_context()\
-                .get_equipment()["mw_src"] = self._mw_src_parameters
+          
+
+    
+
+

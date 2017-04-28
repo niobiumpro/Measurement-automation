@@ -48,6 +48,7 @@ from matplotlib import pyplot as plt
 from datetime import datetime as dt
 from threading import Thread
 from resonator_tools import circuit
+from itertools import product
 
 class Measurement():
 
@@ -97,7 +98,6 @@ class Measurement():
         if key is not recognised doesn't returns a mistake
 
         '''
-
         self._interrupted = False
         self._name = name
         self._sample_name = sample_name
@@ -131,12 +131,42 @@ class Measurement():
                 self._actual_devices.pop(name)._visainstrument.close()
 
 
+    def _load_fixed_parameters_into_devices(self):
+        '''
+        exa_parameters
+        fixed_pars: {'dev1': {'par1': value1, 'par2': value2}, 'dev2': {par1: value1, par2: ...}...}
+        '''
+        for dev_name in self._fixed_pars.keys():
+            dev = getattr(self,'_'+ dev_name)
+            getattr(dev,'set_parameters')(self._fixed_pars[dev])
+
+    def set_fixed_parameters(self, **fixed_pars):
+        '''
+        fixed_pars: {'dev1': {'par1': value1, 'par2': value2}, 'dev2': {par1: value1, par2: ...}...}
+        '''
+        self._fixed_pars = fixed_pars
+        for dev_name in self._fixed_pars.keys():
+            self._measurement_result.get_context() \
+            .get_equipment()[dev_name] = fixed_pars[dev_name]
+
+    def set_swept_parameters(self, **swept_pars):
+        '''
+        swept_pars :{'par1': (setter1, [value1, value2, ...]), 'par2': (setter1, [value1, value2, ...]), ...}
+        '''
+        self._swept_pars = swept_pars
+        self._swept_pars_names = list(swept_pars.keys())
+
+
+    def _load_swept_parameters_into_devices(self, values_group):
+        for name, value in zip(self._swept_pars_names, values_group):
+            self._swept_pars[name][0](value)             # this is setter call, look carefully
+
+
     def launch(self):
         plt.ion()
 
         self._measurement_result.set_start_datetime(dt.now())
         print("Started at: ", self._measurement_result.get_start_datetime())
-
 
         t = Thread(target=self._record_data)
         t.start()
@@ -151,6 +181,60 @@ class Measurement():
         return self._measurement_result
 
     def _record_data(self):
+
+        self._load_fixed_parameters_into_devices()
+        par_names = self._swept_pars_names
+        parameters_values = []
+        parameters_idxs = []
+        raw_data_shape = []
+        done_iterations = 0
+
+        # for parameter_name in par_names:
+        #     parameters_values.append(\
+        #         self._swept_pars[parameter_name][1])
+        #     parameters_idxs.append(\
+        #        list(range(len(self._swept_pars[parameter_name][1])))
+        #     raw_data_shape.append(\
+        #         len(self._swept_pars[parameter_name][1]))
+
+        parameters_values = \
+                [self._swept_pars[parameter_name][1] for parameter_name in par_names]
+        parameters_idxs = \
+                [list(range(len(self._swept_pars[parameter_name][1]))) for parameter_name in par_names]
+        raw_data_shape = \
+                [len(indices) for indices in parameters_idxs]
+
+        
+
+        for idx_group, values_group in zip(product(*parameters_idxs), product(*parameters_values)):
+            
+            self._load_swept_parameters_into_devices(values_group)
+
+            data, nop = self._recording_iteration()
+            if done_iterations == 0:
+                self._raw_data = zeros(raw_data_shape+[nop], dtype=object)
+            self._raw_data[idx_group] = data
+
+
+            done_iterations += 1
+
+            avg_time = (dt.now() - self._measurement_result.get_start_datetime())\
+                                            .total_seconds()/done_sweeps
+            
+            formatted_values_group = '['.\
+                        join(["%.2e, "%value for value in values_group])[:-2]+']'
+
+            print("\rTime left: "+self._format_time_delta(avg_time*(total_sweeps-done_sweeps))+\
+                    ", %s: "%formatted_values_group+\
+                    "%.3e"%value+", average cycle time: "+\
+                    str(round(avg_time, 2))+" s          ",
+                    end="", flush=True)
+
+            if self._interrupted:
+                self._interrupted = False
+                return
+
+    def _recording_iteration(self):
         '''
         This method must be overridden for each new measurement type. Now
         it contains only setting of the start time.
