@@ -71,7 +71,7 @@ class MeasurementResult():
         self._name = name
         self._sample_name = sample_name
         self._data_lock = Lock()
-        self._data = None
+        self._data = {}
 
         # Dynamic visualization fileds, see _prepare_figure(...) docstring below
 
@@ -243,7 +243,7 @@ class MeasurementResult():
 
     def get_data(self):
         with self._data_lock:
-            return self._data
+            return copy.deepcopy(self._data)
 
     def set_data(self, data):
         '''

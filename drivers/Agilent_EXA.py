@@ -157,16 +157,18 @@ class Agilent_EXA_N9010A(Instrument):
                   "avs":self.get_averages(),
                   "av_status":self.get_average()}
 
-    def set_parameters(self, parameters_dict):
+    def set_parameters(self, pars_dict):
         '''
         Method allowing to set all of the EXA parameters at once (bandwidth, nop,
         centerfreq, spanfreq, averages and averaging status)
         '''
-        self.set_bandwidth(parameters_dict["bandwidth"])
-        self.set_averages(parameters_dict["averages"])
-        self.set_power(parameters_dict["power"])
-        self.set_nop(parameters_dict["nop"])
-        self.set_freq_limits(*parameters_dict["freq_limits"])
+        keys = pars_dict.keys()
+        if "bandwidth" in keys: self.set_bandwidth(pars_dict["bandwidth"])
+        if "nop" in keys: self.set_nop(pars_dict["nop"])
+        if "centerfreq" in keys: self.set_centerfreq(pars_dict["centerfreq"])
+        if "span" in keys: self.set_span(pars_dict["span"])
+        if "averages" in keys: self.set_averages(pars_dict["averages"])
+        if "avg_status" in keys: self.set_average(pars_dict["avg_status"])
 
 
     def reset_windows(self):
@@ -456,6 +458,23 @@ class Agilent_EXA_N9010A(Instrument):
         self.init()
         #self.write("SENSe{0}:SWEep:MODE SINGle".format(self.current_channel))
         #self.write("SENS%i:SWE:MODE SING"%(self._ci))
+
+
+    def get_averaging_setup(self):
+        return self._visainstrument.query("CHP:AVER:TCON?")[:-1]
+
+    def set_averaging_setup(self, av_type='REP'):
+        '''
+        types are "EXP" - continues after specified number (WTF)
+                  "REP" - resets average counter
+        '''
+        return self._visainstrument.write("CHP:AVER:TCON %s"%av_type)
+
+    def set_singlesweep_mode(self):
+        return self._visainstrument.write("INIT:CONT 0")
+
+    def set_contsweep_mode(self):
+        return self._visainstrument.write("INIT:CONT 1")
 
     def do_set_startfreq(self,val):
         '''

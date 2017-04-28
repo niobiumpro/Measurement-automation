@@ -39,71 +39,93 @@ class SingleToneSpectroscopy(Measurement):
     ----------------
     '''
 
-    def __init__(self, name, sample_name, parameter_name,
-            parameter_setter, line_attenuation_db = 60, vna_name="vna2",):
-        super().__init__(name, sample_name, devs_names=[vna_name])
-        self._vna = self._actual_devices[vna_name]
-        self._parameter_name = parameter_name
-        self._parameter_setter = parameter_setter
+    def __init__(self, name, sample_name, line_attenuation_db = 60, **devs_aliases_map):
+        super().__init__(name, sample_name, list(devs_aliases_map.values()))
+
+        self._devs_aliases = list(devs_aliases_map.keys())
+        for alias, dev_name in devs_aliases_map.items():
+            self.__setattr__("_"+alias, self._actual_devices[dev_name])
+
         self._measurement_result = SingleToneSpectroscopyResult(name,
-                    sample_name, parameter_name)
+                    sample_name)
 
-    def setup_control_parameters(self, vna_parameters, parameter_values):
-        self._vna_parameters = vna_parameters
-        self._parameter_values = parameter_values
-        self._pre_measurement_vna_parameters = self._vna.get_parameters()
-        start, stop = vna_parameters["freq_limits"]
-        self._frequencies = linspace(start, stop, vna_parameters["nop"])
-        self._measurement_result.get_context() \
-             .get_equipment()["vna"] = self._vna_parameters
+    def set_fixed_parameters(self, vna_parameters):
+        '''
+        SingleToneSpectroscopy only requires vna parameters in format
+        {"bandwidth":int, ...}
+        '''
+        super().set_fixed_parameters(vna = vna_parameters)
+        self._frequencies = linspace(*vna_parameters["freq_limits"],\
+                        vna_parameters["nop"])
 
-    def _record_data(self):
-        super()._record_data()
+    def set_swept_parameters(self, swept_parameter):
+        '''
+        SingleToneSpectroscopy only takes one swept parameter in format
+        {"parameter_name":(setter, values)}
+        '''
+        super().set_swept_parameters(**swept_parameter)
+        par_name = list(swept_parameter.keys())[0]
+        self._measurement_result.set_parameter_name(par_name)
 
+    def _recording_iteration(self):
         vna = self._vna
-        vna.set_parameters(self._vna_parameters)
+        vna.avg_clear(); vna.prepare_for_stb(); vna.sweep_single(); vna.wait_for_stb();
+        return vna.get_sdata()
 
-        raw_s_data = zeros((len(self._parameter_values),
-                        self._vna_parameters["nop"]), dtype=complex_)
-
-        done_sweeps = 0
-        total_sweeps = len(self._parameter_values)
-        vna.sweep_hold()
-
-        for idx, value in enumerate(self._parameter_values):
-            if self._interrupted:
-                self._interrupted = False
-                self._vna.set_parameters(self._pre_measurement_vna_parameters)
-                return
-
-            self._parameter_setter(value)
-            vna.avg_clear(); vna.prepare_for_stb(); vna.sweep_single(); vna.wait_for_stb();
-            raw_s_data[idx]=vna.get_sdata()
-            raw_data = {"frequency":self._frequencies,
-                        self._parameter_name:self._parameter_values,
-                        "s_data":raw_s_data}
-            self._measurement_result.set_data(raw_data)
-            done_sweeps += 1
-            avg_time = (dt.now() - self._measurement_result.get_start_datetime())\
-                                            .total_seconds()/done_sweeps
-            print("\rTime left: "+self._format_time_delta(avg_time*(total_sweeps-done_sweeps))+\
-                    ", %s: "%self._parameter_name+\
-                    "%.3e"%value+", average cycle time: "+\
-                    str(round(avg_time, 2))+" s          ",
-                    end="", flush=True)
-
-        self._vna.set_parameters(self._pre_measurement_vna_parameters)
-        self._measurement_result.set_is_finished(True)
+    def _fill_measurement_result(self, parameter_names, parameters_values):
+        measurement_data = super()._fill_measurement_result(parameter_names, parameters_values)
+        measurement_data["frequency"] = self._frequencies
+        self._measurement_result.set_data(measurement_data)
+    #
+    # def _record_data(self):
+    #     super()._record_data()
+    #
+    #     vna = self._vna
+    #     vna.set_parameters(self._vna_parameters)
+    #
+    #     raw_s_data = zeros((len(self._parameter_values),
+    #                     self._vna_parameters["nop"]), dtype=complex_)
+    #
+    #     done_sweeps = 0
+    #     total_sweeps = len(self._parameter_values)
+    #     vna.sweep_hold()
+    #
+    #     for idx, value in enumerate(self._parameter_values):
+    #         if self._interrupted:
+    #             self._interrupted = False
+    #             self._vna.set_parameters(self._pre_measurement_vna_parameters)
+    #             return
+    #
+    #         self._parameter_setter(value)
+    #         vna.avg_clear(); vna.prepare_for_stb(); vna.sweep_single(); vna.wait_for_stb();
+    #         raw_s_data[idx]=vna.get_sdata()
+    #         raw_data = {"frequency":self._frequencies,
+    #                     self._parameter_name:self._parameter_values,
+    #                     "s_data":raw_s_data}
+    #         self._measurement_result.set_data(raw_data)
+    #         done_sweeps += 1
+    #         avg_time = (dt.now() - self._measurement_result.get_start_datetime())\
+    #                                         .total_seconds()/done_sweeps
+    #         print("\rTime left: "+self._format_time_delta(avg_time*(total_sweeps-done_sweeps))+\
+    #                 ", %s: "%self._parameter_name+\
+    #                 "%.3e"%value+", average cycle time: "+\
+    #                 str(round(avg_time, 2))+" s          ",
+    #                 end="", flush=True)
+    #
+    #     self._vna.set_parameters(self._pre_measurement_vna_parameters)
+    #     self._measurement_result.set_is_finished(True)
 
 
 class SingleToneSpectroscopyResult(MeasurementResult):
 
-    def __init__(self, name, sample_name, parameter_name):
+    def __init__(self, name, sample_name):
         super().__init__(name, sample_name)
-        self._parameter_name = parameter_name
         self._context = ContextBase()
         self._is_finished = False
         self._phase_units = "rad"
+
+    def set_parameter_name(self, parameter_name):
+        self._parameter_name = parameter_name
 
     def _prepare_figure(self):
         fig, axes = plt.subplots(1, 2, figsize=(15,7), sharey=True)
@@ -139,7 +161,7 @@ class SingleToneSpectroscopyResult(MeasurementResult):
         cax_amps, cax_phas = caxes
 
         data = self.get_data()
-        if data is None:
+        if "data" not in data.keys():
             return
 
         XX, YY, Z = self._prepare_data_for_plot(data)
@@ -163,7 +185,7 @@ class SingleToneSpectroscopyResult(MeasurementResult):
         ax_phas.axis("tight")
 
     def _prepare_data_for_plot(self, data):
-        s_data = self._remove_delay(data["frequency"], data["s_data"])
+        s_data = self._remove_delay(data["frequency"], data["data"])
         #s_data = data["s_data"]
         XX, YY = generate_mesh(data[self._parameter_name],
                         data["frequency"]/1e9)
@@ -177,8 +199,8 @@ class SingleToneSpectroscopyResult(MeasurementResult):
 
     def remove_delay(self):
         copy = self.copy()
-        s_data, frequencies = copy.get_data()["s_data"], copy.get_data()["frequencies"]
-        copy.get_data()["s_data"] = self._remove_delay(frequencies, s_data)
+        s_data, frequencies = copy.get_data()["data"], copy.get_data()["frequencies"]
+        copy.get_data()["data"] = self._remove_delay(frequencies, s_data)
         return copy
 
     def _remove_delay(self,frequencies, s_data):

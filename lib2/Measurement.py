@@ -49,6 +49,9 @@ from datetime import datetime as dt
 from threading import Thread
 from resonator_tools import circuit
 from itertools import product
+from functools import reduce
+from operator import mul
+
 
 class Measurement():
 
@@ -58,7 +61,7 @@ class Measurement():
 
     '''
     _actual_devices = {}
-    _logs = []
+    _log = []
     _devs_dict = \
         {'vna1' : [ ["PNA-L","PNA-L1"], [Agilent_PNA_L,"Agilent_PNA_L"] ],\
          'vna2': [ ["PNA-L-2","PNA-L2"], [Agilent_PNA_L,"Agilent_PNA_L"] ],\
@@ -74,8 +77,7 @@ class Measurement():
          'yok3': [ ["GS210_3"], [Yokogawa_GS200,"Yokogawa_GS210"] ]     }
 
 
-    def __init__(self, name, sample_name,
-                    plot_update_interval=5, devs_names=None):
+    def __init__(self, name, sample_name, devs_names, plot_update_interval=5):
         '''
         Parameters:
         --------------------
@@ -111,7 +113,7 @@ class Measurement():
         self._devs_info = [item[4] for item in list(temp_list)]
                 # returns list of tuples: (IP Address string, alias) for all
                 # devices present in VISA
-
+        self._write_to_log()
         for name in self._devs_names:
             if name in Measurement._actual_devices.keys():
                 print(name + ' is already initialized')
@@ -137,8 +139,8 @@ class Measurement():
         fixed_pars: {'dev1': {'par1': value1, 'par2': value2}, 'dev2': {par1: value1, par2: ...}...}
         '''
         for dev_name in self._fixed_pars.keys():
-            dev = getattr(self,'_'+ dev_name)
-            getattr(dev,'set_parameters')(self._fixed_pars[dev])
+            dev = getattr(self, '_' + dev_name)
+            dev.set_parameters(self._fixed_pars[dev_name])
 
     def set_fixed_parameters(self, **fixed_pars):
         '''
@@ -186,16 +188,7 @@ class Measurement():
         par_names = self._swept_pars_names
         parameters_values = []
         parameters_idxs = []
-        raw_data_shape = []
         done_iterations = 0
-
-        # for parameter_name in par_names:
-        #     parameters_values.append(\
-        #         self._swept_pars[parameter_name][1])
-        #     parameters_idxs.append(\
-        #        list(range(len(self._swept_pars[parameter_name][1])))
-        #     raw_data_shape.append(\
-        #         len(self._swept_pars[parameter_name][1]))
 
         parameters_values = \
                 [self._swept_pars[parameter_name][1] for parameter_name in par_names]
@@ -203,36 +196,38 @@ class Measurement():
                 [list(range(len(self._swept_pars[parameter_name][1]))) for parameter_name in par_names]
         raw_data_shape = \
                 [len(indices) for indices in parameters_idxs]
-
-        
+        total_iterations = reduce(mul, raw_data_shape, 1)
 
         for idx_group, values_group in zip(product(*parameters_idxs), product(*parameters_values)):
-            
+
             self._load_swept_parameters_into_devices(values_group)
 
-            data, nop = self._recording_iteration()
+            data = self._recording_iteration()
             if done_iterations == 0:
-                self._raw_data = zeros(raw_data_shape+[nop], dtype=object)
+                self._raw_data = zeros(raw_data_shape+[len(data)], dtype=complex_)
             self._raw_data[idx_group] = data
 
+            self._fill_measurement_result(par_names, parameters_values)
 
             done_iterations += 1
 
             avg_time = (dt.now() - self._measurement_result.get_start_datetime())\
-                                            .total_seconds()/done_sweeps
-            
-            formatted_values_group = '['.\
-                        join(["%.2e, "%value for value in values_group])[:-2]+']'
+                                            .total_seconds()/done_iterations
+            time_left = self._format_time_delta(avg_time*(total_iterations-done_iterations))
 
-            print("\rTime left: "+self._format_time_delta(avg_time*(total_sweeps-done_sweeps))+\
-                    ", %s: "%formatted_values_group+\
-                    "%.3e"%value+", average cycle time: "+\
-                    str(round(avg_time, 2))+" s          ",
+            formatted_values_group = \
+                        '['.join(["%s: %.2e, "%(par_names[idx], value)\
+                         for idx, value in enumerate(values_group)])[:-2]+']'
+
+            print("\rTime left: "+time_left+", %s: "%formatted_values_group+\
+                    ", average cycle time: "+str(round(avg_time, 2))+" s       ",
                     end="", flush=True)
 
             if self._interrupted:
                 self._interrupted = False
                 return
+
+        self._measurement_result.set_is_finished(True)
 
     def _recording_iteration(self):
         '''
@@ -244,6 +239,12 @@ class Measurement():
         See lib2.SingleToneSpectroscopy.py as an example implementation
         '''
         pass
+
+    def _fill_measurement_result(self, parameter_names, parameter_values):
+        measurement_data = self._measurement_result.get_data()
+        measurement_data.update(zip(parameter_names, parameter_values))
+        measurement_data["data"] = self._raw_data
+        return measurement_data
 
     def _detect_resonator(self):
         """
@@ -264,6 +265,48 @@ class Measurement():
         To find a peak/dip from a qubit in line automatically (to be implemented)
         '''
         pass
+
+    def write_to_log(self, line = 'Unknown measurement', parameters = ''):
+        '''
+        A method writes line with the name of measurement
+        (probably with formatted parameters) to log list
+        '''
+        _log += DT_now() + "  " + line + parameters + '\n'
+
+    def return_log(self):
+        '''
+        Returns string of log containing all adressed measurements in chronological order.
+        '''
+        return _log
+
+    def _construct_fixed_parameters(self):
+
+        self._fixed_params = {}
+
+        yn = input('Do you want to set the dictionary of fixed parameters interactively: yes/no \n')
+
+        if yn == 'yes':
+            while True:
+                dev_name  = input('Enter name of device : "exa", "vna", etc.\n'+'If finished enter whatever else you want \n')
+                if dev_name in self._actual_devices.keys():
+                    self._fixed_params[dev_name] = {}
+                    print('Enter parameter and value as: "frequency 5e9" and press Enter)\n' + \
+                            'If finished with this device enter "stop next"\n')
+                    while True:
+                        par_name, vs = input().split()
+                        if par_name == 'stop':
+                            print('\n')
+                            break
+                        else:
+                            value = float(vs)
+                            self._fixed_params.get(dev_name)[par_name] = value
+                else:
+                    return self._fixed_params
+        elif yn == 'no':
+            return self._fixed_params
+
+        else:
+            return self._fixed_params
 
     def _format_time_delta(self, delta):
         hours, remainder = divmod(delta, 3600)
