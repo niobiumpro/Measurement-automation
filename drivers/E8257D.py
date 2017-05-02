@@ -19,8 +19,11 @@ class MXG(instr.Instr):
         Method allowing to set all of the VNA parameters at once (bandwidth, nop,
         power, averages and freq_limits)
         '''
-        self.set_power(parameters_dict["power"])
-        self.set_frequency(parameters_dict["frequency"])
+        keys = parameters_dict.keys()
+        if "power" in keys:
+            self.set_power(parameters_dict["power"])
+        if "frequency" in keys:
+            self.set_frequency(parameters_dict["frequency"])
 
     def use_internal_clock(self, is_clock_internal):
         if is_clock_internal:

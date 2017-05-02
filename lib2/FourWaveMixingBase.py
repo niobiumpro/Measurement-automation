@@ -33,36 +33,85 @@ class FourWaveMixingBase(Measurement):
         super().__init__(name, sample_name, list(devs_aliases.values()))
         self._devs_aliases = list(devs_aliases.keys())
 
-        for alias, name in devs_aliases.items():
-            self.__setattr__("_"+alias,self._actual_devices[name])
+        for alias, dev_name in devs_aliases.items():
+            self.__setattr__("_"+alias,self._actual_devices[dev_name])
 
-    def sources_on(src_plus, src_minus):
-        for src in [src_plus, src_minus]:
+        self._measurement_result = FourWaveMixingResult(name,
+                    sample_name)
+
+    def _sources_on(self):
+        for src in [self._src_plus, self._src_minus]:
             src.set_output_state('ON')
 
+    def _sources_off(self):
+            for src in [self._src_plus, self._src_minus]:
+                src.set_output_state('OFF')
+
     def srcs_power_calibration(self):
+        '''
+        To define powers to set in setter (not implemented yet)
+        '''
+        pass
 
 
-    def set_fixed_parameters(self, exa_parameters, delta):
+    def set_fixed_parameters(self, exa_parameters, delta, power_plus=None, power_minus=None):
         '''
         FourWaveMixingBase requires following parameters
         'exa': bandwidth, centerfreq, span, averages, avg_status
-         delta is
+         delta is half of distance between two generators
         '''
-        self._exa_pars = exa_pars
-        self._src_plus_freq = exa_pars['centerfreq'] + delta
-        self._src_minus_freq = exa_pars['centrerfreq'] - delta
+        self._exa_pars = exa_parameters
+        self._src_plus_pars = {"frequency": exa_parameters['centerfreq'] + delta}
+        self._src_minus_pars = {"frequency":  exa_parameters['centerfreq'] - delta}
+        if power_plus is not None:
+            self._src_plus_pars["power"] = power_plus
+        if power_minus is not None:
+            self._src_minus_pars["power"] = power_minus
+        freq_limits = (exa_parameters["centerfreq"] - exa_parameters["span"]/2, \
+                        exa_parameters["centerfreq"] + exa_parameters["span"]/2)
+        self._frequencies = linspace(*freq_limits, exa_parameters["nop"])
+        super().set_fixed_parameters(exa = exa_parameters, src_plus = self._src_plus_pars,
+                                                    src_minus = self._src_minus_pars)
 
-        super().set_fixed_parameters(exa = exa_pars, src_plus = src_plus_pars,
-                                                    src_minus = src_minus_pars)
+    def powers_equal_setter_with_offset(self, power): #powers are two floats, plus and minus
+        '''
+        Construct a function to set two powers simultaneously
+        '''
+        power_plus = power
+        power_minus = power+10.2
+        self._src_plus.set_power(power_plus)
+        self._src_minus.set_power(power_minus)
 
+    def powers_plus_setter(self,power_plus):
+        self._src_plus.set_power(power_plus)
+
+    def powers_minus_setter(self,power_minus):
+        self._src_minus.set_power(power_minus)
+
+    def set_swept_parameters(self, actual_setter, powers): # powers are two lists, like [power_plus, power_minus]
+        '''
+        FourWaveMixingBase only takes one swept parameter in format
+        {"parameter_name":(setter, values)}
+        '''
+        self._actual_setter = actual_setter
+        self._powers = powers
+        swept_parameters =  {"powers at $\\omega_{p}$": (self._actual_setter, self._powers)}
+        super().set_swept_parameters(**swept_parameters)
+        par_name = list(swept_parameters.keys())[0]
+        self._measurement_result.set_parameter_name(par_name)
+        self._sources_on()
+
+    def _fill_measurement_result(self, parameter_names, parameters_values):
+        measurement_data = super()._fill_measurement_result(parameter_names, parameters_values)
+        measurement_data["frequency"] = self._frequencies
+        self._measurement_result.set_data(measurement_data)
 
     def _recording_iteration(self):
         '''
         is to be implemented in ancestor classes
         '''
         # pass
-        return self._exa.make_trace_get_data()
+        return self._exa.make_sweep_get_data()
 
 
 
@@ -70,45 +119,36 @@ class FourWaveMixingResult(MeasurementResult):
 
     def __init__(self, name, sample_name):
         super().__init__(name, sample_name)
-        self._context = ContextBase()
+        self._context = ContextBase(comment = input('Enter your comment: '))
         self._is_finished = False
-        self._phase_units = "rad"
+
 
     def set_parameter_name(self, parameter_name):
         self._parameter_name = parameter_name
 
     def _prepare_figure(self):
-        fig, axes = plt.subplots(1, 2, figsize=(15,7), sharey=True)
-        ax_amps, ax_phas = axes
-        ax_amps.ticklabel_format(axis='x', style='sci', scilimits=(-2,2))
-        ax_amps.set_ylabel("Frequency [GHz]")
-        ax_amps.set_xlabel(self._parameter_name[0].upper()+self._parameter_name[1:])
-        ax_phas.ticklabel_format(axis='x', style='sci', scilimits=(-2,2))
-        ax_phas.set_xlabel(self._parameter_name[0].upper()+self._parameter_name[1:])
-        cax_amps, kw = colorbar.make_axes(ax_amps)
-        cax_phas, kw = colorbar.make_axes(ax_phas)
-        cax_amps.set_title("$|S_{21}|$")
-        cax_phas.set_title("$\\angle S_{21}$ [%s]"%self._phase_units)
+        self._last_tr = None
+        fig = plt.figure(figsize = (18,6))
+        ax_trace = plt.subplot2grid((4, 4), (0, 0), colspan = 4, rowspan = 1)
+        ax_map = plt.subplot2grid((4, 4), (1, 0), colspan = 4, rowspan = 3)
+        plt.tight_layout()
+        ax_map.ticklabel_format(axis='x', style='plain', scilimits=(-2,2))
+        ax_map.set_ylabel("Frequency, kHz")
+        ax_map.set_xlabel(self._parameter_name[0].upper()+self._parameter_name[1:])
+        ax_trace.ticklabel_format(axis='x', style='sci', scilimits=(-2,2))
+        ax_trace.set_xlabel("Frequency, Hz")
+        ax_trace.set_ylabel("Emission power, dBm")
+        ax_map.autoscale_view(True,True,True)
+        plt.tight_layout()
 
-        return fig, axes, (cax_amps, cax_phas)
+        cax, kw = colorbar.make_axes(ax_map)
+        cax.set_title("$P$,dBm")
 
-    def set_phase_units(self, units):
-        '''
-        Sets the units of the phase in the plots
+        return fig, (ax_trace, ax_map), (cax,)
 
-        Parameters:
-        -----------
-        units: "rad" or "deg"
-            units in which the phase will be displayed
-        '''
-        if units in ["deg", "rad"]:
-            self._phase_units = units
-        else:
-            print("Phase units invalid")
-
-    def _plot(self, axes, caxes):
-        ax_amps, ax_phas = axes
-        cax_amps, cax_phas = caxes
+    def _plot(self, axes, cax):
+        ax_trace, ax_map = axes
+        cax = cax[0]
 
         data = self.get_data()
         if "data" not in data.keys():
@@ -116,30 +156,29 @@ class FourWaveMixingResult(MeasurementResult):
 
         XX, YY, Z = self._prepare_data_for_plot(data)
 
-        max_amp = max(abs(Z)[abs(Z)!=0])
-        min_amp = min(abs(Z)[abs(Z)!=0])
-        amps_map = ax_amps.pcolormesh(XX, YY, abs(Z).T, cmap="RdBu_r",
-                                    vmax=max_amp, vmin=min_amp)
-        plt.colorbar(amps_map, cax = cax_amps)
+        max_pow = max(Z[Z != 0])
+        min_pow = min(Z[Z != 0])
+        av_pow = average(Z[Z != 0])
+        pow_map = ax_map.pcolormesh(XX, YY, Z.T, cmap="hot",
+                                    vmax=max_pow, vmin=av_pow)
+        plt.colorbar(pow_map, cax = cax)
+        last_trace_data = Z[Z!=0][-(len(data["frequency"])):]
+        if self._last_tr is not None:
+            self._last_tr.remove()
+        self._last_tr = ax_trace.plot(data["frequency"]/1e3,
+                        last_trace_data, 'b').pop(0)
 
-        phases = unwrap(unwrap(angle(Z))).T
-        phases = phases if self._phase_units == "rad" else phases*180/pi
-        max_phas = max(phases[phases!=0])
-        min_phas = min(phases[phases!=0])
-        phas_map = ax_phas.pcolormesh(XX, YY, phases,
-                    cmap="RdBu_r", vmin=min_phas, vmax=max_phas)
-        plt.colorbar(phas_map, cax = cax_phas)
-        ax_amps.grid()
-        ax_phas.grid()
-        ax_amps.axis("tight")
-        ax_phas.axis("tight")
+        #ax_trace.set_ylim([min(Z[-1]), max(Z[-1])])
+
+        ax_map.grid('on')
+        ax_trace.grid('on')
+        ax_trace.axis("tight")
+
 
     def _prepare_data_for_plot(self, data):
-        s_data = self._remove_delay(data["frequency"], data["data"])
-        #s_data = data["s_data"]
-        XX, YY = generate_mesh(data[self._parameter_name],
-                        data["frequency"]/1e9)
-        return XX, YY, s_data
+        power_data = real(data["data"])
+        XX, YY = generate_mesh(data[self._parameter_name], data["frequency"]/1e3)
+        return XX, YY, power_data
 
     def save(self):
         super().save()
@@ -147,11 +186,6 @@ class FourWaveMixingResult(MeasurementResult):
         plt.savefig(self.get_save_path()+self._name+".png", bbox_inches='tight')
         plt.close("all")
 
-    def remove_delay(self):
-        copy = self.copy()
-        s_data, frequencies = copy.get_data()["data"], copy.get_data()["frequencies"]
-        copy.get_data()["data"] = self._remove_delay(frequencies, s_data)
-        return copy
 
     def _remove_delay(self,frequencies, s_data):
         phases = unwrap(angle(s_data*exp(2*pi*1j*50e-9*frequencies)))

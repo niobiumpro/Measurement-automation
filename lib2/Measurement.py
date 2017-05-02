@@ -241,6 +241,9 @@ class Measurement():
         pass
 
     def _fill_measurement_result(self, parameter_names, parameter_values):
+        '''
+        parametr_names and parameter_values ARE LISTS
+        '''
         measurement_data = self._measurement_result.get_data()
         measurement_data.update(zip(parameter_names, parameter_values))
         measurement_data["data"] = self._raw_data
@@ -266,18 +269,18 @@ class Measurement():
         '''
         pass
 
-    def write_to_log(self, line = 'Unknown measurement', parameters = ''):
+    def _write_to_log(self, line = 'Unknown measurement', parameters = ''):
         '''
         A method writes line with the name of measurement
         (probably with formatted parameters) to log list
         '''
-        _log += DT_now() + "  " + line + parameters + '\n'
+        self._log += str(dt.now().replace(microsecond=0)) + "  " + line + parameters + '\n'
 
     def return_log(self):
         '''
         Returns string of log containing all adressed measurements in chronological order.
         '''
-        return _log
+        return self._log
 
     def _construct_fixed_parameters(self):
 
