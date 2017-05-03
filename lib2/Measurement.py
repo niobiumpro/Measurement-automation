@@ -65,16 +65,20 @@ class Measurement():
     _devs_dict = \
         {'vna1' : [ ["PNA-L","PNA-L1"], [Agilent_PNA_L,"Agilent_PNA_L"] ],\
          'vna2': [ ["PNA-L-2","PNA-L2"], [Agilent_PNA_L,"Agilent_PNA_L"] ],\
+		 'vna3': [ ["pna"], [Agilent_PNA_L,"Agilent_PNA_L"] ],\
          'exa' : [ ["EXA"], [Agilent_EXA,"Agilent_EXA_N9010A"] ],\
          'exg' : [ ["EXG"], [E8257D,"EXG"] ],\
          'mxg' : [ ["MXG"], [E8257D,"MXG"] ],\
+		 'psg1' : [ ["psg1"], [E8257D,"EXG"] ],\
          'awg1': [ ["AWG","AWG1"], [KeysightAWG,"KeysightAWG"] ],\
          'awg2': [ ["AWG_Vadik","AWG2"], [KeysightAWG,"KeysightAWG"] ],\
          'awg3': [ ["AWG3"], [KeysightAWG,"KeysightAWG"] ],\
          'dso' : [ ["DSO"], [Keysight_DSOX2014,"Keysight_DSOX2014"] ],\
          'yok1': [ ["GS210_1"], [Yokogawa_GS200,"Yokogawa_GS210"] ], \
          'yok2': [ ["GS210_2"], [Yokogawa_GS200,"Yokogawa_GS210"] ], \
-         'yok3': [ ["GS210_3"], [Yokogawa_GS200,"Yokogawa_GS210"] ]     }
+         'yok3': [ ["GS210_3"], [Yokogawa_GS200,"Yokogawa_GS210"] ],    \
+         'yok4': [ ["gs210"], [Yokogawa_GS200,"Yokogawa_GS210"] ], \
+		 }
 
 
     def __init__(self, name, sample_name, devs_names, plot_update_interval=5):

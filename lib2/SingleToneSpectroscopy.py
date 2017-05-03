@@ -139,7 +139,8 @@ class SingleToneSpectroscopyResult(MeasurementResult):
         cax_phas, kw = colorbar.make_axes(ax_phas)
         cax_amps.set_title("$|S_{21}|$")
         cax_phas.set_title("$\\angle S_{21}$ [%s]"%self._phase_units)
-
+        ax_amps.grid()
+        ax_phas.grid()
         return fig, axes, (cax_amps, cax_phas)
 
     def set_phase_units(self, units):
@@ -164,32 +165,26 @@ class SingleToneSpectroscopyResult(MeasurementResult):
         if "data" not in data.keys():
             return
 
-        XX, YY, Z = self._prepare_data_for_plot(data)
+        X, Y, Z = self._prepare_data_for_plot(data)
 
         max_amp = max(abs(Z)[abs(Z)!=0])
         min_amp = min(abs(Z)[abs(Z)!=0])
-        amps_map = ax_amps.pcolormesh(XX, YY, abs(Z).T, cmap="RdBu_r",
-                                    vmax=max_amp, vmin=min_amp)
+        extent = [X[0], X[-1], Y[0], Y[-1]]
+        amps_map = ax_amps.imshow(abs(Z).T, origin='lower', cmap="RdBu_r",
+                        aspect = 'auto', vmax=max_amp, vmin=min_amp, extent=extent)
         plt.colorbar(amps_map, cax = cax_amps)
 
         phases = unwrap(unwrap(angle(Z))).T
         phases = phases if self._phase_units == "rad" else phases*180/pi
         max_phas = max(phases[phases!=0])
         min_phas = min(phases[phases!=0])
-        phas_map = ax_phas.pcolormesh(XX, YY, phases,
-                    cmap="RdBu_r", vmin=min_phas, vmax=max_phas)
+        phas_map = ax_phas.imshow(phases, origin='lower', aspect = 'auto',
+                    cmap="RdBu_r", vmin=min_phas, vmax=max_phas, extent=extent)
         plt.colorbar(phas_map, cax = cax_phas)
-        ax_amps.grid()
-        ax_phas.grid()
-        ax_amps.axis("tight")
-        ax_phas.axis("tight")
 
     def _prepare_data_for_plot(self, data):
         s_data = self._remove_delay(data["frequency"], data["data"])
-        #s_data = data["s_data"]
-        XX, YY = generate_mesh(data[self._parameter_name],
-                        data["frequency"]/1e9)
-        return XX, YY, s_data
+        return data[self._parameter_name], data["frequency"]/1e9, s_data
 
     def save(self):
         super().save()
