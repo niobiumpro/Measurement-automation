@@ -82,7 +82,7 @@ class TwoToneSpectroscopyBase(Measurement):
 
                 raw_data = {"frequency":self._mw_src_frequencies,
                             self._parameter_name:self._parameter_values,
-                            "s_data":raw_s_data}
+                            "data":raw_s_data}
                 self._measurement_result.set_data(raw_data)
                 done_sweeps += 1
                 avg_time = (dt.now() -  self._measurement_result.get_start_datetime())\
@@ -98,7 +98,13 @@ class TwoToneSpectroscopyBase(Measurement):
 
 class TwoToneSpectroscopyResult(SingleToneSpectroscopyResult):
 
+    def __init__(self, name, sample_name, parameter_name):
+        super().__init__(name, sample_name)
+        self._context = ContextBase()
+        self._is_finished = False
+        self._phase_units = "rad"
+        self._parameter_name = parameter_name
+
+
     def _prepare_data_for_plot(self, data):
-        s_data = data["s_data"]
-        XX, YY = generate_mesh(data[self._parameter_name], data["frequency"]/1e9)
-        return XX, YY, s_data
+        return data[self._parameter_name], data["frequency"]/1e9, data["data"]
