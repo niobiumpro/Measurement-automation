@@ -61,6 +61,7 @@ class FourWaveMixingBase(Measurement):
          delta is half of distance between two generators
         '''
         self._exa_pars = exa_parameters
+        self._delta = delta
         self._src_plus_pars = {"frequency": exa_parameters['centerfreq'] + delta}
         self._src_minus_pars = {"frequency":  exa_parameters['centerfreq'] - delta}
         if power_plus is not None:
@@ -78,7 +79,7 @@ class FourWaveMixingBase(Measurement):
         Construct a function to set two powers simultaneously
         '''
         power_plus = power
-        power_minus = power+10.2
+        power_minus = power+10.6
         self._src_plus.set_power(power_plus)
         self._src_minus.set_power(power_minus)
 
@@ -121,6 +122,11 @@ class FourWaveMixingResult(MeasurementResult):
         super().__init__(name, sample_name)
         self._context = ContextBase(comment = input('Enter your comment: '))
         self._is_finished = False
+        self._peaks_indices = []
+        self._colors = []
+        self._XX = None
+        self._YY = None
+
 
 
     def set_parameter_name(self, parameter_name):
@@ -128,9 +134,11 @@ class FourWaveMixingResult(MeasurementResult):
 
     def _prepare_figure(self):
         self._last_tr = None
+        self._peaks_last_tr = None
         fig = plt.figure(figsize = (18,6))
-        ax_trace = plt.subplot2grid((4, 4), (0, 0), colspan = 4, rowspan = 1)
-        ax_map = plt.subplot2grid((4, 4), (1, 0), colspan = 4, rowspan = 3)
+        ax_trace = plt.subplot2grid((4, 8), (0, 0), colspan = 4, rowspan = 1)
+        ax_map = plt.subplot2grid((4, 8), (1, 0), colspan = 4, rowspan = 3)
+        ax_peaks = plt.subplot2grid((4, 8), (0, 4), colspan = 4, rowspan = 4)
         plt.tight_layout()
         ax_map.ticklabel_format(axis='x', style='plain', scilimits=(-2,2))
         ax_map.set_ylabel("Frequency, kHz")
@@ -138,23 +146,26 @@ class FourWaveMixingResult(MeasurementResult):
         ax_trace.ticklabel_format(axis='x', style='sci', scilimits=(-2,2))
         ax_trace.set_xlabel("Frequency, Hz")
         ax_trace.set_ylabel("Emission power, dBm")
+        ax_peaks.set_xlabel("Input power, dBm")
+        ax_peaks.set_ylabel("Emission power, dBm")
+
         ax_map.autoscale_view(True,True,True)
         plt.tight_layout()
 
-        cax, kw = colorbar.make_axes(ax_map)
+        cax, kw = colorbar.make_axes(ax_map, fraction=0.05, anchor=(0.0,1.0))
         cax.set_title("$P$,dBm")
 
-        return fig, (ax_trace, ax_map), (cax,)
+        return fig, (ax_trace, ax_map, ax_peaks), (cax,)
 
     def _plot(self, axes, cax):
-        ax_trace, ax_map = axes
+        ax_trace, ax_map, ax_peaks = axes
         cax = cax[0]
 
         data = self.get_data()
         if "data" not in data.keys():
             return
 
-        XX, YY, Z = self._prepare_data_for_plot(data)
+        XX, YY, Z, P = self._prepare_data_for_plot(data)
 
         max_pow = max(Z[Z != 0])
         min_pow = min(Z[Z != 0])
@@ -168,17 +179,43 @@ class FourWaveMixingResult(MeasurementResult):
         self._last_tr = ax_trace.plot(data["frequency"]/1e3,
                         last_trace_data, 'b').pop(0)
 
-        #ax_trace.set_ylim([min(Z[-1]), max(Z[-1])])
+        N_peaks  = len(P[:,0])
+        if self._peaks_last_tr is not None:
+            for l in self._peaks_last_tr:
+                l.pop(0).remove()
+        self._peaks_last_tr = [ax_peaks.plot(data["powers at $\\omega_{p}$"],
+                        P[i,:], '-',linewidth=1.5,
+                         color=self._colors[i]) for i in range(N_peaks)]
+        #plt.gcf().canvas.draw()
+        #print(self._peaks_last_tr, flush=True)
+        ax_trace.set_ylim([average(last_trace_data), max(last_trace_data)])
+        ax_peaks.set_ylim([P.min(),P[nonzero(P)].max()])
 
         ax_map.grid('on')
         ax_trace.grid('on')
         ax_trace.axis("tight")
 
 
+
     def _prepare_data_for_plot(self, data):
+        if self._peaks_indices == []:
+            max_order = 25
+            con_eq = self.get_context().get_equipment()
+            nop = int(con_eq["exa"]["nop"])
+            span = con_eq["exa"]["span"]
+            center_point = (nop-1)/2
+
+            delta = (con_eq["src_plus"]["frequency"] - \
+                    con_eq["src_minus"]["frequency"])/2
+            delta_index = int(delta/span*(nop-1))
+            for i in range(-max_order,max_order+2,2):
+                self._colors.append((abs(i)/max_order, 0, (max_order-abs(i))/max_order))
+                self._peaks_indices.append(center_point + i*delta_index)
         power_data = real(data["data"])
-        XX, YY = generate_mesh(data[self._parameter_name], data["frequency"]/1e3)
-        return XX, YY, power_data
+        peaks_data = [power_data[:,i] for i in self._peaks_indices]
+        if self._XX is None and self._YY is None:
+            self._XX, self._YY = generate_mesh(data[self._parameter_name], data["frequency"]/1e3)
+        return self._XX, self._YY, power_data, array(peaks_data)
 
     def save(self):
         super().save()
