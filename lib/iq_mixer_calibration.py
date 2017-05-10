@@ -59,7 +59,7 @@ class IQCalibrator():
 
     def __init__(self, awg, sa, lo, mixer_id, iq_attenuation):
         '''
-        IQClibrator is a class that allows you to calibrate automatically an IQ mixer to obtain a Single Sideband (SSB)
+        IQCalibrator is a class that allows you to calibrate automatically an IQ mixer to obtain a Single Sideband (SSB)
         with desired parameters.
         '''
         self._awg = awg
@@ -72,9 +72,11 @@ class IQCalibrator():
     def calibrate(self, lo_frequency, if_frequency, lo_power, ssb_power, waveform_resolution=1, initial_guess=None,
                 sa_res_bandwidth=500, iterations=5, minimize_iterlimit=20):
         '''
-        Perform the calibration routine to suppress LO and upper sideband LO+IF while maintaining the lower sideband at ssb_power.
+        Perform the calibration routine to suppress LO and upper sideband LO+IF
+         while maintaining the lower sideband at ssb_power.
 
-        In case of if_frequency equal to zero the DC calibration is performed. The ssb_power parameter will be then treated as
+        In case of if_frequency equal to zero the DC calibration is performed.
+        The ssb_power parameter will be then treated as
         the power of the LO when the mixer is in the open state
 
         Parameters:
@@ -146,7 +148,7 @@ class IQCalibrator():
             self._awg.output_continuous_wave(frequency=if_frequency, amplitude=amp2, phase=0, offset=vdc2, waveform_resolution=waveform_resolution, channel=2)
             self._sa.prepare_for_stb();self._sa.sweep_single();self._sa.wait_for_stb()
             data = self._sa.get_tracedata()
-            answer =  data[2] + 10*abs(ssb_power - data[0])+ 0 if abs(abs(amp1)-abs(amp2))<1 else 10**(abs(abs(amp1)-abs(amp2)))
+            answer =  data[2] + 10*abs(ssb_power - data[0])+ 0 if abs(abs(amp1)-abs(amp2))<0.5 else 10**(abs(abs(amp1)-abs(amp2)))
             clear_output()
             print("\rAmplitudes: ", format_number_list(amplitudes), format_number_list(data), end="          ", flush=True)
             return answer
