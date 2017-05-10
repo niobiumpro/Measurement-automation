@@ -79,7 +79,7 @@ class FourWaveMixingBase(Measurement):
         Construct a function to set two powers simultaneously
         '''
         power_plus = power
-        power_minus = power+10.6
+        power_minus = power+10.05
         self._src_plus.set_power(power_plus)
         self._src_minus.set_power(power_minus)
 
@@ -135,7 +135,7 @@ class FourWaveMixingResult(MeasurementResult):
     def _prepare_figure(self):
         self._last_tr = None
         self._peaks_last_tr = None
-        fig = plt.figure(figsize = (18,6))
+        fig = plt.figure(figsize = (19,8))
         ax_trace = plt.subplot2grid((4, 8), (0, 0), colspan = 4, rowspan = 1)
         ax_map = plt.subplot2grid((4, 8), (1, 0), colspan = 4, rowspan = 3)
         ax_peaks = plt.subplot2grid((4, 8), (0, 4), colspan = 4, rowspan = 4)
@@ -170,9 +170,13 @@ class FourWaveMixingResult(MeasurementResult):
         max_pow = max(Z[Z != 0])
         min_pow = min(Z[Z != 0])
         av_pow = average(Z[Z != 0])
-        pow_map = ax_map.pcolormesh(XX, YY, Z.T, cmap="hot",
-                                    vmax=max_pow, vmin=av_pow)
+        extent = [XX[0], XX[-1], YY[0], YY[-1]]
+        pow_map = ax_map.imshow(Z.T, origin='lower', cmap="hot",
+                                aspect = 'auto', vmax=max_pow,
+                                vmin=av_pow, extent=extent)
         plt.colorbar(pow_map, cax = cax)
+        cax.tick_params(axis='y', right='off', left='on',
+                labelleft='on', labelright='off', labelsize='10')
         last_trace_data = Z[Z!=0][-(len(data["frequency"])):]
         if self._last_tr is not None:
             self._last_tr.remove()
@@ -199,7 +203,7 @@ class FourWaveMixingResult(MeasurementResult):
 
     def _prepare_data_for_plot(self, data):
         if self._peaks_indices == []:
-            max_order = 25
+            max_order = 15
             con_eq = self.get_context().get_equipment()
             nop = int(con_eq["exa"]["nop"])
             span = con_eq["exa"]["span"]
@@ -214,7 +218,7 @@ class FourWaveMixingResult(MeasurementResult):
         power_data = real(data["data"])
         peaks_data = [power_data[:,i] for i in self._peaks_indices]
         if self._XX is None and self._YY is None:
-            self._XX, self._YY = generate_mesh(data[self._parameter_name], data["frequency"]/1e3)
+            self._XX, self._YY = data[self._parameter_name], data["frequency"]/1e3
         return self._XX, self._YY, power_data, array(peaks_data)
 
     def save(self):
