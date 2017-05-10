@@ -128,8 +128,8 @@ class PulseBuilder():
 		'''
 		vdc1, vdc2 = self._iqmx_calibration.get_optimization_results()[0]["dc_offsets_open"] \
 							if dc_voltage is None else (dc_voltage, dc_voltage)
-		self._pulse_seq_I.append_pulse(zeros(int(duration/self._waveform_resolution)+1)+vdc1/5)
-		self._pulse_seq_Q.append_pulse(zeros(int(duration/self._waveform_resolution)+1)+vdc2/5)
+		self._pulse_seq_I.append_pulse(zeros(int(round(duration/self._waveform_resolution))+1)+vdc1/5)
+		self._pulse_seq_Q.append_pulse(zeros(int(round(duration/self._waveform_resolution))+1)+vdc2/5)
 		return self
 
 	def add_zero_pulse(self, duration):
@@ -142,8 +142,8 @@ class PulseBuilder():
 			Duration of the pulse in nanoseconds
 		'''
 		vdc1, vdc2 = self._iqmx_calibration.get_optimization_results()[0]["dc_offsets"]
-		self._pulse_seq_I.append_pulse(zeros(int(duration/self._waveform_resolution)+1)+vdc1/5)
-		self._pulse_seq_Q.append_pulse(zeros(int(duration/self._waveform_resolution)+1)+vdc2/5)
+		self._pulse_seq_I.append_pulse(zeros(int(round(duration/self._waveform_resolution))+1)+vdc1/5)
+		self._pulse_seq_Q.append_pulse(zeros(int(round(duration/self._waveform_resolution))+1)+vdc2/5)
 		return self
 
 	def modulate_rectangle(self, amplitude):
@@ -191,7 +191,7 @@ class PulseBuilder():
 		if_amp1, if_amp2 = self._iqmx_calibration.get_optimization_results()[0]["if_amplitudes"]
 		if_phase = self._iqmx_calibration.get_optimization_results()[0]["if_phase"]
 		frequency = self._iqmx_calibration.get_radiation_parameters()["if_frequency"]
-		N_time_steps = duration/self._waveform_resolution
+		N_time_steps = round(duration/self._waveform_resolution)
 
 		self._pulse_seq_I.append_pulse(if_amp1/5*sin(2*pi*frequency/1e9*\
 							linspace(0, duration, N_time_steps+1)+if_phase+phase) + if_offs1/5)
