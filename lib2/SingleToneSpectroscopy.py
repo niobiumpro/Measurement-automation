@@ -128,7 +128,7 @@ class SingleToneSpectroscopyResult(MeasurementResult):
         self._parameter_name = parameter_name
 
     def _prepare_figure(self):
-        fig, axes = plt.subplots(1, 2, figsize=(15,7), sharey=True)
+        fig, axes = plt.subplots(1, 2, figsize=(15,7), sharey=True, sharex=True)
         ax_amps, ax_phas = axes
         ax_amps.ticklabel_format(axis='x', style='sci', scilimits=(-2,2))
         ax_amps.set_ylabel("Frequency [GHz]")
@@ -205,3 +205,30 @@ class SingleToneSpectroscopyResult(MeasurementResult):
         corr_s_data = abs(s_data)*exp(1j*phases)
         corr_s_data[abs(corr_s_data)<1e-14] = 0
         return corr_s_data
+
+    def remove_background(self, direction, index):
+        '''
+        Remove background
+
+        Parameters:
+        -----------
+        direction: str
+            "h" for horizontal slice subtraction
+            "v" for vertical slice subtraction
+        index: int
+            Slice number
+        '''
+        copy = self.copy()
+        raw_data = self.get_data()
+        data = raw_data["data"]
+        amps, phas = abs(s_data), angle(s_data)
+        if direction is "v":
+            amps = amps/amps[index]
+            phas = phas - phas[index]
+        else:
+            amps = (amps.T/amps.T[index]).T
+            phas = (phas.T - phas.T[index]).T
+
+        s_data["data"] = amps*exp(1j*phas)
+        copy.set_data(s_data)
+        return copy
