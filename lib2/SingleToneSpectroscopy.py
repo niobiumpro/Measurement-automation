@@ -72,49 +72,11 @@ class SingleToneSpectroscopy(Measurement):
         vna.avg_clear(); vna.prepare_for_stb(); vna.sweep_single(); vna.wait_for_stb();
         return vna.get_sdata()
 
-    def _fill_measurement_result(self, parameter_names, parameters_values):
+    def _prepare_measurement_result_data(self, parameter_names, parameters_values):
         measurement_data = super()._fill_measurement_result(parameter_names, parameters_values)
         measurement_data["frequency"] = self._frequencies
-        self._measurement_result.set_data(measurement_data)
-    #
-    # def _record_data(self):
-    #     super()._record_data()
-    #
-    #     vna = self._vna
-    #     vna.set_parameters(self._vna_parameters)
-    #
-    #     raw_s_data = zeros((len(self._parameter_values),
-    #                     self._vna_parameters["nop"]), dtype=complex_)
-    #
-    #     done_sweeps = 0
-    #     total_sweeps = len(self._parameter_values)
-    #     vna.sweep_hold()
-    #
-    #     for idx, value in enumerate(self._parameter_values):
-    #         if self._interrupted:
-    #             self._interrupted = False
-    #             self._vna.set_parameters(self._pre_measurement_vna_parameters)
-    #             return
-    #
-    #         self._parameter_setter(value)
-    #         vna.avg_clear(); vna.prepare_for_stb(); vna.sweep_single(); vna.wait_for_stb();
-    #         raw_s_data[idx]=vna.get_sdata()
-    #         raw_data = {"frequency":self._frequencies,
-    #                     self._parameter_name:self._parameter_values,
-    #                     "s_data":raw_s_data}
-    #         self._measurement_result.set_data(raw_data)
-    #         done_sweeps += 1
-    #         avg_time = (dt.now() - self._measurement_result.get_start_datetime())\
-    #                                         .total_seconds()/done_sweeps
-    #         print("\rTime left: "+self._format_time_delta(avg_time*(total_sweeps-done_sweeps))+\
-    #                 ", %s: "%self._parameter_name+\
-    #                 "%.3e"%value+", average cycle time: "+\
-    #                 str(round(avg_time, 2))+" s          ",
-    #                 end="", flush=True)
-    #
-    #     self._vna.set_parameters(self._pre_measurement_vna_parameters)
-    #     self._measurement_result.set_is_finished(True)
-
+        return measurement_data
+    
 
 class SingleToneSpectroscopyResult(MeasurementResult):
 
@@ -185,12 +147,6 @@ class SingleToneSpectroscopyResult(MeasurementResult):
     def _prepare_data_for_plot(self, data):
         s_data = self._remove_delay(data["frequency"], data["data"])
         return data[self._parameter_name], data["frequency"]/1e9, s_data
-
-    def save(self):
-        super().save()
-        self.visualize()
-        plt.savefig(self.get_save_path()+self._name+".png", bbox_inches='tight')
-        plt.close("all")
 
     def remove_delay(self):
         copy = self.copy()

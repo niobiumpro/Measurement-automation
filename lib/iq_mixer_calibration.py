@@ -112,8 +112,8 @@ class IQCalibrator():
             self._sa.prepare_for_stb();self._sa.sweep_single();self._sa.wait_for_stb()
             data = self._sa.get_tracedata()
             answer =  data[0]
-            clear_output()
             print("\rDC offsets: ", format_number_list(voltages), format_number_list(data), end=", ", flush=True)
+            clear_output(wait=True)
             return answer
 
         def loss_function_dc_offsets_open(voltages):
@@ -123,8 +123,8 @@ class IQCalibrator():
             self._sa.prepare_for_stb();self._sa.sweep_single();self._sa.wait_for_stb()
             data = self._sa.get_tracedata()
             answer = abs(data[0]-ssb_power)+10*abs(vdc1-vdc2)
-            clear_output()
             print("\rDC offsets open: ", format_number_list(voltages), format_number_list(data), end=", ", flush=True)
+            clear_output(wait=True)
             return answer
 
         def loss_function_if_offsets(voltages, args):
@@ -136,8 +136,8 @@ class IQCalibrator():
             self._sa.prepare_for_stb();self._sa.sweep_single();self._sa.wait_for_stb()
             data = self._sa.get_tracedata()
             answer =  data[1]
-            clear_output()
             print("\rIF offsets: ", format_number_list(voltages), format_number_list(data), end="            ", flush=True)
+            clear_output(wait=True)
             return answer
 
         def loss_function_if_amplitudes(amplitudes, args):
@@ -148,9 +148,9 @@ class IQCalibrator():
             self._awg.output_continuous_wave(frequency=if_frequency, amplitude=amp2, phase=0, offset=vdc2, waveform_resolution=waveform_resolution, channel=2)
             self._sa.prepare_for_stb();self._sa.sweep_single();self._sa.wait_for_stb()
             data = self._sa.get_tracedata()
-            answer =  data[2] + 10*abs(ssb_power - data[0])+ 0 if abs(abs(amp1)-abs(amp2))<0.5 else 10**(abs(abs(amp1)-abs(amp2)))
-            clear_output()
-            print("\rAmplitudes: ", format_number_list(amplitudes), format_number_list(data), end="          ", flush=True)
+            answer =  data[2] + 10*abs(ssb_power - data[0]) + 0 if abs(abs(amp1)-abs(amp2))<.5 else 10**(10*abs(abs(amp1)-abs(amp2)))
+            clear_output(wait=True)
+            print("\rAmplitudes: ", format_number_list(amplitudes), format_number_list(data), "loss:", answer, end="          ", flush=True)
             return answer
 
         def loss_function_if_phase(phase, args):
@@ -162,6 +162,7 @@ class IQCalibrator():
             data = self._sa.get_tracedata()
             answer =  data[2] - data[0]
             print("\rPhase: ", "%2.4f"%(phase/pi), format_number_list(data), end="             ", flush=True)
+            clear_output(wait=True)
             return answer
 
         def iterate_minimization(prev_results, n=2):

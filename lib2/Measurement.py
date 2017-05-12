@@ -51,6 +51,7 @@ from resonator_tools import circuit
 from itertools import product
 from functools import reduce
 from operator import mul
+import traceback
 
 
 class Measurement():
@@ -132,7 +133,7 @@ class Measurement():
                     #getattr(self,"_"+name)._visainstrument.query("*IDN?")
                     break
 
-    def close_devs(self,devs_to_close):
+    def close_devs(self, devs_to_close):
         for name in devs_to_close:
             if name in self._actual_devices.keys():
                 self._actual_devices.pop(name)._visainstrument.close()
@@ -141,7 +142,8 @@ class Measurement():
     def _load_fixed_parameters_into_devices(self):
         '''
         exa_parameters
-        fixed_pars: {'dev1': {'par1': value1, 'par2': value2}, 'dev2': {par1: value1, par2: ...}...}
+        fixed_pars: {'dev1': {'par1': value1, 'par2': value2},
+                     'dev2': {par1: value1, par2: ...}...}
         '''
         for dev_name in self._fixed_pars.keys():
             dev = getattr(self, '_' + dev_name)
@@ -149,7 +151,8 @@ class Measurement():
 
     def set_fixed_parameters(self, **fixed_pars):
         '''
-        fixed_pars: {'dev1': {'par1': value1, 'par2': value2}, 'dev2': {par1: value1, par2: ...}...}
+        fixed_pars: {'dev1': {'par1': value1, 'par2': value2},
+                     'dev2': {par1: value1, par2: ...}...}
         '''
         self._fixed_pars = fixed_pars
         for dev_name in self._fixed_pars.keys():
@@ -158,16 +161,16 @@ class Measurement():
 
     def set_swept_parameters(self, **swept_pars):
         '''
-        swept_pars :{'par1': (setter1, [value1, value2, ...]), 'par2': (setter1, [value1, value2, ...]), ...}
+        swept_pars :{'par1': (setter1, [value1, value2, ...]),
+                     'par2': (setter1, [value1, value2, ...]), ...}
         '''
         self._swept_pars = swept_pars
         self._swept_pars_names = list(swept_pars.keys())
-
+        self._measurement_result.set_parameter_names(self._swept_pars_names)
 
     def _load_swept_parameters_into_devices(self, values_group):
         for name, value in zip(self._swept_pars_names, values_group):
-            self._swept_pars[name][0](value)             # this is setter call, look carefully
-
+            self._swept_pars[name][0](value) # this is setter call, look carefully
 
     def launch(self):
         plt.ion()
@@ -183,6 +186,9 @@ class Measurement():
                 plt.pause(self._plot_update_interval)
         except KeyboardInterrupt:
             self._interrupted = True
+        except Exception as e:
+            self._interrupted = True
+            traceback.print_exc()
 
         self._measurement_result.finalize()
         return self._measurement_result
@@ -207,12 +213,20 @@ class Measurement():
 
             self._load_swept_parameters_into_devices(values_group)
 
+            # This should be implemented in child classes:
             data = self._recording_iteration()
+
             if done_iterations == 0:
-                self._raw_data = zeros(raw_data_shape+[len(data)], dtype=complex_)
+                try:
+                    self._raw_data = zeros(raw_data_shape+[len(data)], dtype=complex_)
+                except TypeError: # data has no __len__ attribute
+                    self._raw_data = zeros(raw_data_shape, dtype=complex_)
             self._raw_data[idx_group] = data
 
-            self._fill_measurement_result(par_names, parameters_values)
+            # This may need to be extended in child classes:
+            measurement_data =\
+                self._prepare_measurement_result_data(par_names, parameters_values)
+            self._measurement_result.set_data(measurement_data)
 
             done_iterations += 1
 
@@ -221,7 +235,7 @@ class Measurement():
             time_left = self._format_time_delta(avg_time*(total_iterations-done_iterations))
 
             formatted_values_group = \
-                        '['.join(["%s: %.2e, "%(par_names[idx], value)\
+                        '['+"".join(["%s: %.2e, "%(par_names[idx], value)\
                          for idx, value in enumerate(values_group)])[:-2]+']'
 
             print("\rTime left: "+time_left+", %s: "%formatted_values_group+\
@@ -236,18 +250,22 @@ class Measurement():
 
     def _recording_iteration(self):
         '''
-        This method must be overridden for each new measurement type. Now
-        it contains only setting of the start time.
+        This method must be overridden for each new measurement type.
 
-        Should contain all of the recording logic and set the data of the
+        Should contain the recording logic and set the data of the
         corresponding MeasurementResult object.
         See lib2.SingleToneSpectroscopy.py as an example implementation
         '''
         pass
 
-    def _fill_measurement_result(self, parameter_names, parameter_values):
+    def _prepare_measurement_result_data(self, parameter_names, parameter_values):
         '''
-        parametr_names and parameter_values ARE LISTS
+        This method MAY be overridden for a new measurement type.
+
+        It is needed if you have _recording_iteration(...) that returns an array,
+        so effectively you have an additional parameter that is swept
+        automatically. You will be able to pass its values and name in the
+        overridden method (see lib2.SingleToneSpectroscopy.py).
         '''
         measurement_data = self._measurement_result.get_data()
         measurement_data.update(zip(parameter_names, parameter_values))

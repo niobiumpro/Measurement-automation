@@ -33,11 +33,6 @@ from threading import Lock
 from matplotlib import pyplot as plt
 
 
-def generate_mesh(X, Y):
-	step_X = X[1]-X[0]
-	step_Y = Y[1]-Y[0]
-	return meshgrid(append(X-step_X/2, X[-1]+step_X/2), append(Y-step_Y/2, Y[-1]+step_Y/2))
-
 def find(pattern, path):
     result = []
     for root, dirs, files in os.walk(path):
@@ -78,6 +73,10 @@ class MeasurementResult():
         self._dynamic_figure = None # the figure that will be dynamically updated
         self._dynamic_axes = None # axes of the subplots contained inside it
         self._dynamic_caxes = None # colorbar axes for heatmaps
+
+
+    def set_parameter_names(self, parameter_names):
+        self._parameter_names = parameter_names
 
     @staticmethod
     def load(sample_name, name):
@@ -162,6 +161,10 @@ class MeasurementResult():
             with open(self.get_save_path()+self._name+'context.txt', 'w+') as f:
                 f.write(self.get_context().to_string())
 
+        self.visualize()
+        plt.savefig(self.get_save_path()+self._name+".png", bbox_inches='tight')
+        plt.close("all")
+
     def visualize(self):
         '''
         Generates the required plots to visualize the measurement result. Should
@@ -169,6 +172,7 @@ class MeasurementResult():
         '''
         fig, axes, caxes = self._prepare_figure()
         self._plot(axes, caxes)
+        return fig, axes, caxes
 
     def _visualize_dynamic(self):
         '''

@@ -102,19 +102,13 @@ class FourWaveMixingBase(Measurement):
         self._measurement_result.set_parameter_name(par_name)
         self._sources_on()
 
-    def _fill_measurement_result(self, parameter_names, parameters_values):
+    def _prepare_measurement_result_data(self, parameter_names, parameters_values):
         measurement_data = super()._fill_measurement_result(parameter_names, parameters_values)
         measurement_data["frequency"] = self._frequencies
-        self._measurement_result.set_data(measurement_data)
+        return measurement_data
 
     def _recording_iteration(self):
-        '''
-        is to be implemented in ancestor classes
-        '''
-        # pass
         return self._exa.make_sweep_get_data()
-
-
 
 class FourWaveMixingResult(MeasurementResult):
 
@@ -126,8 +120,6 @@ class FourWaveMixingResult(MeasurementResult):
         self._colors = []
         self._XX = None
         self._YY = None
-
-
 
     def set_parameter_name(self, parameter_name):
         self._parameter_name = parameter_name
@@ -199,8 +191,6 @@ class FourWaveMixingResult(MeasurementResult):
         ax_trace.grid('on')
         ax_trace.axis("tight")
 
-
-
     def _prepare_data_for_plot(self, data):
         if self._peaks_indices == []:
             max_order = 15
@@ -220,18 +210,3 @@ class FourWaveMixingResult(MeasurementResult):
         if self._XX is None and self._YY is None:
             self._XX, self._YY = data[self._parameter_name], data["frequency"]/1e3
         return self._XX, self._YY, power_data, array(peaks_data)
-
-    def save(self):
-        super().save()
-        self.visualize()
-        plt.savefig(self.get_save_path()+self._name+".png", bbox_inches='tight')
-        plt.close("all")
-
-
-    def _remove_delay(self,frequencies, s_data):
-        phases = unwrap(angle(s_data*exp(2*pi*1j*50e-9*frequencies)))
-        k, b = polyfit(frequencies, phases[0], 1)
-        phases = phases - k*frequencies - b
-        corr_s_data = abs(s_data)*exp(1j*phases)
-        corr_s_data[abs(corr_s_data)<1e-14] = 0
-        return corr_s_data
