@@ -22,6 +22,7 @@ import visa
 import types
 import time
 import logging
+from lib2.IQPulseSequence import *
 
 from enum import Enum
 
@@ -71,12 +72,44 @@ class KeysightAWG(Instrument):
 		self.add_parameter('1st_width',
 		flags = Instrument.FLAG_GETSET, units = '', type = float)
 
-
-
 		self.add_function("apply_waveform")
 
 
 	# High-level functions
+
+
+	def set_parameters(self, parameters):
+		'''
+		Sets various parameters from a dictionary
+
+		Parameters:
+		-----------
+		parameteres: dict {"param_name":param_value, ...}
+		'''
+		par_names = ["calibration"]
+		for par_name in par_names:
+			if par_name in parameters.keys():
+				setattr(self, "_"+par_name, parameters[par_name])
+
+	def set_calibration(self, cal):
+		'''
+		Set IQ calibration for this AWG
+
+		Parameters:
+		-----------
+		cal: iq_mixer_calibration.IQCalibrationData instance
+			Calibration for the internal PulseBuilder
+		'''
+		self._calibration = cal
+
+	def get_calibration(self):
+		return self._calibration
+
+	def get_pulse_builder(self):
+		'''
+		Returns a PulseBuilder instance using the IQ calibration loaded before
+		'''
+		return PulseBuilder(self._calibration)
 
 	def output_continuous_wave(self, frequency=100e6, amplitude=0.1, phase=0, offset=0, waveform_resolution=1,  channel=1):
 		'''
@@ -111,10 +144,11 @@ class KeysightAWG(Instrument):
 		Parameters:
 		-----------
 		pulse_sequence: IQPulseSequence instance
-
 		'''
-		self.load_arbitrary_waveform_to_volatile_memory(pulse_sequence.get_I_waveform(), 1)
-		self.load_arbitrary_waveform_to_volatile_memory(pulse_sequence.get_Q_waveform(), 2)
+		self.load_arbitrary_waveform_to_volatile_memory(\
+				pulse_sequence.get_I_waveform(), 1)
+		self.load_arbitrary_waveform_to_volatile_memory(\
+				pulse_sequence.get_Q_waveform(), 2)
 		frequency = 1/pulse_sequence.get_duration()*1e9
 		self.prepare_waveform(WaveformType.arbitrary, frequency, 5, 0, 1)
 		self.prepare_waveform(WaveformType.arbitrary, frequency, 5, 0, 2)

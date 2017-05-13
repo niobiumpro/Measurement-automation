@@ -158,6 +158,8 @@ class Measurement():
         for dev_name in self._fixed_pars.keys():
             self._measurement_result.get_context() \
             .get_equipment()[dev_name] = fixed_pars[dev_name]
+        self._load_fixed_parameters_into_devices()
+
 
     def set_swept_parameters(self, **swept_pars):
         '''
@@ -167,10 +169,14 @@ class Measurement():
         self._swept_pars = swept_pars
         self._swept_pars_names = list(swept_pars.keys())
         self._measurement_result.set_parameter_names(self._swept_pars_names)
+        self._last_swept_pars_values = \
+                            {name:None for name in self._swept_pars_names}
 
-    def _load_swept_parameters_into_devices(self, values_group):
+    def _call_setters(self, values_group):
         for name, value in zip(self._swept_pars_names, values_group):
-            self._swept_pars[name][0](value) # this is setter call, look carefully
+            if self._last_swept_pars_values[name] != value:
+                self._last_swept_pars_values[name] = value
+                self._swept_pars[name][0](value) # this is setter call, look carefully
 
     def launch(self):
         plt.ion()
@@ -195,7 +201,6 @@ class Measurement():
 
     def _record_data(self):
 
-        self._load_fixed_parameters_into_devices()
         par_names = self._swept_pars_names
         parameters_values = []
         parameters_idxs = []
@@ -211,7 +216,7 @@ class Measurement():
 
         for idx_group, values_group in zip(product(*parameters_idxs), product(*parameters_values)):
 
-            self._load_swept_parameters_into_devices(values_group)
+            self._call_setters(values_group)
 
             # This should be implemented in child classes:
             data = self._recording_iteration()
@@ -262,8 +267,8 @@ class Measurement():
         '''
         This method MAY be overridden for a new measurement type.
 
-        It is needed if you have _recording_iteration(...) that returns an array,
-        so effectively you have an additional parameter that is swept
+        An override is needed if you have _recording_iteration(...) that returns
+        an array, so effectively you have an additional parameter that is swept
         automatically. You will be able to pass its values and name in the
         overridden method (see lib2.SingleToneSpectroscopy.py).
         '''
@@ -277,7 +282,6 @@ class Measurement():
         Finds frequency of the resonator visible on the VNA screen
         """
         vna = self._vna
-        vna.set_nop(200)
         vna.avg_clear(); vna.prepare_for_stb(); vna.sweep_single(); vna.wait_for_stb()
         port = circuit.notch_port(vna.get_frequencies(), vna.get_sdata())
         port.autofit()
@@ -286,7 +290,7 @@ class Measurement():
         return (vna.get_frequencies()[min_idx],
                     min(abs(port.z_data_sim)), angle(port.z_data_sim)[min_idx])
 
-    def detect_qubit(self):
+    def _detect_qubit(self):
         '''
         To find a peak/dip from a qubit in line automatically (to be implemented)
         '''

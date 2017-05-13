@@ -76,7 +76,7 @@ class SingleToneSpectroscopy(Measurement):
         measurement_data = super()._fill_measurement_result(parameter_names, parameters_values)
         measurement_data["frequency"] = self._frequencies
         return measurement_data
-    
+
 
 class SingleToneSpectroscopyResult(MeasurementResult):
 

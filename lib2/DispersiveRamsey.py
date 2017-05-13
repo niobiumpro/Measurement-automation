@@ -1,18 +1,12 @@
 
-from drivers.KeysightAWG import PulseBuilder
-from lib2.Measurement import *
-from lib2.MeasurementResult import *
+from lib2.VNATimeResolvedDispersiveMeasurement1D import *
 
-from scipy.optimize import curve_fit
-
-from lib2.VNATimeResolvedMeasurement import *
-
-class DispersiveRamsey(VNATimeResolvedMeasurement1D):
+class DispersiveRamsey(VNATimeResolvedDispersiveMeasurement1D):
 
     def __init__(self, name, sample_name, vna_name, ro_awg_name, q_awg_name,
-                q_lo_name, current_src_name, line_attenuation_db = 60):
+                q_lo_name, line_attenuation_db = 60):
         super().__init__(name, sample_name, vna_name, ro_awg_name, q_awg_name,
-                    q_lo_name, current_src_name, line_attenuation_db)
+                    q_lo_name, line_attenuation_db)
 
         self._measurement_result = DispersiveRamseyResult(name,
                     sample_name)
@@ -21,38 +15,17 @@ class DispersiveRamsey(VNATimeResolvedMeasurement1D):
         super().set_swept_parameters("ramsey_delay", ramsey_delays)
 
     def _output_pulse_sequence(self, ramsey_delay):
-        awg_trigger_reaction_delay = \
-                self._pulse_sequence_parameters["awg_trigger_reaction_delay"]
-        readout_duration = \
-                self._pulse_sequence_parameters["readout_duration"]
-        repetition_period = \
-                self._pulse_sequence_parameters["repetition_period"]
-        half_pi_pulse_duration = \
-                self._pulse_sequence_parameters["half_pi_pulse_duration"]
-
-        self._q_pb.add_zero_pulse(awg_trigger_reaction_delay)\
-            .add_sine_pulse(half_pi_pulse_duration, 0)\
-            .add_zero_pulse(ramsey_delay)\
-            .add_sine_pulse(half_pi_pulse_duration,
-                    time_offset = half_pi_pulse_duration+ramsey_delay)\
-            .add_zero_pulse(readout_duration)\
-            .add_zero_until(repetition_period)
-        self._q_awg.output_pulse_sequence(self._q_pb.build())
-
-        self._ro_pb.add_zero_pulse(2*half_pi_pulse_duration+ramsey_delay)\
-             .add_dc_pulse(readout_duration)\
-             .add_zero_pulse(100)
-        self._ro_awg.output_pulse_sequence(self._ro_pb.build())
+        self._output_ramsey_sequence(ramsey_delay)
 
 
-class DispersiveRamseyResult(VNATimeResolvedMeasurementResult1D):
+class DispersiveRamseyResult(VNATimeResolvedDispersiveMeasurement1DResult):
 
     def _theoretical_function(self, t, A, T_2_ast, Delta_Omega, offset, phase):
         return A*exp(-1/T_2_ast*t)*cos(Delta_Omega*t+phase)+offset
 
-    def _generate_fit_arguments(self, data):
-        bounds =([-1e3, 0, 0, -1e3, -pi], [1e3, 100, 1e3, 1e3, pi])
-        p0 = [(max(data)-min(data))/2, 1, 10*2*pi,
+    def _generate_fit_arguments(self, x, data):
+        bounds =([-1, 0, 0, -1, -pi], [1, 100, 20*2*pi, 1, pi])
+        p0 = [(max(data)-min(data))/2, 1, 1*2*pi,
             mean((max(data), min(data))), 0]
         return p0, bounds
 
