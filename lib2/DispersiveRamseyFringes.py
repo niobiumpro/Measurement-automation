@@ -26,7 +26,9 @@ class DispersiveRamseyFringes(VNATimeResolvedDispersiveMeasurement2D):
 class DispersiveRamseyFringesResult(VNATimeResolvedDispersiveMeasurement2DResult):
 
     def _prepare_data_for_plot(self, data):
-        return data["excitation_frequency"]/1e9, data["ramsey_delay"]/1e3
+        return data["excitation_frequency"]/1e9,\
+                data["ramsey_delay"]/1e3,\
+                    data["data"]
 
     def _annotate_axes(self, axes):
         axes[0].set_ylabel("Ramsey delay [$\mu$s]")

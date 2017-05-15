@@ -47,9 +47,6 @@ class VNATimeResolvedDispersiveMeasurement(Measurement):
                 .get_pulse_sequence_parameters()\
                 .update(pulse_sequence_parameters)
 
-        res_freq = self._detect_resonator(vna_parameters)
-        vna_parameters["freq_limits"] = (res_freq, res_freq)
-
         super().set_fixed_parameters(vna=vna_parameters, q_lo=q_lo_parameters,
                             ro_awg=ro_awg_parameters, q_awg=q_awg_parameters)
 
@@ -75,51 +72,28 @@ class VNATimeResolvedDispersiveMeasurement(Measurement):
         return res_freq
 
     def _output_rabi_sequence(self, excitation_duration):
-        awg_trigger_reaction_delay = \
-                self._pulse_sequence_parameters["awg_trigger_reaction_delay"]
-        readout_duration = \
-                self._pulse_sequence_parameters["readout_duration"]
-        repetition_period = \
-                self._pulse_sequence_parameters["repetition_period"]
 
         q_pb = self._q_awg.get_pulse_builder()
-        q_pb.add_zero_pulse(awg_trigger_reaction_delay)\
-            .add_sine_pulse(excitation_duration, 0)\
-            .add_zero_pulse(readout_duration)\
-            .add_zero_until(repetition_period)
-        self._q_awg.output_pulse_sequence(q_pb.build())
-
         ro_pb = self._ro_awg.get_pulse_builder()
-        ro_pb.add_zero_pulse(excitation_duration)\
-             .add_dc_pulse(readout_duration)\
-             .add_zero_pulse(100)
-        self._ro_awg.output_pulse_sequence(ro_pb.build())
+        self._pulse_sequence_parameters["excitation_duration"]=\
+                                                            excitation_duration
+        q_seq, ro_seq = PulseBuilder.build_dispersive_rabi_sequences(q_pb,
+                    ro_pb, self._pulse_sequence_parameters)
+        self._q_awg.output_pulse_sequence(q_seq)
+        self._ro_awg.output_pulse_sequence(ro_seq)
 
     def _output_ramsey_sequence(self, ramsey_delay):
-        awg_trigger_reaction_delay = \
-                self._pulse_sequence_parameters["awg_trigger_reaction_delay"]
-        readout_duration = \
-                self._pulse_sequence_parameters["readout_duration"]
-        repetition_period = \
-                self._pulse_sequence_parameters["repetition_period"]
-        half_pi_pulse_duration = \
-                self._pulse_sequence_parameters["half_pi_pulse_duration"]
 
         q_pb = self._q_awg.get_pulse_builder()
-        q_pb.add_zero_pulse(awg_trigger_reaction_delay)\
-            .add_sine_pulse(half_pi_pulse_duration, 0)\
-            .add_zero_pulse(ramsey_delay)\
-            .add_sine_pulse(half_pi_pulse_duration,
-                    time_offset = half_pi_pulse_duration+ramsey_delay)\
-            .add_zero_pulse(readout_duration)\
-            .add_zero_until(repetition_period)
-        self._q_awg.output_pulse_sequence(q_pb.build())
-
         ro_pb = self._ro_awg.get_pulse_builder()
-        ro_pb.add_zero_pulse(2*half_pi_pulse_duration+ramsey_delay)\
-             .add_dc_pulse(readout_duration)\
-             .add_zero_pulse(100)
-        self._ro_awg.output_pulse_sequence(ro_pb.build())
+        self._pulse_sequence_parameters["ramsey_delay"]=\
+                                                    ramsey_delay
+
+        q_seq, ro_seq = PulseBuilder.build_dispersive_ramsey_sequences(q_pb,
+                    ro_pb, self._pulse_sequence_parameters)
+        self._q_awg.output_pulse_sequence(q_seq)
+        self._ro_awg.output_pulse_sequence(ro_seq)
+
 
 class VNATimeResolvedDispersiveMeasurementResult(MeasurementResult):
 

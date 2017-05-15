@@ -103,7 +103,7 @@ class FourWaveMixingBase(Measurement):
         self._sources_on()
 
     def _prepare_measurement_result_data(self, parameter_names, parameters_values):
-        measurement_data = super()._fill_measurement_result(parameter_names, parameters_values)
+        measurement_data = super()._prepare_measurement_result_data(parameter_names, parameters_values)
         measurement_data["frequency"] = self._frequencies
         return measurement_data
 

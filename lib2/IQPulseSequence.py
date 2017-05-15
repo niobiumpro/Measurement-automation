@@ -34,7 +34,8 @@ class PulseSequence():
 
 class IQPulseSequence():
     """
-    Class whose instances can be loaded directly to the AWG via AWG's ouptut_iq_pulse_sequence() method
+    Class whose instances can be loaded directly to the AWG via AWG's
+    ouptut_iq_pulse_sequence() method
     """
     def __init__(self, pulse_sequence_I, pulse_sequence_Q, sequence_duration):
         self._i = pulse_sequence_I
@@ -214,3 +215,59 @@ class PulseBuilder():
         self._pulse_seq_I = PulseSequence()
         self._pulse_seq_Q = PulseSequence()
         return to_return
+
+
+    @staticmethod
+    def build_dispersive_rabi_sequences(exc_pb, ro_pb, pulse_sequence_parameters):
+        '''
+        Returns synchronized excitation and readout IQPulseSequences assuming that
+        readout AWG is triggered by the excitation AWG
+        '''
+        awg_trigger_reaction_delay = \
+                pulse_sequence_parameters["awg_trigger_reaction_delay"]
+        readout_duration = \
+                pulse_sequence_parameters["readout_duration"]
+        repetition_period = \
+                pulse_sequence_parameters["repetition_period"]
+        excitation_duration = \
+                pulse_sequence_parameters["excitation_duration"]
+
+        exc_pb.add_zero_pulse(awg_trigger_reaction_delay)\
+            .add_sine_pulse(excitation_duration, 0)\
+            .add_zero_pulse(readout_duration)\
+            .add_zero_until(repetition_period)
+
+        ro_pb.add_zero_pulse(excitation_duration)\
+             .add_dc_pulse(readout_duration)\
+             .add_zero_pulse(100)
+
+        return exc_pb.build(), ro_pb.build()
+
+    @staticmethod
+    def build_dispersive_ramsey_sequences(exc_pb, ro_pb,
+        pulse_sequence_parameters):
+
+        awg_trigger_reaction_delay = \
+                pulse_sequence_parameters["awg_trigger_reaction_delay"]
+        readout_duration = \
+                pulse_sequence_parameters["readout_duration"]
+        repetition_period = \
+                pulse_sequence_parameters["repetition_period"]
+        half_pi_pulse_duration = \
+                pulse_sequence_parameters["half_pi_pulse_duration"]
+        ramsey_delay = \
+                pulse_sequence_parameters["ramsey_delay"]
+
+        exc_pb.add_zero_pulse(awg_trigger_reaction_delay)\
+            .add_sine_pulse(half_pi_pulse_duration, 0)\
+            .add_zero_pulse(ramsey_delay)\
+            .add_sine_pulse(half_pi_pulse_duration,
+                    time_offset = half_pi_pulse_duration+ramsey_delay)\
+            .add_zero_pulse(readout_duration)\
+            .add_zero_until(repetition_period)
+
+        ro_pb.add_zero_pulse(2*half_pi_pulse_duration+ramsey_delay)\
+             .add_dc_pulse(readout_duration)\
+             .add_zero_pulse(100)
+
+        return exc_pb.build(), ro_pb.build()

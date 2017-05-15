@@ -20,6 +20,9 @@ class VNATimeResolvedDispersiveMeasurement1D(VNATimeResolvedDispersiveMeasuremen
             .get_radiation_parameters()["lo_power"],
             "frequency":qubit_frequency+q_if_frequency}
 
+        res_freq = self._detect_resonator(vna_parameters)
+        vna_parameters["freq_limits"] = (res_freq, res_freq)
+
         super().set_fixed_parameters(vna_parameters, q_lo_parameters,
             ro_awg_parameters, q_awg_parameters, pulse_sequence_parameters)
 
@@ -38,7 +41,7 @@ class VNATimeResolvedDispersiveMeasurement1DResult(\
 
     def __init__(self, name, sample_name):
         super().__init__(name, sample_name)
-        self._context = VNATimeResolvedMeasurementContext()
+        self._context = VNATimeResolvedDispersiveMeasurementContext()
         self._fit_params = {}
         self._fit_errors = {}
 

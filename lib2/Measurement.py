@@ -133,10 +133,11 @@ class Measurement():
                     #getattr(self,"_"+name)._visainstrument.query("*IDN?")
                     break
 
-    def close_devs(self, devs_to_close):
+    @staticmethod
+    def close_devs(devs_to_close):
         for name in devs_to_close:
-            if name in self._actual_devices.keys():
-                self._actual_devices.pop(name)._visainstrument.close()
+            if name in Measurement._actual_devices.keys():
+                Measurement._actual_devices.pop(name)._visainstrument.close()
 
 
     def _load_fixed_parameters_into_devices(self):
