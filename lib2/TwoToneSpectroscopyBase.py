@@ -44,6 +44,7 @@ class TwoToneSpectroscopyBase(Measurement):
                 .get_equipment()["mw_src"] = self._mw_src_parameters
 
     def _detect_resonator(self):
+        self._vna.set_nop(200)
         self._vna.set_freq_limits(*self._vna_parameters["freq_limits"])
         self._vna.set_power(self._vna_parameters["power"])
         self._vna.set_bandwidth(self._vna_parameters["bandwidth"]*10)
