@@ -167,12 +167,17 @@ class IQCalibrator():
 
         def iterate_minimization(prev_results, n=2):
 
-            res_if_offs = minimize(loss_function_if_offsets, prev_results["if_offsets"], args=[prev_results["if_amplitudes"], prev_results["if_phase"]],
-                              method="Nelder-Mead", options={"maxiter":minimize_iterlimit, "xatol":1e-3, "fatol":10})
-            res_amps = minimize(loss_function_if_amplitudes, prev_results["if_amplitudes"], args=[res_if_offs.x, prev_results["if_phase"]],
-                                method="Nelder-Mead", options={"maxiter":minimize_iterlimit, "xatol":1e-3, "fatol":10})
-            res_phase = minimize(loss_function_if_phase, prev_results["if_phase"], args=[res_if_offs.x, res_amps.x],
-                                 method="Nelder-Mead", options={"maxiter":minimize_iterlimit, "xatol":1e-3, "fatol":10})
+            options = {"maxiter":minimize_iterlimit, "xatol":1e-3, "fatol":10}
+            res_if_offs = minimize(loss_function_if_offsets, prev_results["if_offsets"],
+                args=[prev_results["if_amplitudes"], prev_results["if_phase"]],
+                method="Nelder-Mead", options=options)
+            res_amps = minimize(loss_function_if_amplitudes, prev_results["if_amplitudes"],
+                args=[res_if_offs.x, prev_results["if_phase"]],
+                method="Nelder-Mead", options=options)
+            res_phase = minimize(loss_function_if_phase, prev_results["if_phase"],
+                args=[res_if_offs.x, res_amps.x],
+                method="Nelder-Mead", options=options)
+                
             results["if_offsets"] = res_if_offs.x
             results["if_amplitudes"] = res_amps.x
             results["if_phase"] = res_phase.x
