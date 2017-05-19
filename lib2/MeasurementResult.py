@@ -60,14 +60,19 @@ class ContextBase():
         return "Equipment with parameters:\n"+str(self._equipment)+\
             "\nComment:\n"+self._comment
 
+    def update_context(self, equipment = {}, comment = ""):
+        context._equipment.update(equipment)
+        context._comment.join(comment)
+
+
 class MeasurementResult():
 
-    def __init__(self, name, sample_name):
+    def __init__(self, name, sample_name, equipment={}, comment=""):
         self._name = name
         self._sample_name = sample_name
         self._data_lock = Lock()
         self._data = {}
-
+        self._context = ContextBase(equipment,comment)
         # Dynamic visualization fileds, see _prepare_figure(...) docstring below
 
         self._dynamic_figure = None # the figure that will be dynamically updated
@@ -77,6 +82,7 @@ class MeasurementResult():
 
     def set_parameter_names(self, parameter_names):
         self._parameter_names = parameter_names
+
 
     @staticmethod
     def load(sample_name, name):
@@ -249,6 +255,9 @@ class MeasurementResult():
         with self._data_lock:
             return copy.deepcopy(self._data)
 
+    def get_context(self):
+        return self._context
+
     def set_data(self, data):
         '''
         Data should consist only of built-in data types to be easy to use on
@@ -257,11 +266,6 @@ class MeasurementResult():
         with self._data_lock:
             self._data = copy.deepcopy(data)
 
-    def set_context(self, context):
-        self._context = context
-
-    def get_context(self):
-        return self._context
 
     def copy(self):
         with self._data_lock:
