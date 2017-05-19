@@ -47,7 +47,7 @@ from drivers import *
 from matplotlib import pyplot as plt
 from datetime import datetime as dt
 from threading import Thread
-#from resonator_tools import circuit
+from resonator_tools import circuit
 from itertools import product
 from functools import reduce
 from operator import mul
@@ -282,15 +282,14 @@ class Measurement():
         """
         Finds frequency of the resonator visible on the VNA screen
         """
-        # vna = self._vna
-        # vna.avg_clear(); vna.prepare_for_stb(); vna.sweep_single(); vna.wait_for_stb()
-        # port = circuit.notch_port(vna.get_frequencies(), vna.get_sdata())
-        # port.autofit()
-        # port.plotall()
-        # min_idx = argmin(abs(port.z_data_sim))
-        # return (vna.get_frequencies()[min_idx],
-        #             min(abs(port.z_data_sim)), angle(port.z_data_sim)[min_idx])
-        pass
+        vna = self._vna
+        vna.avg_clear(); vna.prepare_for_stb(); vna.sweep_single(); vna.wait_for_stb()
+        port = circuit.notch_port(vna.get_frequencies(), vna.get_sdata())
+        port.autofit()
+        port.plotall()
+        min_idx = argmin(abs(port.z_data_sim))
+        return (vna.get_frequencies()[min_idx],
+                    min(abs(port.z_data_sim)), angle(port.z_data_sim)[min_idx])
 
     def _detect_qubit(self):
         '''
