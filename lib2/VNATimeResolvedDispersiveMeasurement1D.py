@@ -41,6 +41,7 @@ class VNATimeResolvedDispersiveMeasurement1DResult(\
 
     def __init__(self, name, sample_name):
         super().__init__(name, sample_name)
+        self._x_axis_units = "$\mu$s"
         self._context = VNATimeResolvedDispersiveMeasurementContext()
         self._fit_params = {}
         self._fit_errors = {}
@@ -113,7 +114,7 @@ class VNATimeResolvedDispersiveMeasurement1DResult(\
 
         xlabel = self._parameter_names[0][0].upper()+\
                     self._parameter_names[0][1:].replace("_", " ")+\
-                        " [$\mu$s]"
+                        " [%s]"%self._x_axis_units
         axes["phase"].set_xlabel(xlabel)
         axes["imag"].set_xlabel(xlabel)
 
