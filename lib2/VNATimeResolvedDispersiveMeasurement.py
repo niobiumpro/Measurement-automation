@@ -6,7 +6,7 @@ from scipy.optimize import curve_fit
 
 class VNATimeResolvedDispersiveMeasurementContext(ContextBase):
 
-    def __init__(self, equipment = {}, pulse_sequence_parameters = {}, comment = ""):
+    def __init__(self, equipment, pulse_sequence_parameters, comment):
         '''
         Parameters:
         -----------
@@ -38,11 +38,13 @@ class VNATimeResolvedDispersiveMeasurement(Measurement):
         self._q_awg = self._actual_devices[q_awg_name]
         self._vna = self._actual_devices[vna_name]
         self._q_lo = self._actual_devices[q_lo_name]
+        self._pulse_sequence_parameters =\
+            {"modulating_window":"rectangular", "excitation_amplitude":1}
 
     def set_fixed_parameters(self, vna_parameters, q_lo_parameters,
         ro_awg_parameters, q_awg_parameters, pulse_sequence_parameters):
 
-        self._pulse_sequence_parameters = pulse_sequence_parameters
+        self._pulse_sequence_parameters.update(pulse_sequence_parameters)
         self._measurement_result.get_context()\
                 .get_pulse_sequence_parameters()\
                 .update(pulse_sequence_parameters)
@@ -71,38 +73,28 @@ class VNATimeResolvedDispersiveMeasurement(Measurement):
         self._q_lo.set_output_state("ON")
         return res_freq
 
-    def _output_rabi_sequence(self, excitation_duration):
+    def _output_rabi_sequence(self):
 
         q_pb = self._q_awg.get_pulse_builder()
         ro_pb = self._ro_awg.get_pulse_builder()
-        self._pulse_sequence_parameters["excitation_duration"]=\
-                                            excitation_duration
         q_seq, ro_seq = PulseBuilder.build_dispersive_rabi_sequences(q_pb,
                     ro_pb, self._pulse_sequence_parameters)
         self._q_awg.output_pulse_sequence(q_seq)
         self._ro_awg.output_pulse_sequence(ro_seq)
 
-    def _output_ramsey_sequence(self, ramsey_delay):
+    def _output_ramsey_sequence(self):
 
         q_pb = self._q_awg.get_pulse_builder()
         ro_pb = self._ro_awg.get_pulse_builder()
-        self._pulse_sequence_parameters["ramsey_delay"]=\
-                                                    ramsey_delay
-
         q_seq, ro_seq = PulseBuilder.build_dispersive_ramsey_sequences(q_pb,
                     ro_pb, self._pulse_sequence_parameters)
         self._q_awg.output_pulse_sequence(q_seq)
         self._ro_awg.output_pulse_sequence(ro_seq)
 
-    def _output_APE_sequence(self, ramsey_angle, pseudo_I_pulses_count):
+    def _output_APE_sequence(self):
 
         q_pb = self._q_awg.get_pulse_builder()
         ro_pb = self._ro_awg.get_pulse_builder()
-        self._pulse_sequence_parameters["ramsey_angle"]=\
-                                                    ramsey_delay
-        self._pulse_sequence_parameters["pseudo_I_pulses_count"]=\
-                                                    pseudo_I_pulses_count
-
         q_seq, ro_seq = PulseBuilder.build_dispersive_APE_sequences(q_pb,
                     ro_pb, self._pulse_sequence_parameters)
         self._q_awg.output_pulse_sequence(q_seq)

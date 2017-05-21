@@ -30,11 +30,9 @@ class DispersiveHahnEcho(VNATimeResolvedDispersiveMeasurement1D):
         q_pb.add_zero_pulse(awg_trigger_reaction_delay)\
                 .add_sine_pulse(half_pi_pulse_duration, 0)\
                 .add_zero_pulse(echo_delay/2)\
-                .add_sine_pulse(2*half_pi_pulse_duration,
-                        time_offset = half_pi_pulse_duration+echo_delay/2)\
+                .add_sine_pulse(2*half_pi_pulse_duration)\
                 .add_zero_pulse(echo_delay/2)\
-                .add_sine_pulse(half_pi_pulse_duration,
-                        time_offset = 3*half_pi_pulse_duration+echo_delay)\
+                .add_sine_pulse(half_pi_pulse_duration)\
                 .add_zero_pulse(readout_duration)\
                 .add_zero_until(repetition_period)
         self._q_awg.output_pulse_sequence(q_pb.build())
@@ -56,21 +54,5 @@ class DispersiveHahnEchoResult(VNATimeResolvedDispersiveMeasurement1DResult):
         bounds =([-1, 0, -1], [1, 20, 1])
         return p0, bounds
 
-    def _plot_fit(self, axes):
-        self.fit(verbose=False)
-
-        for idx, name in enumerate(self._fit_params.keys()):
-            ax = axes[name]
-            opt_params = self._fit_params[name]
-            err = self._fit_errors[name]
-
-            X = self.get_data()[self._parameter_names[0]]/1e3
-            Y = self._theoretical_function(X, *opt_params)
-            ax.plot(X, Y, "C%d"%list(self._data_formats.keys()).index(name))
-
-            bbox_props = dict(boxstyle="round", fc="white",
-                    ec="black", lw=1, alpha=0.5)
-            ax.annotate("$T_{2E}=%.2f\pm%.2f \mu$s"%\
-                (opt_params[1], err[1]),
-                (mean(ax.get_xlim()),  .9*ax.get_ylim()[0]+.1*ax.get_ylim()[1]),
-                bbox=bbox_props, ha="center")
+    def _generate_annotation_string(self, opt_params, err):
+        return "$T_{2E}=%.2f\pm%.2f \mu$s"%(opt_params[1], err[1])
