@@ -42,19 +42,21 @@ class VNATimeResolvedDispersiveMeasurement1DResult(\
     def __init__(self, name, sample_name):
         super().__init__(name, sample_name)
         self._x_axis_units = "$\mu$s"
-        self._context = VNATimeResolvedDispersiveMeasurementContext()
         self._fit_params = {}
         self._fit_errors = {}
+        self._annotation_bbox_props = dict(boxstyle="round", fc="white",
+                ec="black", lw=1, alpha=0.5)
+        self._annotation_v_pos = "bottom"
 
     def _theoretical_function(self):
         '''
-        Should be implemented in a child class
+        Should be implemented in child classes
         '''
         pass
 
     def _generate_fit_arguments(self):
         '''
-        Should be implemented in a child class.
+        Should be implemented in child classes.
 
         Returns:
         p0: array
@@ -70,14 +72,14 @@ class VNATimeResolvedDispersiveMeasurement1DResult(\
         data = meas_data["data"][meas_data["data"]!=0]
         if len(data)<5:
             return
-        excitation_times = meas_data[self._parameter_names[0]]/1e3
-        excitation_times = excitation_times[:len(data)]
+        X = self._prepare_data_for_plot(meas_data)[0]
+        X = X[:len(data)]
         for name in self._data_formats.keys():
-            line = self._data_formats[name][0](data)
+            Y = self._data_formats[name][0](data)
             try:
-                p0, bounds = self._generate_fit_arguments(excitation_times, line)
+                p0, bounds = self._generate_fit_arguments(X, Y)
                 opt_params, pcov = curve_fit(self._theoretical_function,
-                            excitation_times, line, p0, bounds = bounds,
+                            X, Y, p0, bounds = bounds,
                             maxfev=10000)
                 std = sqrt(abs(diag(pcov)))
                 if (abs(opt_params)>std).all():
@@ -92,6 +94,9 @@ class VNATimeResolvedDispersiveMeasurement1DResult(\
                     print("Fit of %s did not converge"%name)
                 continue
 
+    def _prepare_data_for_plot(self, data):
+        return data[self._parameter_names[0]]/1e3, data["data"]
+
     def _plot(self, axes, caxes):
         axes = dict(zip(self._data_formats.keys(), axes))
 
@@ -99,10 +104,11 @@ class VNATimeResolvedDispersiveMeasurement1DResult(\
         if "data" not in data.keys():
             return
 
+        X, Y_raw = self._prepare_data_for_plot(data)
+
         for idx, name in enumerate(self._data_formats.keys()):
-            Y = self._data_formats[name][0](data["data"])
+            Y = self._data_formats[name][0](Y_raw)
             Y = Y[Y!=0]
-            X = data[self._parameter_names[0]]/1e3
             ax = axes[name]
             ax.clear()
             ax.grid()
@@ -120,6 +126,22 @@ class VNATimeResolvedDispersiveMeasurement1DResult(\
 
         self._plot_fit(axes)
 
+    def _generate_annotation_string(self, opt_params, err):
+        '''
+        Should be implemented in child classes
+        '''
+        pass
+
+    def _annotate_fit_plot(self, ax, opt_params, err):
+        h_pos = mean(ax.get_xlim())
+        v_pos = .9*ax.get_ylim()[0]+.1*ax.get_ylim()[1] \
+                    if self._annotation_v_pos=="bottom" else\
+                        .1*ax.get_ylim()[0]+.9*ax.get_ylim()[1]
+
+        annotation_string = self._generate_annotation_string(opt_params, err)
+        ax.annotate(annotation_string, (h_pos, v_pos),
+                    bbox=self._annotation_bbox_props, ha="center")
+
     def _plot_fit(self, axes):
         self.fit(verbose=False)
 
@@ -128,13 +150,7 @@ class VNATimeResolvedDispersiveMeasurement1DResult(\
             opt_params = self._fit_params[name]
             err = self._fit_errors[name]
 
-            X = self.get_data()[self._parameter_names[0]]/1e3
+            X = self._prepare_data_for_plot(self.get_data())[0]
             Y = self._theoretical_function(X, *opt_params)
             ax.plot(X, Y, "C%d"%list(self._data_formats.keys()).index(name))
-
-            bbox_props = dict(boxstyle="round", fc="white",
-                    ec="black", lw=1, alpha=0.5)
-            ax.annotate("$T_R=%.2f\pm%.2f \mu$s\n$\Omega_R/2\pi = %.2f\pm%.2f$ MHz"%\
-                (opt_params[1], err[1], opt_params[2]/2/pi, err[2]/2/pi),
-                (mean(ax.get_xlim()),  .9*ax.get_ylim()[0]+.1*ax.get_ylim()[1]),
-                bbox=bbox_props, ha="center")
+            self._annotate_fit_plot(ax, opt_params, err)

@@ -6,26 +6,17 @@ from scipy.optimize import curve_fit
 
 class VNATimeResolvedDispersiveMeasurementContext(ContextBase):
 
-    def __init__(self, equipment, pulse_sequence_parameters, comment):
-        '''
-        Parameters:
-        -----------
-        equipment: dict
-            a dict containing dicts representing device parameters
-        pulse_sequence_parameters: dict
-            should contain all control parameters of the pulse sequence used in
-            the measurement
-        '''
-        super().__init__(equipment, comment)
-        self._pulse_sequence_parameters = pulse_sequence_parameters
+    def __init__(self):
+        super().__init__()
+        self._pulse_sequence_parameters = {}
 
     def get_pulse_sequence_parameters(self):
         return self._pulse_sequence_parameters
 
     def to_string(self):
-        return "Pulse sequence parameters:\n"+str(self._pulse_sequence_parameters)+\
-            super().to_string()
-
+        return "Pulse sequence parameters:\n"+\
+                str(self._pulse_sequence_parameters)+"\n"+\
+                super().to_string()
 
 class VNATimeResolvedDispersiveMeasurement(Measurement):
 
@@ -105,7 +96,8 @@ class VNATimeResolvedDispersiveMeasurementResult(MeasurementResult):
 
     def __init__(self, name, sample_name):
         super().__init__(name, sample_name)
-        self._context = VNATimeResolvedDispersiveMeasurementContext()
+        self._context =\
+            VNATimeResolvedDispersiveMeasurementContext()
         self._is_finished = False
         self._phase_units = "rad"
         self._data_formats = {
