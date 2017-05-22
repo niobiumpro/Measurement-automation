@@ -30,7 +30,6 @@ class DispersivePiPulseAmplitudeCalibrationResult(VNATimeResolvedDispersiveMeasu
         p0 = [-(max(data)-min(data))/2, 1, mean((max(data), min(data)))]
         return p0, bounds
 
-
     def _prepare_data_for_plot(self, data):
         return data["excitation_amplitude"], data["data"]
 

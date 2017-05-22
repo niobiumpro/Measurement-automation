@@ -91,6 +91,22 @@ class VNATimeResolvedDispersiveMeasurement(Measurement):
         self._q_awg.output_pulse_sequence(q_seq)
         self._ro_awg.output_pulse_sequence(ro_seq)
 
+    def _output_hahn_echo_sequence(self):
+        q_pb = self._q_awg.get_pulse_builder()
+        ro_pb = self._ro_awg.get_pulse_builder()
+        q_seq, ro_seq = PulseBuilder.build_hahn_echo_sequences(q_pb,
+                    ro_pb, self._pulse_sequence_parameters)
+        self._q_awg.output_pulse_sequence(q_pb.build())
+        self._ro_awg.output_pulse_sequence(ro_pb.build())
+
+    def _output_decay_sequence(self):
+        q_pb = self._q_awg.get_pulse_builder()
+        ro_pb = self._ro_awg.get_pulse_builder()
+        q_seq, ro_seq = PulseBuilder.build_decay_sequences(q_pb,
+                    ro_pb, self._pulse_sequence_parameters)
+        self._q_awg.output_pulse_sequence(q_pb.build())
+        self._ro_awg.output_pulse_sequence(ro_pb.build())
+
 
 class VNATimeResolvedDispersiveMeasurementResult(MeasurementResult):
 

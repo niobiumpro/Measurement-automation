@@ -17,32 +17,8 @@ class DispersiveHahnEcho(VNATimeResolvedDispersiveMeasurement1D):
         super().set_swept_parameters("echo_delay", echo_delays)
 
     def _output_pulse_sequence(self, echo_delay):
-        awg_trigger_reaction_delay = \
-                self._pulse_sequence_parameters["awg_trigger_reaction_delay"]
-        readout_duration = \
-                self._pulse_sequence_parameters["readout_duration"]
-        repetition_period = \
-                self._pulse_sequence_parameters["repetition_period"]
-        half_pi_pulse_duration = \
-                self._pulse_sequence_parameters["half_pi_pulse_duration"]
-
-        q_pb = self._q_awg.get_pulse_builder()
-        q_pb.add_zero_pulse(awg_trigger_reaction_delay)\
-                .add_sine_pulse(half_pi_pulse_duration, 0)\
-                .add_zero_pulse(echo_delay/2)\
-                .add_sine_pulse(2*half_pi_pulse_duration)\
-                .add_zero_pulse(echo_delay/2)\
-                .add_sine_pulse(half_pi_pulse_duration)\
-                .add_zero_pulse(readout_duration)\
-                .add_zero_until(repetition_period)
-        self._q_awg.output_pulse_sequence(q_pb.build())
-
-        ro_pb = self._ro_awg.get_pulse_builder()
-        ro_pb.add_zero_pulse(4*half_pi_pulse_duration+echo_delay)\
-             .add_dc_pulse(readout_duration)\
-             .add_zero_pulse(100)
-        self._ro_awg.output_pulse_sequence(ro_pb.build())
-
+        self._pulse_sequence_parameters["echo_delay"] = echo_delay
+        super._output_hahn_echo_sequence()
 
 class DispersiveHahnEchoResult(VNATimeResolvedDispersiveMeasurement1DResult):
 
