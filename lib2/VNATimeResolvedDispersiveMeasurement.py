@@ -20,13 +20,13 @@ class VNATimeResolvedDispersiveMeasurementContext(ContextBase):
 
 class VNATimeResolvedDispersiveMeasurement(Measurement):
 
-    def __init__(self, name, sample_name, vna_name, ro_awg_name, q_awg_name,
+    def __init__(self, name, sample_name, vna_name, ro_awg, q_awg,
         q_lo_name, line_attenuation_db = 60, plot_update_interval = 1):
-        super().__init__(name, sample_name, devs_names=[vna_name, ro_awg_name,
-            q_awg_name, q_lo_name], plot_update_interval=plot_update_interval)
+        super().__init__(name, sample_name, devs_names=[vna_name, q_lo_name],
+                    plot_update_interval=plot_update_interval)
 
-        self._ro_awg = self._actual_devices[ro_awg_name]
-        self._q_awg = self._actual_devices[q_awg_name]
+        self._ro_awg = ro_awg
+        self._q_awg = q_awg
         self._vna = self._actual_devices[vna_name]
         self._q_lo = self._actual_devices[q_lo_name]
         self._pulse_sequence_parameters =\
@@ -94,18 +94,18 @@ class VNATimeResolvedDispersiveMeasurement(Measurement):
     def _output_hahn_echo_sequence(self):
         q_pb = self._q_awg.get_pulse_builder()
         ro_pb = self._ro_awg.get_pulse_builder()
-        q_seq, ro_seq = PulseBuilder.build_hahn_echo_sequences(q_pb,
+        q_seq, ro_seq = PulseBuilder.build_dispersive_hahn_echo_sequences(q_pb,
                     ro_pb, self._pulse_sequence_parameters)
-        self._q_awg.output_pulse_sequence(q_pb.build())
-        self._ro_awg.output_pulse_sequence(ro_pb.build())
+        self._q_awg.output_pulse_sequence(q_seq)
+        self._ro_awg.output_pulse_sequence(ro_seq)
 
     def _output_decay_sequence(self):
         q_pb = self._q_awg.get_pulse_builder()
         ro_pb = self._ro_awg.get_pulse_builder()
-        q_seq, ro_seq = PulseBuilder.build_decay_sequences(q_pb,
+        q_seq, ro_seq = PulseBuilder.build_dispersive_decay_sequences(q_pb,
                     ro_pb, self._pulse_sequence_parameters)
-        self._q_awg.output_pulse_sequence(q_pb.build())
-        self._ro_awg.output_pulse_sequence(ro_pb.build())
+        self._q_awg.output_pulse_sequence(q_seq)
+        self._ro_awg.output_pulse_sequence(ro_seq)
 
 
 class VNATimeResolvedDispersiveMeasurementResult(MeasurementResult):

@@ -107,23 +107,29 @@ class IQCalibrator():
 
         def loss_function_dc_offsets(voltages):
             vdc1, vdc2 = voltages
-            self._awg.output_continuous_wave(frequency=0, amplitude=0, phase=0, offset=vdc1, waveform_resolution=waveform_resolution, channel=1)
-            self._awg.output_continuous_wave(frequency=0, amplitude=0, phase=0, offset=vdc2, waveform_resolution=waveform_resolution, channel=2)
+            self._awg.output_continuous_wave(frequency=0, amplitude=0, phase=0,
+                offset=vdc1, waveform_resolution=waveform_resolution, channel=1)
+            self._awg.output_continuous_wave(frequency=0, amplitude=0, phase=0,
+                offset=vdc2, waveform_resolution=waveform_resolution, channel=2)
             self._sa.prepare_for_stb();self._sa.sweep_single();self._sa.wait_for_stb()
             data = self._sa.get_tracedata()
-            answer =  data[0]
-            print("\rDC offsets: ", format_number_list(voltages), format_number_list(data), end=", ", flush=True)
+            answer = data[0]
+            print("\rDC offsets: ", format_number_list(voltages),
+                            format_number_list(data), end=", ", flush=True)
             clear_output(wait=True)
             return answer
 
         def loss_function_dc_offsets_open(voltages):
             vdc1, vdc2 = voltages
-            self._awg.output_continuous_wave(frequency=0, amplitude=0, phase=0, offset=vdc1, waveform_resolution=waveform_resolution, channel=1)
-            self._awg.output_continuous_wave(frequency=0, amplitude=0, phase=0, offset=vdc2, waveform_resolution=waveform_resolution, channel=2)
+            self._awg.output_continuous_wave(frequency=0, amplitude=0, phase=0,
+                offset=vdc1, waveform_resolution=waveform_resolution, channel=1)
+            self._awg.output_continuous_wave(frequency=0, amplitude=0, phase=0,
+                offset=vdc2, waveform_resolution=waveform_resolution, channel=2)
             self._sa.prepare_for_stb();self._sa.sweep_single();self._sa.wait_for_stb()
             data = self._sa.get_tracedata()
             answer = abs(data[0]-ssb_power)+10*abs(vdc1-vdc2)
-            print("\rDC offsets open: ", format_number_list(voltages), format_number_list(data), end=", ", flush=True)
+            print("\rDC offsets open: ", format_number_list(voltages),
+                            format_number_list(data), end=", ", flush=True)
             clear_output(wait=True)
             return answer
 
@@ -131,12 +137,15 @@ class IQCalibrator():
             vdc1, vdc2 = voltages
             amp1, amp2 = args[0]
             phase = args[1]
-            self._awg.output_continuous_wave(frequency=if_frequency, amplitude=amp1, phase=phase, offset=vdc1, waveform_resolution=waveform_resolution, channel=1)
-            self._awg.output_continuous_wave(frequency=if_frequency, amplitude=amp2, phase=0, offset=vdc2, waveform_resolution=waveform_resolution, channel=2)
+            self._awg.output_continuous_wave(frequency=if_frequency, amplitude=amp1,
+                phase=phase, offset=vdc1, waveform_resolution=waveform_resolution, channel=1)
+            self._awg.output_continuous_wave(frequency=if_frequency, amplitude=amp2,
+                phase=0, offset=vdc2, waveform_resolution=waveform_resolution, channel=2)
             self._sa.prepare_for_stb();self._sa.sweep_single();self._sa.wait_for_stb()
             data = self._sa.get_tracedata()
             answer =  data[1]
-            print("\rIF offsets: ", format_number_list(voltages), format_number_list(data), end="            ", flush=True)
+            print("\rIF offsets: ", format_number_list(voltages),
+                    format_number_list(data), end="            ", flush=True)
             clear_output(wait=True)
             return answer
 
@@ -144,24 +153,29 @@ class IQCalibrator():
             amp1, amp2 = amplitudes
             vdc1, vdc2 = args[0]
             phase = args[1]
-            self._awg.output_continuous_wave(frequency=if_frequency, amplitude=amp1, phase=phase, offset=vdc1, waveform_resolution=waveform_resolution, channel=1)
-            self._awg.output_continuous_wave(frequency=if_frequency, amplitude=amp2, phase=0, offset=vdc2, waveform_resolution=waveform_resolution, channel=2)
+            self._awg.output_continuous_wave(frequency=if_frequency, amplitude=amp1,
+                phase=phase, offset=vdc1, waveform_resolution=waveform_resolution, channel=1)
+            self._awg.output_continuous_wave(frequency=if_frequency, amplitude=amp2,
+                phase=0, offset=vdc2, waveform_resolution=waveform_resolution, channel=2)
             self._sa.prepare_for_stb();self._sa.sweep_single();self._sa.wait_for_stb()
             data = self._sa.get_tracedata()
             answer =  data[2] + 10*abs(ssb_power - data[0]) + 0 if abs(abs(amp1)-abs(amp2))<.5 else 10**(10*abs(abs(amp1)-abs(amp2)))
             clear_output(wait=True)
-            print("\rAmplitudes: ", format_number_list(amplitudes), format_number_list(data), "loss:", answer, end="          ", flush=True)
+            print("\rAmplitudes: ", format_number_list(amplitudes),
+                format_number_list(data), "loss:", answer, end="          ", flush=True)
             return answer
 
         def loss_function_if_phase(phase, args):
             vdc1, vdc2 = args[0]
             amp1, amp2 = args[1]
-            self._awg.output_continuous_wave(frequency=if_frequency, amplitude=amp1, phase=phase, offset=vdc1, waveform_resolution=waveform_resolution, channel=1)
-            self._awg.output_continuous_wave(frequency=if_frequency, amplitude=amp2, phase=0, offset=vdc2, waveform_resolution=waveform_resolution, channel=2)
+            self._awg.output_continuous_wave(frequency=if_frequency, amplitude=amp1,
+                phase=phase, offset=vdc1, waveform_resolution=waveform_resolution, channel=1)
+            self._awg.output_continuous_wave(frequency=if_frequency, amplitude=amp2,
+                phase=0, offset=vdc2, waveform_resolution=waveform_resolution, channel=2)
             self._sa.prepare_for_stb();self._sa.sweep_single();self._sa.wait_for_stb()
             data = self._sa.get_tracedata()
             answer =  data[2] - data[0]
-            print("\rPhase: ", "%2.4f"%(phase/pi), format_number_list(data), end="             ", flush=True)
+            print("\rPhase: ", "%2.4f"%(phase), format_number_list(data), end="             ", flush=True)
             clear_output(wait=True)
             return answer
 
@@ -177,7 +191,7 @@ class IQCalibrator():
             res_phase = minimize(loss_function_if_phase, prev_results["if_phase"],
                 args=[res_if_offs.x, res_amps.x],
                 method="Nelder-Mead", options=options)
-                
+
             results["if_offsets"] = res_if_offs.x
             results["if_amplitudes"] = res_amps.x
             results["if_phase"] = res_phase.x
@@ -197,7 +211,7 @@ class IQCalibrator():
 
             results = None
             if initial_guess==None:
-                results = {"dc_offsets":(0.1,0.1), "if_offsets":(0.1,0.1), "if_amplitudes":(0.5,0.5), "if_phase":pi*0.54}
+                results = {"dc_offsets":(1,1), "dc_offsets_open":(1,1), "if_offsets":(1,1), "if_amplitudes":(0.5,0.5), "if_phase":pi*0.54}
             else:
                 results = initial_guess
 
@@ -205,22 +219,28 @@ class IQCalibrator():
 
             res_dc_offs = minimize(loss_function_dc_offsets, results["dc_offsets"],
                           method="Nelder-Mead", options={"maxiter":minimize_iterlimit*iterations,"xatol":1e-3, "fatol":100})
+
             if if_frequency == 0:
-                res_dc_offs_open = minimize(loss_function_dc_offsets_open, results["dc_offsets"],
+                res_dc_offs_open = minimize(loss_function_dc_offsets_open, array(results["dc_offsets_open"]),
                               method="Nelder-Mead", options={"maxiter":minimize_iterlimit*iterations,"xatol":1e-3, "fatol":100})
                 spectral_values = {"dc":res_dc_offs.fun, "dc_open":self._sa.get_tracedata()}
                 elapsed_time = (datetime.now() - start).total_seconds()
-                return IQCalibrationData(self._mixer_id, self._iq_attenuation, lo_frequency, lo_power, if_frequency, ssb_power, waveform_resolution,
-                    res_dc_offs.x, res_dc_offs_open.x, None, None, None, spectral_values, elapsed_time, datetime.now())
+                return IQCalibrationData(self._mixer_id, self._iq_attenuation,
+                    lo_frequency, lo_power, if_frequency, ssb_power, waveform_resolution,
+                    res_dc_offs.x, res_dc_offs_open.x, None, None, None, spectral_values,
+                    elapsed_time, datetime.now())
 
             else:
-                self._sa.setup_list_sweep([lo_frequency-if_frequency, lo_frequency, lo_frequency+if_frequency], [sa_res_bandwidth]*3)
+                self._sa.setup_list_sweep([lo_frequency-if_frequency, lo_frequency,
+                        lo_frequency+if_frequency], [sa_res_bandwidth]*3)
                 results["if_offsets"]=res_dc_offs.x
                 iterate_minimization(results, iterations)
                 spectral_values = {"dc":res_dc_offs.fun, "if":self._sa.get_tracedata()}
                 elapsed_time = (datetime.now() - start).total_seconds()
-                return IQCalibrationData(self._mixer_id, self._iq_attenuation, lo_frequency, lo_power, if_frequency, ssb_power, waveform_resolution,
-                    res_dc_offs.x, None, results["if_offsets"], results["if_amplitudes"], results["if_phase"], spectral_values, elapsed_time, datetime.now())
+                return IQCalibrationData(self._mixer_id, self._iq_attenuation,
+                    lo_frequency, lo_power, if_frequency, ssb_power, waveform_resolution,
+                    res_dc_offs.x, None, results["if_offsets"], results["if_amplitudes"],
+                    results["if_phase"], spectral_values, elapsed_time, datetime.now())
 
         except KeyboardInterrupt:
             pass

@@ -3,9 +3,9 @@ from lib2.VNATimeResolvedDispersiveMeasurement1D import *
 
 class DispersiveRamsey(VNATimeResolvedDispersiveMeasurement1D):
 
-    def __init__(self, name, sample_name, vna_name, ro_awg_name, q_awg_name,
+    def __init__(self, name, sample_name, vna_name, ro_awg, q_awg,
                 q_lo_name, line_attenuation_db = 60):
-        super().__init__(name, sample_name, vna_name, ro_awg_name, q_awg_name,
+        super().__init__(name, sample_name, vna_name, ro_awg, q_awg,
                     q_lo_name, line_attenuation_db)
         self._measurement_result = DispersiveRamseyResult(name,
                     sample_name)
@@ -24,7 +24,7 @@ class DispersiveRamseyResult(VNATimeResolvedDispersiveMeasurement1DResult):
         return A*exp(-1/T_2_ast*t)*cos(Delta_Omega*t+phase)+offset
 
     def _generate_fit_arguments(self, x, data):
-        bounds =([-1, 0, 0, -1, -pi], [1, 100, 20*2*pi, 1, pi])
+        bounds =([-10, 0, 0, -10, -pi], [10, 100, 20*2*pi, 10, pi])
         p0 = [(max(data)-min(data))/2, 1, 1*2*pi,
             mean((max(data), min(data))), 0]
         return p0, bounds

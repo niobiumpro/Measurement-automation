@@ -61,12 +61,12 @@ class ContextBase():
 
 class MeasurementResult():
 
-    def __init__(self, name, sample_name, equipment={}, comment=""):
+    def __init__(self, name, sample_name):
         self._name = name
         self._sample_name = sample_name
         self._data_lock = Lock()
         self._data = {}
-        self._context = ContextBase(equipment,comment)
+        self._context = ContextBase()
         # Dynamic visualization fileds, see _prepare_figure(...) docstring below
 
         self._dynamic_figure = None # the figure that will be dynamically updated

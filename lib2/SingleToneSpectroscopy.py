@@ -57,6 +57,7 @@ class SingleToneSpectroscopy(Measurement):
         super().set_fixed_parameters(vna = vna_parameters)
         self._frequencies = linspace(*vna_parameters["freq_limits"],\
                         vna_parameters["nop"])
+        self._vna.sweep_hold()
 
     def set_swept_parameters(self, swept_parameter):
         '''
@@ -85,6 +86,7 @@ class SingleToneSpectroscopyResult(MeasurementResult):
         self._context = ContextBase()
         self._is_finished = False
         self._phase_units = "rad"
+        self._unwrap_phase = False
 
     def set_parameter_name(self, parameter_name):
         self._parameter_name = parameter_name
@@ -97,6 +99,7 @@ class SingleToneSpectroscopyResult(MeasurementResult):
         ax_amps.set_xlabel(self._parameter_name[0].upper()+self._parameter_name[1:])
         ax_phas.ticklabel_format(axis='x', style='sci', scilimits=(-2,2))
         ax_phas.set_xlabel(self._parameter_name[0].upper()+self._parameter_name[1:])
+        plt.tight_layout(pad=1)
         cax_amps, kw = colorbar.make_axes(ax_amps)
         cax_phas, kw = colorbar.make_axes(ax_phas)
         cax_amps.set_title("$|S_{21}|$")
@@ -104,6 +107,17 @@ class SingleToneSpectroscopyResult(MeasurementResult):
         ax_amps.grid()
         ax_phas.grid()
         return fig, axes, (cax_amps, cax_phas)
+
+    def set_unwrap_phase(self, unwrap_phase):
+        '''
+        Set if the phase plot should be unwrapped
+
+        Parameters:
+        -----------
+        unwrap_phase: boolean
+            True or False to control the unwrapping
+        '''
+        self._unwrap_phase = unwrap_phase
 
     def set_phase_units(self, units):
         '''
@@ -136,7 +150,7 @@ class SingleToneSpectroscopyResult(MeasurementResult):
                         aspect = 'auto', vmax=max_amp, vmin=min_amp, extent=extent)
         plt.colorbar(amps_map, cax = cax_amps)
 
-        phases = unwrap(unwrap(angle(Z))).T
+        phases = angle(Z).T if not self._unwrap_phase else unwrap(unwrap(angle(Z)).T)
         phases = phases if self._phase_units == "rad" else phases*180/pi
         max_phas = max(phases[phases!=0])
         min_phas = min(phases[phases!=0])
