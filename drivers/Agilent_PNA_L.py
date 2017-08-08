@@ -125,8 +125,14 @@ class Agilent_PNA_L(Instrument):
             flags=Instrument.FLAG_GETSET)
 
         # sets the S21 setting in the PNA X
-        # self.define_S21()
-        # self.set_S21()
+        self.define_S21() # this two lines is uncommented by Shamil 06/26/2017 due to the fact that
+        self.set_S21()  # by using high level measurement child classes it is not possible to continue proper operation
+                        # of PNA-L after self._visaintrument.write( "SYST:FPReset" ) command, it seem like without this
+                        # lines of code there is no trace selected after self.select_default_trace()
+                        # and self.get_all seem do interrupt the program with timeout exception thrown by low-level visa
+                        # GPIB drivers. The reason is that PNA-L doesn't have any number of points in sweep (get_all start
+                        # by quering number of points in current sweep), because there is no traces defined, hence there
+                        # is no number of points available to read
         self.select_default_trace()
 
 
@@ -217,6 +223,9 @@ class Agilent_PNA_L(Instrument):
         '''
         self._visainstrument.write( "CALCulate:PARameter:DEF:EXT "+'CH1_S%s%s_1'%(i,j)+', S%s%s'%(i,j))
 
+    def get_sweep_type(self):
+        return self._visainstrument.query("SENS:SWE:TYPE?")[:-1]
+
     def autoscale_all(self):
         windows = self._visainstrument.query(" Disp:Cat?").replace('"', "").replace("\n", "").split(",")
         for window in windows:
@@ -231,6 +240,9 @@ class Agilent_PNA_L(Instrument):
 
     def get_sweep(self):
         self._visainstrument.write( "ABORT; INITiate:IMMediate;*wai")
+
+    def preset(self):
+        self._visainstrument.write( "SYST:FPReset" )
 
     def avg_clear(self):
         self._visainstrument.write(':SENS%i:AVER:CLE' %(self._ci))
@@ -359,6 +371,7 @@ class Agilent_PNA_L(Instrument):
         '''
         return {"bandwidth":self.get_bandwidth(),
                   "nop":self.get_nop(),
+                  "sweep_type":self.get_sweep_type(),
                   "power":self.get_power(),
                   "averages":self.get_averages(),
                   "freq_limits":self.get_freq_limits()}
@@ -368,11 +381,15 @@ class Agilent_PNA_L(Instrument):
         Method allowing to set all of the VNA parameters at once (bandwidth, nop,
         power, averages and freq_limits)
         '''
+        self.set_sweep_type(parameters_dict["sweep_type"])
+        if (parameters_dict["sweep_type"] == "CW"):
+            self.do_set_CWfreq(numpy.mean(parameters_dict["freq_limits"]))
+        else:
+            self.set_freq_limits(*parameters_dict["freq_limits"])
+        self.set_nop(parameters_dict["nop"])
         self.set_bandwidth(parameters_dict["bandwidth"])
         self.set_averages(parameters_dict["averages"])
         self.set_power(parameters_dict["power"])
-        self.set_nop(parameters_dict["nop"])
-        self.set_freq_limits(*parameters_dict["freq_limits"])
 
     def do_set_CWfreq(self,freq):
         '''
@@ -477,12 +494,14 @@ class Agilent_PNA_L(Instrument):
             None
         '''
         self._visainstrument.write('SENS%i:AVER:COUN %i' % (self._ci,av))
-        if av > 1:
+        self._visainstrument.write('SENS:AVER:MODE POIN')
+        self.do_set_average(True)
+        '''if av > 1:
             self.do_set_average(True)
             self._visainstrument.write('SENS:SWE:GRO:COUN %i'%av)
         else:
             self.do_set_average(False)
-            self._visainstrument.write('SENS:SWE:GRO:COUN 1')
+            self._visainstrument.write('SENS:SWE:GRO:COUN 1')'''
 
     def do_get_averages(self):
         '''
@@ -498,6 +517,9 @@ class Agilent_PNA_L(Instrument):
           return int(self._visainstrument.ask('SWE%i:POIN?' % self._ci))
         else:
           return int(self._visainstrument.ask('SENS%i:AVER:COUN?' % self._ci))
+
+    def set_sweep_type(self,sweep_type = "LIN"):
+        self._visainstrument.write("SENS:SWE:TYPE "+sweep_type)
 
     def do_set_power(self,pow):
         '''

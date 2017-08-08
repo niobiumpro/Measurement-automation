@@ -312,23 +312,21 @@ class PulseBuilder():
     def build_dispersive_decay_sequences(exc_pb, ro_pb,
         pulse_sequence_parameters):
         awg_trigger_reaction_delay = \
-                self._pulse_sequence_parameters["awg_trigger_reaction_delay"]
+                pulse_sequence_parameters["awg_trigger_reaction_delay"]
         readout_duration = \
-                self._pulse_sequence_parameters["readout_duration"]
+                pulse_sequence_parameters["readout_duration"]
         repetition_period = \
-                self._pulse_sequence_parameters["repetition_period"]
+                pulse_sequence_parameters["repetition_period"]
         pi_pulse_duration = \
-                self._pulse_sequence_parameters["pi_pulse_duration"]
+                pulse_sequence_parameters["pi_pulse_duration"]
         readout_delay = \
-                self._pulse_sequence_parameters["readout_delay"]
+                pulse_sequence_parameters["readout_delay"]
 
-        q_pb = self._q_awg.get_pulse_builder()
-        q_pb.add_zero_pulse(awg_trigger_reaction_delay)\
+        exc_pb.add_zero_pulse(awg_trigger_reaction_delay)\
             .add_sine_pulse(pi_pulse_duration, 0)\
             .add_zero_pulse(readout_delay+readout_duration)\
             .add_zero_until(repetition_period)
 
-        ro_pb = self._ro_awg.get_pulse_builder()
         ro_pb.add_zero_pulse(pi_pulse_duration+readout_delay)\
              .add_dc_pulse(readout_duration)\
              .add_zero_pulse(100)
@@ -337,18 +335,18 @@ class PulseBuilder():
     @staticmethod
     def build_dispersive_hahn_echo_sequences(exc_pb, ro_pb,
         pulse_sequence_parameters):
-        awg_trigger_reaction_delay = \
-                self._pulse_sequence_parameters["awg_trigger_reaction_delay"]
-        readout_duration = \
-                self._pulse_sequence_parameters["readout_duration"]
-        repetition_period = \
-                self._pulse_sequence_parameters["repetition_period"]
-        half_pi_pulse_duration = \
-                self._pulse_sequence_parameters["half_pi_pulse_duration"]
-        echo_delay = \
-                self._pulse_sequence_parameters["echo_delay"]
 
-        exc_pb = self._q_awg.get_pulse_builder()
+        awg_trigger_reaction_delay = \
+                pulse_sequence_parameters["awg_trigger_reaction_delay"]
+        readout_duration = \
+                pulse_sequence_parameters["readout_duration"]
+        repetition_period = \
+                pulse_sequence_parameters["repetition_period"]
+        half_pi_pulse_duration = \
+                pulse_sequence_parameters["half_pi_pulse_duration"]
+        echo_delay = \
+                pulse_sequence_parameters["echo_delay"]
+
         exc_pb.add_zero_pulse(awg_trigger_reaction_delay)\
                 .add_sine_pulse(half_pi_pulse_duration, 0)\
                 .add_zero_pulse(echo_delay/2)\
@@ -358,7 +356,6 @@ class PulseBuilder():
                 .add_zero_pulse(readout_duration)\
                 .add_zero_until(repetition_period)
 
-        ro_pb = self._ro_awg.get_pulse_builder()
         ro_pb.add_zero_pulse(4*half_pi_pulse_duration+echo_delay)\
              .add_dc_pulse(readout_duration)\
              .add_zero_pulse(100)

@@ -57,7 +57,7 @@ class IQCalibrationData():
 
 class IQCalibrator():
 
-    def __init__(self, awg, sa, lo, mixer_id, iq_attenuation):
+    def __init__(self, awg, sa, lo, mixer_id, iq_attenuation, side_band_to_maintain="left"):
         '''
         IQCalibrator is a class that allows you to calibrate automatically an IQ mixer to obtain a Single Sideband (SSB)
         with desired parameters.
@@ -67,7 +67,7 @@ class IQCalibrator():
         self._lo = lo
         self._mixer_id = mixer_id
         self._iq_attenuation = iq_attenuation
-
+        self.side = side_band_to_maintain
 
     def calibrate(self, lo_frequency, if_frequency, lo_power, ssb_power, waveform_resolution=1, initial_guess=None,
                 sa_res_bandwidth=500, iterations=5, minimize_iterlimit=20):
@@ -111,9 +111,13 @@ class IQCalibrator():
             self._awg.output_continuous_wave(frequency=0, amplitude=0, phase=0, offset=vdc2, waveform_resolution=waveform_resolution, channel=2)
             self._sa.prepare_for_stb();self._sa.sweep_single();self._sa.wait_for_stb()
             data = self._sa.get_tracedata()
-            answer =  data[0]
+
             print("\rDC offsets: ", format_number_list(voltages), format_number_list(data), end=", ", flush=True)
             clear_output(wait=True)
+
+            if( self.side == "right" ):
+                data.reverse()
+            answer =  data[0]
             return answer
 
         def loss_function_dc_offsets_open(voltages):
@@ -122,9 +126,13 @@ class IQCalibrator():
             self._awg.output_continuous_wave(frequency=0, amplitude=0, phase=0, offset=vdc2, waveform_resolution=waveform_resolution, channel=2)
             self._sa.prepare_for_stb();self._sa.sweep_single();self._sa.wait_for_stb()
             data = self._sa.get_tracedata()
-            answer = abs(data[0]-ssb_power)+10*abs(vdc1-vdc2)
+
             print("\rDC offsets open: ", format_number_list(voltages), format_number_list(data), end=", ", flush=True)
             clear_output(wait=True)
+
+            if( self.side == "right" ):
+                data.reverse()
+            answer = abs(data[0]-ssb_power)+10*abs(vdc1-vdc2)
             return answer
 
         def loss_function_if_offsets(voltages, args):
@@ -135,9 +143,13 @@ class IQCalibrator():
             self._awg.output_continuous_wave(frequency=if_frequency, amplitude=amp2, phase=0, offset=vdc2, waveform_resolution=waveform_resolution, channel=2)
             self._sa.prepare_for_stb();self._sa.sweep_single();self._sa.wait_for_stb()
             data = self._sa.get_tracedata()
-            answer =  data[1]
+
             print("\rIF offsets: ", format_number_list(voltages), format_number_list(data), end="            ", flush=True)
             clear_output(wait=True)
+
+            if( self.side == "right" ):
+                data.reverse()
+            answer =  data[1]
             return answer
 
         def loss_function_if_amplitudes(amplitudes, args):
@@ -148,9 +160,15 @@ class IQCalibrator():
             self._awg.output_continuous_wave(frequency=if_frequency, amplitude=amp2, phase=0, offset=vdc2, waveform_resolution=waveform_resolution, channel=2)
             self._sa.prepare_for_stb();self._sa.sweep_single();self._sa.wait_for_stb()
             data = self._sa.get_tracedata()
-            answer =  data[2] + 10*abs(ssb_power - data[0]) + 0 if abs(abs(amp1)-abs(amp2))<.5 else 10**(10*abs(abs(amp1)-abs(amp2)))
-            clear_output(wait=True)
+
+            if( self.side == "left" ):
+                answer =  data[2] + 10*abs(ssb_power - data[0]) + 0 if abs(abs(amp1)-abs(amp2))<.2 else 10**(10*abs(abs(amp1)-abs(amp2)))
+            if( self.side == "right" ):
+                answer =  data[0] + 10*abs(ssb_power - data[2]) + 0 if abs(abs(amp1)-abs(amp2))<.2 else 10**(10*abs(abs(amp2)-abs(amp1)))
             print("\rAmplitudes: ", format_number_list(amplitudes), format_number_list(data), "loss:", answer, end="          ", flush=True)
+            clear_output(wait=True)
+
+
             return answer
 
         def loss_function_if_phase(phase, args):
@@ -160,9 +178,13 @@ class IQCalibrator():
             self._awg.output_continuous_wave(frequency=if_frequency, amplitude=amp2, phase=0, offset=vdc2, waveform_resolution=waveform_resolution, channel=2)
             self._sa.prepare_for_stb();self._sa.sweep_single();self._sa.wait_for_stb()
             data = self._sa.get_tracedata()
-            answer =  data[2] - data[0]
+
             print("\rPhase: ", "%2.4f"%(phase/pi), format_number_list(data), end="             ", flush=True)
             clear_output(wait=True)
+
+            if( self.side == "right" ):
+                data.reverse()
+            answer =  data[2] - data[0]
             return answer
 
         def iterate_minimization(prev_results, n=2):
@@ -177,7 +199,7 @@ class IQCalibrator():
             res_phase = minimize(loss_function_if_phase, prev_results["if_phase"],
                 args=[res_if_offs.x, res_amps.x],
                 method="Nelder-Mead", options=options)
-                
+
             results["if_offsets"] = res_if_offs.x
             results["if_amplitudes"] = res_amps.x
             results["if_phase"] = res_phase.x
