@@ -378,18 +378,25 @@ class Agilent_PNA_L(Instrument):
 
     def set_parameters(self, parameters_dict):
         '''
-        Method allowing to set all of the VNA parameters at once (bandwidth, nop,
-        power, averages and freq_limits)
+        Method allowing to set all or some of the VNA parameters at once
+        (bandwidth, nop, power, averages and freq_limits)
         '''
-        self.set_sweep_type(parameters_dict["sweep_type"])
-        if (parameters_dict["sweep_type"] == "CW"):
-            self.do_set_CWfreq(numpy.mean(parameters_dict["freq_limits"]))
-        else:
-            self.set_freq_limits(*parameters_dict["freq_limits"])
-        self.set_nop(parameters_dict["nop"])
-        self.set_bandwidth(parameters_dict["bandwidth"])
-        self.set_averages(parameters_dict["averages"])
-        self.set_power(parameters_dict["power"])
+        if "bandwidth" in parameters_dict.keys():
+            self.set_bandwidth(parameters_dict["bandwidth"])
+        if "averages" in parameters_dict.keys():
+            self.set_averages(parameters_dict["averages"])
+        if "power" in parameters_dict.keys():
+            self.set_power(parameters_dict["power"])
+        if "nop" in parameters_dict.keys():
+            self.set_nop(parameters_dict["nop"])
+        if "freq_limits" in parameters_dict.keys():
+            if (parameters_dict["sweep_type"] == "CW"):
+                self.do_set_CWfreq(numpy.mean(parameters_dict["freq_limits"]))
+            else:
+                self.set_freq_limits(*parameters_dict["freq_limits"])
+        if "sweep_type" in parameters_dict.keys():
+            self.set_sweep_type(parameters_dict["sweep_type"])
+
 
     def do_set_CWfreq(self,freq):
         '''

@@ -11,7 +11,7 @@ class Znb(instr.Instr):
         # self.current_measurement_name = None
         self.visa_instr.read_termination = '\n'
         self.visa_instr.timeout = 5000
-        self.write("ROSCillator INTernal")
+        self.write("ROSCillator EXT")
         channel = self.list_channels()
         if channel:
             self.current_channel = channel[0]
@@ -25,10 +25,49 @@ class Znb(instr.Instr):
         self.set_current_channel_and_trace(self.current_channel, self.current_measurement_name)
         self.set_data_format("ASCII")
 
+    def get_parameters(self):
+        '''
+        Returns a dictionary containing bandwidth, nop, power, averages and
+        freq_limits currently used by the VNA
+        '''
+        return {"bandwidth":self.get_bandwidth(),
+                  "nop":self.get_nop(),
+                  "power":self.get_power(),
+                  "averages":self.get_averages(),
+                  "freq_limits":self.get_freq_limits()}
+
+    def set_parameters(self, parameters_dict):
+        '''
+        Method allowing to set all or some of the VNA parameters at once
+        (bandwidth, nop, power, averages and freq_limits)
+        '''
+        if "bandwidth" in parameters_dict.keys():
+            self.set_bandwidth(parameters_dict["bandwidth"])
+        if "averages" in parameters_dict.keys():
+            self.set_averages(parameters_dict["averages"])
+        if "power" in parameters_dict.keys():
+            self.set_power(parameters_dict["power"])
+        if "nop" in parameters_dict.keys():
+            self.set_nop(parameters_dict["nop"])
+        if "freq_limits" in parameters_dict.keys():
+            self.set_freq_limits(*parameters_dict["freq_limits"])
+
+    def select_S_param(self, S_param, channel=1):
+        '''
+        Set all active traces to measure S parameter specified in the argument.
+
+        Parameters:
+        -----------
+        S_param: string
+            name of the coefficient of the S matrix, i.e. "S21" or "S14"
+        channel=1: int
+            channel number, usually 1
+        '''
+        for tracename in self.list_traces(channel):
+            self.write("CALCulate{0}:PARameter:MEASure '{1}', '{2}'".format(1, tracename, S_param))
 
     def clear_error_queue(self):
         self.write("*CLS")
-
 
     def set_data_format(self, data_format):
         if not(data_format.upper() in ["ASCII", "REAL,32", "REAL,64", "REAL, 32", "REAL, 64"]):
@@ -110,7 +149,6 @@ class Znb(instr.Instr):
     def get_bandwidth(self):
         return int(self.query("SENSe{0}:BANDwidth?".format(self.current_channel)))
 
-
     def get_frequencies(self):
         freqtext = self.query("CALCulate{0}:DATA:STIMulus?".format(self.current_channel))
         return np.array([float(txt) for txt in freqtext.split(',')])
@@ -162,7 +200,13 @@ class Znb(instr.Instr):
     def delete_really_all_memory(self):
         self.write("CALCulate:PARameter:DELete:MEMory")
 
+    def set_freq_limits(self, start, stop):
+        self.set_xlim(start, stop)
 
+    def get_freq_limits(self):
+        start = float(self.query("SENSe{0}:FREQuency:STARt?".format(self.current_channel)))
+        stop = float(self.query("SENSe{0}:FREQuency:STOP?".format(self.current_channel)))
+        return start, stop
 
     def set_xlim(self, fstart, fstop):
         self.write("SENSe{0}:SWEep:TYPE LINear".format(self.current_channel))
@@ -192,6 +236,11 @@ class Znb(instr.Instr):
     def sweep_single(self):
         # self.write("SENSe{0}:SWEep:MODE SINGle".format(self.current_channel))
         self.write("INITiate{0}:IMMediate".format(self.current_channel))
+
+    def sweep_continuous(self):
+        # self.write("SENSe{0}:SWEep:MODE HOLD".format(self.current_channel))
+        self.write("INITiate{0}:CONTinuous ON".format(self.current_channel))
+
 
     def set_trigger_manual(self):
         self.write("TRIGger{0}:SOURce MANual".format(self.current_channel))

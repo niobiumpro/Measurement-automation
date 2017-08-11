@@ -4,10 +4,10 @@ from lib2.VNATimeResolvedDispersiveMeasurement2D import *
 
 class DispersiveRamseyFringes(VNATimeResolvedDispersiveMeasurement2D):
 
-    def __init__(self, name, sample_name, vna_name, ro_awg_name, q_awg_name,
+    def __init__(self, name, sample_name, vna_name, ro_awg, q_awg,
         q_lo_name):
         super().__init__(name, sample_name, vna_name,
-                                    ro_awg_name, q_awg_name, q_lo_name)
+                                    ro_awg, q_awg, q_lo_name)
         self._measurement_result =\
                 DispersiveRamseyFringesResult(name, sample_name)
 

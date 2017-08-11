@@ -3,10 +3,10 @@ from lib2.VNATimeResolvedDispersiveMeasurement2D import *
 
 class DispersiveRabiChevrons(VNATimeResolvedDispersiveMeasurement2D):
 
-    def __init__(self, name, sample_name, vna_name, ro_awg_name, q_awg_name,
+    def __init__(self, name, sample_name, vna_name, ro_awg, q_awg,
         q_lo_name):
         super().__init__(name, sample_name, vna_name,
-                                    ro_awg_name, q_awg_name, q_lo_name)
+                                    ro_awg, q_awg, q_lo_name)
         self._measurement_result = DispersiveRabiChevronsResult(name, sample_name)
 
     def set_fixed_parameters(self, vna_parameters,
@@ -18,12 +18,17 @@ class DispersiveRabiChevrons(VNATimeResolvedDispersiveMeasurement2D):
         q_if_frequency = self._q_awg.get_calibration() \
             .get_radiation_parameters()["if_frequency"]
         swept_pars = {"excitation_duration":\
-                        (self._output_rabi_sequence,
+                        (self._output_pulse_sequence,
                             excitation_durations),
                       "excitation_frequency":
                         (lambda x: self._q_lo.set_frequency(x+q_if_frequency),
                             excitation_freqs)}
         super().set_swept_parameters(**swept_pars)
+
+    def _output_pulse_sequence(self, excitation_duration):
+        self._pulse_sequence_parameters["excitation_duration"] =\
+                                                            excitation_duration
+        self._output_rabi_sequence()
 
 class DispersiveRabiChevronsResult(VNATimeResolvedDispersiveMeasurement2DResult):
 

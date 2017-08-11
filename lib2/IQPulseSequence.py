@@ -29,7 +29,7 @@ class PulseSequence():
 
     def plot(self, sequence_duration, **kwargs):
         times = linspace(0, sequence_duration, len(self._waveform))
-        plt.plot(times, self._waveform*5, **kwargs)
+        plt.plot(times, self._waveform, **kwargs)
 
 
 class IQPulseSequence():
@@ -100,8 +100,8 @@ class PulseBuilder():
                 .get_optimization_results()[0]["dc_offsets_open"] \
                             if dc_voltage is None else (dc_voltage, dc_voltage)
         N_time_steps = int(round(duration/self._waveform_resolution))
-        self._pulse_seq_I.append_pulse(zeros(N_time_steps+1)+vdc1/5)
-        self._pulse_seq_Q.append_pulse(zeros(N_time_steps+1)+vdc2/5)
+        self._pulse_seq_I.append_pulse(zeros(N_time_steps+1)+vdc1)
+        self._pulse_seq_Q.append_pulse(zeros(N_time_steps+1)+vdc2)
         return self
 
     def add_zero_pulse(self, duration):
@@ -116,8 +116,8 @@ class PulseBuilder():
         vdc1, vdc2 = self._iqmx_calibration\
                 .get_optimization_results()[0]["dc_offsets"]
         N_time_steps = int(round(duration/self._waveform_resolution))
-        self._pulse_seq_I.append_pulse(zeros(N_time_steps+1)+vdc1/5)
-        self._pulse_seq_Q.append_pulse(zeros(N_time_steps+1)+vdc2/5)
+        self._pulse_seq_I.append_pulse(zeros(N_time_steps+1)+vdc1)
+        self._pulse_seq_Q.append_pulse(zeros(N_time_steps+1)+vdc2)
         return self
 
     # def modulate_rectangle(self, amplitude):
@@ -133,7 +133,7 @@ class PulseBuilder():
     #     self._pulse_seq_I.modulate_pulse(-1, modulation)
     #     self._pulse_seq_Q.modulate_pulse(-1, modulation)
     #     return self
-    #
+
     # def modulate_hamming(self, amplitude=1):
     #     pulse_length = len(self._pulse_seq_I.get_pulse(-1))
     #     X = array(range(0, pulse_length))
@@ -155,7 +155,8 @@ class PulseBuilder():
         window = "rectangular"):
         """
         Adds a pulse with amplitude defined by the iqmx_calibration at frequency
-        f_lo-f_if and some phase to the sequence
+        f_lo-f_if and some phase to the sequence. All sine pulses will be parts
+        of the same continuous wave at frequency of f_if
 
         Parameters:
         -----------
@@ -163,11 +164,7 @@ class PulseBuilder():
             Duration of the pulse in nanoseconds. For pulses other than rectangular
             will be interpreted as t_g (see F. Motzoi et al. PRL (2009))
         phase: float, rad
-            Adds a relative phase to the outputted signal
-        time_offset: float, rad
-            Adds relative phase of omega_if*time_offset which will be rounded
-            correctly with regard to the used waveform resolution. If not
-            specified, the phase will be set as omega_if*waveform_duration
+            Adds a relative phase to the outputted signal.
         amplitude: float
             Calibration if_amplitudes will be scaled by the
             amplitude_value.
@@ -200,8 +197,8 @@ class PulseBuilder():
                 self._waveform_resolution*frequency
 
         points = linspace(0, duration, N_time_steps+1)
-        carrier_I = if_amp1/5*sin(frequency*points+if_phase+phase)
-        carrier_Q = if_amp2/5*sin(frequency*points+phase)
+        carrier_I = if_amp1*sin(frequency*points+if_phase+phase)
+        carrier_Q = if_amp2*sin(frequency*points+phase)
 
         if window == "gaussian" and duration > 0:
             B = exp(-(duration/2)**2/2/(duration/3)**2)
@@ -209,8 +206,8 @@ class PulseBuilder():
             carrier_I = window*carrier_I
             carrier_Q = window*carrier_Q
 
-        self._pulse_seq_I.append_pulse(carrier_I + if_offs1/5)
-        self._pulse_seq_Q.append_pulse(carrier_Q + if_offs2/5)
+        self._pulse_seq_I.append_pulse(carrier_I + if_offs1)
+        self._pulse_seq_Q.append_pulse(carrier_Q + if_offs2)
         return self
 
     def add_zero_until(self, total_duration):
@@ -268,9 +265,9 @@ class PulseBuilder():
             .add_zero_pulse(readout_duration)\
             .add_zero_until(repetition_period)
 
-        ro_pb.add_zero_pulse(excitation_duration+ro_pb._waveform_resolution)\
+        ro_pb.add_zero_pulse(excitation_duration+10)\
              .add_dc_pulse(readout_duration)\
-             .add_zero_pulse(100)
+             .add_zero_until(repetition_period)
 
         return exc_pb.build(), ro_pb.build()
 
@@ -302,9 +299,9 @@ class PulseBuilder():
             .add_zero_pulse(readout_duration)\
             .add_zero_until(repetition_period)
 
-        ro_pb.add_zero_pulse(2*half_pi_pulse_duration+ramsey_delay)\
+        ro_pb.add_zero_pulse(2*half_pi_pulse_duration+ramsey_delay+10)\
              .add_dc_pulse(readout_duration)\
-             .add_zero_pulse(100)
+             .add_zero_until(repetition_period)
 
         return exc_pb.build(), ro_pb.build()
 
@@ -329,7 +326,8 @@ class PulseBuilder():
 
         ro_pb.add_zero_pulse(pi_pulse_duration+readout_delay)\
              .add_dc_pulse(readout_duration)\
-             .add_zero_pulse(100)
+             .add_zero_until(repetition_period)
+
         return exc_pb.build(), ro_pb.build()
 
     @staticmethod
@@ -356,9 +354,9 @@ class PulseBuilder():
                 .add_zero_pulse(readout_duration)\
                 .add_zero_until(repetition_period)
 
-        ro_pb.add_zero_pulse(4*half_pi_pulse_duration+echo_delay)\
+        ro_pb.add_zero_pulse(4*half_pi_pulse_duration+echo_delay+10)\
              .add_dc_pulse(readout_duration)\
-             .add_zero_pulse(100)
+             .add_zero_until(repetition_period)
 
         return exc_pb.build(), ro_pb.build()
 

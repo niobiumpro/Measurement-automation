@@ -124,7 +124,9 @@ class SingleToneSpectroscopyResult(MeasurementResult):
         else:
             print("Phase units invalid")
 
+
     def _plot(self, axes, caxes):
+        
         ax_amps, ax_phas = axes
         cax_amps, cax_phas = caxes
 

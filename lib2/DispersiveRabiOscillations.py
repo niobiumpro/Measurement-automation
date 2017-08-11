@@ -4,9 +4,9 @@ from lib2.VNATimeResolvedDispersiveMeasurement1D import *
 
 class DispersiveRabiOscillations(VNATimeResolvedDispersiveMeasurement1D):
 
-    def __init__(self, name, sample_name, vna_name, ro_awg_name, q_awg_name,
+    def __init__(self, name, sample_name, vna_name, ro_awg, q_awg,
                 q_lo_name, line_attenuation_db = 60):
-        super().__init__(name, sample_name, vna_name, ro_awg_name, q_awg_name,
+        super().__init__(name, sample_name, vna_name, ro_awg, q_awg,
                     q_lo_name, line_attenuation_db)
         self._measurement_result = DispersiveRabiOscillationsResult(name,
                     sample_name)
@@ -25,7 +25,7 @@ class DispersiveRabiOscillationsResult(VNATimeResolvedDispersiveMeasurement1DRes
         return A*exp(-1/T_R*t)*cos(Omega_R*t)+offset
 
     def _generate_fit_arguments(self, x, data):
-        bounds =([-1, 0, 0, -1e3], [0, 100, 1e3, 1e3])
+        bounds =([-10, 0, 0, -10], [10, 100, 1e3, 10])
         p0 = [-(max(data)-min(data))/2, 1, 10*2*pi, mean((max(data), min(data)))]
         return p0, bounds
 

@@ -74,42 +74,25 @@ class KeysightAWG(Instrument):
 
 		self.add_function("apply_waveform")
 
-
 	# High-level functions
 
-
-	def set_parameters(self, parameters):
+	def output_arbitrary_waveform(self, waveform, repetition_rate, channel):
 		'''
-		Sets various parameters from a dictionary
-
-		Parameters:
-		-----------
-		parameteres: dict {"param_name":param_value, ...}
-		'''
-		par_names = ["calibration"]
-		for par_name in par_names:
-			if par_name in parameters.keys():
-				setattr(self, "_"+par_name, parameters[par_name])
-
-	def set_calibration(self, cal):
-		'''
-		Set IQ calibration for this AWG
+		Prepare and output an arbitrary waveform repeated at some repetition_rate
 
 		Parameters:
 		-----------
-		cal: iq_mixer_calibration.IQCalibrationData instance
-			Calibration for the internal PulseBuilder
+		waveform: array
+			ADC levels, in Volts
+		repetition_rate: foat, Hz
+			frequency at which the waveform will be repeated
+		channel: 1 or 2
+			channel which will output the waveform
 		'''
-		self._calibration = cal
+		self.load_arbitrary_waveform_to_volatile_memory(waveform/2.5, channel)
+		self.prepare_waveform(WaveformType.arbitrary, repetition_rate, 5, 0, channel)
+		self.set_output(channel, 1)
 
-	def get_calibration(self):
-		return self._calibration
-
-	def get_pulse_builder(self):
-		'''
-		Returns a PulseBuilder instance using the IQ calibration loaded before
-		'''
-		return PulseBuilder(self._calibration)
 
 	def output_continuous_wave(self, frequency=100e6, amplitude=0.1, phase=0, offset=0, waveform_resolution=1,  channel=1):
 		'''
@@ -132,29 +115,8 @@ class KeysightAWG(Instrument):
 		'''
 
 		N_points = 1/frequency/waveform_resolution*1e9+1 if frequency !=0 else 3
-		waveform =amplitude/5*sin(2*pi*linspace(0,1,N_points)+phase) + offset/5
-		self.load_arbitrary_waveform_to_volatile_memory(waveform, channel)
-		self.prepare_waveform(WaveformType.arbitrary, frequency, 5, 0, channel)
-		self.set_output(channel, 1)
-
-	def output_pulse_sequence(self, pulse_sequence):
-		'''
-		Load and output given IQPulseSequence.
-
-		Parameters:
-		-----------
-		pulse_sequence: IQPulseSequence instance
-		'''
-		self.load_arbitrary_waveform_to_volatile_memory(\
-				pulse_sequence.get_I_waveform(), 1)
-		self.load_arbitrary_waveform_to_volatile_memory(\
-				pulse_sequence.get_Q_waveform(), 2)
-		frequency = 1/pulse_sequence.get_duration()*1e9
-		self.prepare_waveform(WaveformType.arbitrary, frequency, 5, 0, 1)
-		self.prepare_waveform(WaveformType.arbitrary, frequency, 5, 0, 2)
-
-		self.set_outp1(1)
-		self.set_outp2(1)
+		waveform =amplitude*sin(2*pi*linspace(0,1,N_points)+phase) + offset
+		self.output_arbitrary_waveform(waveform, frequency, channel)
 
 	# Basic low-level functions
 
@@ -289,7 +251,6 @@ class KeysightAWG(Instrument):
 
 
 	'''Output switches'''
-
 
 	def set_output(self, channel, status):
 		'''
