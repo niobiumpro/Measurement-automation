@@ -324,7 +324,7 @@ class PulseBuilder():
             .add_zero_pulse(readout_delay+readout_duration)\
             .add_zero_until(repetition_period)
 
-        ro_pb.add_zero_pulse(pi_pulse_duration+readout_delay+10)\
+        ro_pb.add_zero_pulse(pi_pulse_duration+readout_delay)\
              .add_dc_pulse(readout_duration)\
              .add_zero_until(repetition_period)
 
@@ -333,6 +333,7 @@ class PulseBuilder():
     @staticmethod
     def build_dispersive_hahn_echo_sequences(exc_pb, ro_pb,
         pulse_sequence_parameters):
+
         awg_trigger_reaction_delay = \
                 pulse_sequence_parameters["awg_trigger_reaction_delay"]
         readout_duration = \

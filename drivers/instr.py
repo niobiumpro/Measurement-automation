@@ -4,10 +4,10 @@ from time import sleep
 class Instr(object):
 
     def __str__(self):
-        return self.visa_instr
+        return self._visainstrument
 
     def __repr__(self):
-        return self.visa_instr
+        return self._visainstrument
 
     # def __new__(self):
     #     return self
@@ -15,26 +15,26 @@ class Instr(object):
     def __init__(self, visa_name):
         self.visa_name = visa_name
         self.visa_resource_manager = visa.ResourceManager()
-        self.visa_instr = self.visa_resource_manager.open_resource(self.visa_name)
-        self.visa_instr.timeout = 10000
-        # self.visa_instr.values_format = "ascii"
-        # self.visa_instr.lock = NI_NO_LOCK
+        self._visainstrument = self.visa_resource_manager.open_resource(self.visa_name)
+        self._visainstrument.timeout = 10000
+        # self._visainstrument.values_format = "ascii"
+        # self._visainstrument.lock = NI_NO_LOCK
 
 
     def idn(self):
-        print(self.visa_instr.query("*IDN?"))
+        print(self._visainstrument.query("*IDN?"))
 
     def clear(self):
-        self.visa_instr.clear()
+        self._visainstrument.clear()
         print("Instrument cleared.")
 
     def cls(self):
         # Clear the instrument's Status Byte
-        self.visa_instr.write("*CLS")
+        self._visainstrument.write("*CLS")
         return "Status byte cleared (*CLS)."
 
     def get_control_port(self): # NOT NECESSARY IF USING GPIB OR LAN CONNEXION WITH VXI-11 INSTEAD OF SOCKETS
-        bla = self.visa_instr.query("SYSTem:COMMunicate:TCPip:CONTrol?")
+        bla = self._visainstrument.query("SYSTem:COMMunicate:TCPip:CONTrol?")
         try:
             output = int(bla)
         except:
@@ -43,20 +43,20 @@ class Instr(object):
         return output
 
     def trigger(self):
-        self.visa_instr.trigger()
+        self._visainstrument.trigger()
         return "Trigger sent."
 
     def read(self):
         # print("Reading...")
-        return self.visa_instr.read()
+        return self._visainstrument.read()
 
     def query(self, command):
         # print("Querying {0}...".format(command))
-        return self.visa_instr.query(command)
+        return self._visainstrument.query(command)
 
     def write(self, command):
         # print("Writing {0}".format(command))
-        self.visa_instr.write(command)
+        self._visainstrument.write(command)
 
     def prepare_for_stb(self):
         # Clear the instrument's Status Byte
@@ -65,7 +65,7 @@ class Instr(object):
         # Event Status Register, so that when that bit's value transitions from 0 to 1
         # then the Event Status Register bit in the Status Byte (bit 5 of that byte)
         # will become set.
-        self.visa_instr.write("*ESE 1")
+        self._visainstrument.write("*ESE 1")
         return "OPC bit enabled (*ESE 1)."
 
     def prepare_for_srq(self):
@@ -75,20 +75,20 @@ class Instr(object):
         # Event Status Register, so that when that bit's value transitions from 0 to 1
         # then the Event Status Register bit in the Status Byte (bit 5 of that byte)
         # will become set.
-        self.visa_instr.write("*ESE 1")
+        self._visainstrument.write("*ESE 1")
         # Enable for bit 5 (which has weight 32) in the Status Byte to generate an
         # SRQ when that bit's value transitions from 0 to 1.
-        self.visa_instr.write("*SRE 32")
+        self._visainstrument.write("*SRE 32")
         print("OPC bit enabled (*ESE 1). Enable generation of SRQ (*SRE 32).")
 
     def wait_opc(self):
-        self.visa_instr.query("*OPC?")
+        self._visainstrument.query("*OPC?")
 
     def wait_for_stb(self):
-        self.visa_instr.write("*OPC")
+        self._visainstrument.write("*OPC")
         done = False
         while not(done):
-            bla = self.visa_instr.query("*STB?")
+            bla = self._visainstrument.query("*STB?")
             try:
                 stb_value = int(bla)
             except:
@@ -98,5 +98,5 @@ class Instr(object):
                 sleep(0.01)
 
     def wait_for_srq(self): # ONLY WORKS WITH GPIB ! NOT TESTED !
-        self.visa_instr.write("*OPC")
-        self.visa_instr.wait_for_srq(10)
+        self._visainstrument.write("*OPC")
+        self._visainstrument.wait_for_srq(10)

@@ -57,7 +57,6 @@ class SingleToneSpectroscopy(Measurement):
         super().set_fixed_parameters(vna = vna_parameters)
         self._frequencies = linspace(*vna_parameters["freq_limits"],\
                         vna_parameters["nop"])
-        self._vna.sweep_hold()
 
     def set_swept_parameters(self, swept_parameter):
         '''
@@ -86,7 +85,11 @@ class SingleToneSpectroscopyResult(MeasurementResult):
         self._context = ContextBase()
         self._is_finished = False
         self._phase_units = "rad"
-        self._unwrap_phase = False
+        self.max_phase = -1
+        self.min_phase = 1
+        self._plot_limits_fixed = False
+        self.max_abs = 1
+        self.min_abs = 0
 
     def set_parameter_name(self, parameter_name):
         self._parameter_name = parameter_name
@@ -99,7 +102,6 @@ class SingleToneSpectroscopyResult(MeasurementResult):
         ax_amps.set_xlabel(self._parameter_name[0].upper()+self._parameter_name[1:])
         ax_phas.ticklabel_format(axis='x', style='sci', scilimits=(-2,2))
         ax_phas.set_xlabel(self._parameter_name[0].upper()+self._parameter_name[1:])
-        plt.tight_layout(pad=1)
         cax_amps, kw = colorbar.make_axes(ax_amps)
         cax_phas, kw = colorbar.make_axes(ax_phas)
         cax_amps.set_title("$|S_{21}|$")
@@ -107,17 +109,6 @@ class SingleToneSpectroscopyResult(MeasurementResult):
         ax_amps.grid()
         ax_phas.grid()
         return fig, axes, (cax_amps, cax_phas)
-
-    def set_unwrap_phase(self, unwrap_phase):
-        '''
-        Set if the phase plot should be unwrapped
-
-        Parameters:
-        -----------
-        unwrap_phase: boolean
-            True or False to control the unwrapping
-        '''
-        self._unwrap_phase = unwrap_phase
 
     def set_phase_units(self, units):
         '''
@@ -133,7 +124,9 @@ class SingleToneSpectroscopyResult(MeasurementResult):
         else:
             print("Phase units invalid")
 
+
     def _plot(self, axes, caxes):
+        
         ax_amps, ax_phas = axes
         cax_amps, cax_phas = caxes
 
@@ -142,24 +135,36 @@ class SingleToneSpectroscopyResult(MeasurementResult):
             return
 
         X, Y, Z = self._prepare_data_for_plot(data)
+        phases = unwrap(unwrap(angle(Z))).T
 
-        max_amp = max(abs(Z)[abs(Z)!=0])
-        min_amp = min(abs(Z)[abs(Z)!=0])
+        if self._plot_limits_fixed is False:
+            self.max_abs = max(abs(Z)[abs(Z)!=0])
+            self.min_abs = min(abs(Z)[abs(Z)!=0])
+            self.max_phase = max(phases[phases!=0])
+            self.min_phase = min(phases[phases!=0])
+
         extent = [X[0], X[-1], Y[0], Y[-1]]
         amps_map = ax_amps.imshow(abs(Z).T, origin='lower', cmap="RdBu_r",
-                        aspect = 'auto', vmax=max_amp, vmin=min_amp, extent=extent)
+                        aspect = 'auto', vmax=self.max_abs, vmin=self.min_abs, extent=extent)
         plt.colorbar(amps_map, cax = cax_amps)
 
-        phases = angle(Z).T if not self._unwrap_phase else unwrap(unwrap(angle(Z)).T)
+
         phases = phases if self._phase_units == "rad" else phases*180/pi
-        max_phas = max(phases[phases!=0])
-        min_phas = min(phases[phases!=0])
+
         phas_map = ax_phas.imshow(phases, origin='lower', aspect = 'auto',
-                    cmap="RdBu_r", vmin=min_phas, vmax=max_phas, extent=extent)
+                    cmap="RdBu_r", vmin=self.min_phase, vmax=self.max_phase, extent=extent)
         plt.colorbar(phas_map, cax = cax_phas)
+
+
+    def set_plot_range( self, min_abs, max_abs, min_phas=None, max_phas=None ):
+        self.max_phase = max_phas
+        self.min_phase = min_phas
+        self.max_abs = max_abs
+        self.min_abs = min_abs
 
     def _prepare_data_for_plot(self, data):
         s_data = self._remove_delay(data["frequency"], data["data"])
+        #s_data = self.remove_background('avg_cur')
         return data[self._parameter_name], data["frequency"]/1e9, s_data
 
     def remove_delay(self):
@@ -176,7 +181,7 @@ class SingleToneSpectroscopyResult(MeasurementResult):
         corr_s_data[abs(corr_s_data)<1e-14] = 0
         return corr_s_data
 
-    def remove_background(self, direction, index):
+    def remove_background(self, direction):
         '''
         Remove background
 
@@ -185,20 +190,33 @@ class SingleToneSpectroscopyResult(MeasurementResult):
         direction: str
             "h" for horizontal slice subtraction
             "v" for vertical slice subtraction
-        index: int
-            Slice number
-        '''
-        copy = self.copy()
-        raw_data = self.get_data()
-        data = raw_data["data"]
-        amps, phas = abs(s_data), angle(s_data)
-        if direction is "v":
-            amps = amps/amps[index]
-            phas = phas - phas[index]
-        else:
-            amps = (amps.T/amps.T[index]).T
-            phas = (phas.T - phas.T[index]).T
 
-        s_data["data"] = amps*exp(1j*phas)
-        copy.set_data(s_data)
-        return copy
+        '''
+        s_data = self.get_data()["data"]
+        len_freq = s_data.shape[1]
+        len_cur = s_data.shape[0]
+        if direction is "avg_cur":
+            avg = zeros(len_freq, dtype=complex)
+            counter_av = 0
+            for j in range(len_freq):
+                counter_av = 0
+                for i in range(len_cur):
+                    if s_data[i,j] != 0:
+                        counter_av += 1
+                        avg[j] += s_data[i,j]
+                avg[j] = avg[j]/counter_av
+                s_data[:,j] = s_data[:,j]/avg[j]
+        elif direction is "avg_freq":
+            avg = zeros(len_cur, dtype=complex)
+            counter_av = 0
+            for j in range(len_cur):
+                counter_av = 0
+                for i in range(len_freq):
+                    if s_data[j,i] != 0:
+                        counter_av += 1
+                        avg[j] += s_data[j,i]
+                avg[j] = avg[j]/counter_av
+                s_data[j,:] = s_data[j,:]/avg[j]
+
+        self.get_data()["data"] = s_data
+        return s_data

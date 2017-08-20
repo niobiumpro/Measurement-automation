@@ -19,8 +19,7 @@ Should perform following actions:
     это тоже в классы данных по идее лучше пойдет
  --  a logging of launched measurements from ALL certain classes (chronologically, in a single file, like laboratory notebook, with comments)
     может быть, может быть полезно, если 100500 человек чето мерют одними и теми же приборами и что-то сломалось/нагнулось
-some other bullshit?
-does this class necessary at all?
+some other bullshit?adoes this class necessary at all?
 
 some other bullshit:
  -- должен нести описания методов, которые должны быть обязательено реализованы в дочерних классах:
@@ -169,7 +168,7 @@ class Measurement():
     def set_swept_parameters(self, **swept_pars):
         '''
         swept_pars :{'par1': (setter1, [value1, value2, ...]),
-                     'par2': (setter1, [value1, value2, ...]), ...}
+                     'par2': (setter2, [value1, value2, ...]), ...}
         '''
         self._swept_pars = swept_pars
         self._swept_pars_names = list(swept_pars.keys())
