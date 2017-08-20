@@ -1,5 +1,6 @@
 .ipynb_checkpoints
 *cache*
-*pyc
-*bak
+*.pyc
+*.bak
 data*
+*.ipynb
