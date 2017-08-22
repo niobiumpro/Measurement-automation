@@ -43,14 +43,15 @@ class TwoToneSpectroscopyBase(Measurement):
         self._measurement_result.get_context()\
                 .get_equipment()["mw_src"] = self._mw_src_parameters
 
-    def _detect_resonator(self):
+    def _detect_resonator(self, plot=True, bandwidth_factor = 10):
         self._vna._visainstrument.write("SENS:SWE:TYPE LIN")
         self._vna.set_nop(400)
         self._vna.set_freq_limits(*self._vna_parameters["freq_limits"])
         self._vna.set_power(self._vna_parameters["power"])
-        self._vna.set_bandwidth(self._vna_parameters["bandwidth"]*10)
+        self._vna.set_bandwidth(self._vna_parameters["bandwidth"]*bandwidth_factor)
         self._vna.set_averages(self._vna_parameters["averages"])
-        return super()._detect_resonator()
+        return super()._detect_resonator(plot)
+
     def set_plot_range( self, min_abs, max_abs, min_phas=None, max_phas=None ):
         super().set_plot_range(min_abs, max_abs, min_phas, max_phas)
 

@@ -281,7 +281,7 @@ class Measurement():
         measurement_data["data"] = self._raw_data
         return measurement_data
 
-    def _detect_resonator(self):
+    def _detect_resonator(self, plot=True):
         """
         Finds frequency of the resonator visible on the VNA screen
         """
@@ -289,7 +289,8 @@ class Measurement():
         vna.avg_clear(); vna.prepare_for_stb(); vna.sweep_single(); vna.wait_for_stb()
         port = circuit.notch_port(vna.get_frequencies(), vna.get_sdata())
         port.autofit()
-        port.plotall()
+        if plot:
+            port.plotall()
         min_idx = argmin(abs(port.z_data_sim))
         return (vna.get_frequencies()[min_idx],
                     min(abs(port.z_data_sim)), angle(port.z_data_sim)[min_idx])

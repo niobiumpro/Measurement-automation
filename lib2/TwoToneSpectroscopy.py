@@ -9,6 +9,7 @@ passed to the SingleToneSpectroscopy class when it is created.
 
 from numpy import *
 from lib2.TwoToneSpectroscopyBase import *
+from time import sleep
 
 class FluxTwoToneSpectroscopy(TwoToneSpectroscopyBase):
 
@@ -84,23 +85,26 @@ class AcStarkTwoToneSpectroscopy(TwoToneSpectroscopyBase):
         super().setup_control_parameters(vna_parameters, mw_src_parameters,
                     mw_src_frequencies, vna_power_values)
 
-        self._mw_src.set_output_state("OFF")
+        self._resonator_area = vna_parameters["freq_limits"]
         self._current_src.set_current(current)
-
-        print("Detecting a resonator within provided frequency range of the VNA %s\
-                    at current of %.2f mA"%(str(vna_parameters["freq_limits"]),
-                        current*1e3), flush=True)
-        res_freq, res_amp, res_phase = self._detect_resonator()
-        print("Detected frequency is %.5f GHz, at %.2f mU and %.2f degrees"%(res_freq/1e9, res_amp*1e3, res_phase/pi*180))
-        self._vna_parameters["freq_limits"] = (res_freq, res_freq)
-        self._measurement_result.get_context() \
-            .get_equipment()["vna"] = self._vna_parameters
-
-        self._mw_src.set_output_state("ON")
 
     def _power_and_averages_setter(self, power):
         powers = self._parameter_values
         start_averages = self._vna_parameters["averages"]
         avg_factor = exp((power - powers[0])/powers[0]*log(start_averages))
-        self._vna.set_averages(round(start_averages*avg_factor))
-        self._vna.set_power(power)
+        self._vna_parameters["averages"] = round(start_averages*avg_factor)
+        self._vna_parameters["power"] = power
+        self._vna_parameters["freq_limits"] = self._resonator_area
+
+        self._mw_src.set_output_state("OFF")
+        print("\rDetecting a resonator within provided frequency range of the VNA %s\
+                    "%(str(self._vna_parameters["freq_limits"])), flush=True, end="")
+        res_freq, res_amp, res_phase = self._detect_resonator(plot=False,
+                                                            bandwidth_factor=2)
+        print("\rDetected frequency is %.5f GHz, at %.2f mU and %.2f \
+                    degrees"%(res_freq/1e9, res_amp*1e3, res_phase/pi*180), end="")
+
+        self._mw_src.set_output_state("ON")
+        self._vna_parameters["freq_limits"] = (res_freq, res_freq)
+
+        self._vna.set_parameters(self._vna_parameters)

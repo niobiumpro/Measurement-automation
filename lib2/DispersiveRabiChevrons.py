@@ -8,6 +8,7 @@ class DispersiveRabiChevrons(VNATimeResolvedDispersiveMeasurement2D):
         super().__init__(name, sample_name, vna_name,
                                     ro_awg, q_awg, q_lo_name)
         self._measurement_result = DispersiveRabiChevronsResult(name, sample_name)
+        self._sequence_generator = PulseBuilder.build_dispersive_rabi_sequences
 
     def set_fixed_parameters(self, vna_parameters,
         ro_awg_parameters, q_awg_parameters, pulse_sequence_parameters):
@@ -28,7 +29,7 @@ class DispersiveRabiChevrons(VNATimeResolvedDispersiveMeasurement2D):
     def _output_pulse_sequence(self, excitation_duration):
         self._pulse_sequence_parameters["excitation_duration"] =\
                                                             excitation_duration
-        self._output_rabi_sequence()
+        super()._output_pulse_sequence()
 
 class DispersiveRabiChevronsResult(VNATimeResolvedDispersiveMeasurement2DResult):
 

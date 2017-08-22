@@ -9,13 +9,11 @@ class DispersiveRamsey(VNATimeResolvedDispersiveMeasurement1D):
                     q_lo_name, line_attenuation_db)
         self._measurement_result = DispersiveRamseyResult(name,
                     sample_name)
+        self._sequence_generator = PulseBuilder.build_dispersive_ramsey_sequences
+        self._swept_parameter_name = "ramsey_delay"
 
     def set_swept_parameters(self, ramsey_delays):
-        super().set_swept_parameters("ramsey_delay", ramsey_delays)
-
-    def _output_pulse_sequence(self, ramsey_delay):
-        self._pulse_sequence_parameters["ramsey_delay"] = ramsey_delay
-        self._output_ramsey_sequence()
+        super().set_swept_parameters(self._swept_parameter_name, ramsey_delays)
 
 
 class DispersiveRamseyResult(VNATimeResolvedDispersiveMeasurement1DResult):

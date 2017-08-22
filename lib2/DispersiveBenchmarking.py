@@ -2,7 +2,7 @@
 from lib2.IQPulseSequence import *
 from lib2.VNATimeResolvedDispersiveMeasurement1D import *
 
-class DispersiveRabiOscillations(VNATimeResolvedDispersiveMeasurement1D):
+class DispersiveRandomizedInterleavedBenchmarking(VNATimeResolvedDispersiveMeasurement):
 
     def __init__(self, name, sample_name, vna_name, ro_awg, q_awg,
                 q_lo_name, line_attenuation_db = 60):
@@ -10,13 +10,16 @@ class DispersiveRabiOscillations(VNATimeResolvedDispersiveMeasurement1D):
                     q_lo_name, line_attenuation_db)
         self._measurement_result = DispersiveRabiOscillationsResult(name,
                     sample_name)
-        self._sequence_generator = PulseBuilder.build_dispersive_rabi_sequences
-        self._swept_parameter_name = "excitation_duration"
 
     def set_swept_parameters(self, excitation_durations):
-        super().set_swept_parameters(self._swept_parameter_name, excitation_durations)
+        super().set_swept_parameters("excitation_duration", excitation_durations)
 
-class DispersiveRabiOscillationsResult(VNATimeResolvedDispersiveMeasurement1DResult):
+    def _output_pulse_sequence(self, excitation_duration):
+        self._pulse_sequence_parameters["excitation_duration"] =\
+                                                            excitation_duration
+        self._output_rabi_sequence()
+
+class DispersiveRandomizedInterleavedBenchmarkingResult(VNATimeResolvedDispersiveMeasurementResult):
 
     def _theoretical_function(self, t, A, T_R, Omega_R, offset):
         return A*exp(-1/T_R*t)*cos(Omega_R*t)+offset
