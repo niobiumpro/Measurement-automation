@@ -349,7 +349,7 @@ class Tektronix_AWG5014(Instrument):
 		else:
 			logging.debug(__name__  + ' : File does not exist in memory, \
 			reading from instrument')
-			lijst = self._visainstrument.ask('MMEM:CAT? "MAIN"')
+			lijst = self._visainstrument.ask('MMEM:CAT? "C:"')
 			bool = False
 			bestand=""
 			for i in range(len(lijst)):
@@ -362,7 +362,7 @@ class Tektronix_AWG5014(Instrument):
 				elif bool:
 					bestand = bestand + lijst[i]
 		if exists:
-			self._visainstrument.write('SOUR%s:FUNC:USER "%s","MAIN"' % (channel, name))
+			self._visainstrument.write('SOUR%s:FUNC:USER "%s","C:"' % (channel, name))
 			# data = self._visainstrument.ask('MMEM:DATA? "%s"' % name)
 			# logging.debug(__name__  + ' : File exists on instrument, loading \
 			# into local memory')
