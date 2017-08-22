@@ -19,12 +19,9 @@ class VNATimeResolvedDispersiveMeasurement2D(VNATimeResolvedDispersiveMeasuremen
         q_lo_parameters["power"] = q_awg_parameters["calibration"]\
             .get_radiation_parameters()["lo_power"]
 
-        if detect_resonator:
-            res_freq = self._detect_resonator(vna_parameters)
-            vna_parameters["freq_limits"] = (res_freq, res_freq)
-
         super().set_fixed_parameters(vna_parameters, q_lo_parameters,
-            ro_awg_parameters, q_awg_parameters, pulse_sequence_parameters)
+            ro_awg_parameters, q_awg_parameters, pulse_sequence_parameters,
+            detect_resonator)
 
 
 class VNATimeResolvedDispersiveMeasurement2DResult(

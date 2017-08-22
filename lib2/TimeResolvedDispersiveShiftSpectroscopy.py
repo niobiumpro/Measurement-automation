@@ -4,10 +4,10 @@ from lib2.VNATimeResolvedDispersiveMeasurement2D import *
 class TimeResolvedDispersiveShiftSpectroscopy(
                     VNATimeResolvedDispersiveMeasurement2D):
 
-    def __init__(self, name, sample_name, vna_name, ro_awg_name, q_awg_name,
+    def __init__(self, name, sample_name, vna_name, ro_awg, q_awg,
         q_lo_name):
         super().__init__(name, sample_name, vna_name,
-                                    ro_awg_name, q_awg_name, q_lo_name)
+                                    ro_awg, q_awg, q_lo_name)
 
         self._measurement_result =\
                 TimeResolvedDispersiveShiftSpectroscopyResult(name, sample_name)
@@ -27,9 +27,13 @@ class TimeResolvedDispersiveShiftSpectroscopy(
 
     def set_swept_parameters(self, excitation_durations):
         swept_pars = {"excitation_duration":\
-                        (self._output_rabi_sequence,
+                        (self._output_pulse_sequence,
                             excitation_durations)}
         super().set_swept_parameters(**swept_pars)
+
+    def _output_pulse_sequence(self, excitation_duration):
+        self._pulse_sequence_parameters["excitation_duration"] = excitation_duration
+        self._output_rabi_sequence()
 
     def _recording_iteration(self):
         vna = self._vna

@@ -57,6 +57,7 @@ class SingleToneSpectroscopy(Measurement):
         super().set_fixed_parameters(vna = vna_parameters)
         self._frequencies = linspace(*vna_parameters["freq_limits"],\
                         vna_parameters["nop"])
+        self._vna.sweep_hold()
 
     def set_swept_parameters(self, swept_parameter):
         '''
@@ -90,6 +91,8 @@ class SingleToneSpectroscopyResult(MeasurementResult):
         self._plot_limits_fixed = False
         self.max_abs = 1
         self.min_abs = 0
+        self._unwrap_phase = False
+
 
     def set_parameter_name(self, parameter_name):
         self._parameter_name = parameter_name
@@ -102,8 +105,9 @@ class SingleToneSpectroscopyResult(MeasurementResult):
         ax_amps.set_xlabel(self._parameter_name[0].upper()+self._parameter_name[1:])
         ax_phas.ticklabel_format(axis='x', style='sci', scilimits=(-2,2))
         ax_phas.set_xlabel(self._parameter_name[0].upper()+self._parameter_name[1:])
-        cax_amps, kw = colorbar.make_axes(ax_amps)
-        cax_phas, kw = colorbar.make_axes(ax_phas)
+        plt.tight_layout(pad=1)
+        cax_amps, kw = colorbar.make_axes(ax_amps, aspect=40)
+        cax_phas, kw = colorbar.make_axes(ax_phas, aspect=40)
         cax_amps.set_title("$|S_{21}|$")
         cax_phas.set_title("$\\angle S_{21}$ [%s]"%self._phase_units)
         ax_amps.grid()
@@ -124,9 +128,19 @@ class SingleToneSpectroscopyResult(MeasurementResult):
         else:
             print("Phase units invalid")
 
+    def set_unwrap_phase(self, unwrap_phase):
+        '''
+        Set if the phase plot should be unwrapped
+
+        Parameters:
+        -----------
+        unwrap_phase: boolean
+            True or False to control the unwrapping
+        '''
+        self._unwrap_phase = unwrap_phase
 
     def _plot(self, axes, caxes):
-        
+
         ax_amps, ax_phas = axes
         cax_amps, cax_phas = caxes
 
@@ -135,7 +149,7 @@ class SingleToneSpectroscopyResult(MeasurementResult):
             return
 
         X, Y, Z = self._prepare_data_for_plot(data)
-        phases = unwrap(unwrap(angle(Z))).T
+        phases = angle(Z).T if not self._unwrap_phase else unwrap(unwrap(angle(Z)).T)
 
         if self._plot_limits_fixed is False:
             self.max_abs = max(abs(Z)[abs(Z)!=0])

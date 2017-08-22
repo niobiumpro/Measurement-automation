@@ -10,6 +10,7 @@ class DispersiveRamseyFringes(VNATimeResolvedDispersiveMeasurement2D):
                                     ro_awg, q_awg, q_lo_name)
         self._measurement_result =\
                 DispersiveRamseyFringesResult(name, sample_name)
+        self._sequence_generator = PulseBuilder.build_dispersive_rabi_sequences
 
     def set_fixed_parameters(self, vna_parameters,
         ro_awg_parameters, q_awg_parameters, pulse_sequence_parameters):
@@ -29,7 +30,7 @@ class DispersiveRamseyFringes(VNATimeResolvedDispersiveMeasurement2D):
 
     def _output_pulse_sequence(self, ramsey_delay):
         self._pulse_sequence_parameters["ramsey_delay"] = ramsey_delay
-        self._output_ramsey_sequence()
+        super()._output_pulse_sequence()
 
 class DispersiveRamseyFringesResult(VNATimeResolvedDispersiveMeasurement2DResult):
 

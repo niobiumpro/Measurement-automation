@@ -407,3 +407,43 @@ class PulseBuilder():
              .add_zero_pulse(100)
 
         return exc_pb.build(), ro_pb.build()
+
+    @staticmethod
+    def build_interleaved_benchmarking_sequence(exc_pb, ro_pb, benchmarking_sequence, pulse_sequence_parameters):
+        awg_trigger_reaction_delay = \
+                pulse_sequence_parameters["awg_trigger_reaction_delay"]
+        readout_duration = \
+                pulse_sequence_parameters["readout_duration"]
+        repetition_period = \
+                pulse_sequence_parameters["repetition_period"]
+        pi_pulse_duration = \
+                pulse_sequence_parameters["pi_pulse_duration"]
+        padding = \
+                pulse_sequence_parameters["padding"]
+
+        exc_pb.add_zero_pulse(awg_trigger_reaction_delay)
+        global_phase = 0
+        excitation_duration = 0
+        for idx, pulse_str in enumerate(benchmarking_sequence):
+            pulse_ax = pulse_str[1]
+            pulse_angle = eval(pulse_str.replace(pulse_ax,"1"))  # in pi's
+            pulse_time = pi_pulse_duration*abs(pulse_angle)
+            pulse_phase = pi/2*(1-sign(pulse_angle))+global_phase
+            if pulse_ax == "I":
+                exc_pb.add_zero_pulse(pulse_time)
+            elif pulse_ax == "X":
+                exc_pb.add_sine_pulse(phase=pulse_phase, duration=pulse_time)
+            elif pulse_ax == "Y":
+                exc_pb.add_sine_pulse(phase=pulse_phase+pi/2, duration=pulse_time)
+            elif pulse_ax == "Z":
+                global_phase += pi*pulse_angle
+            else:
+                raise ValueError("Axis of %s is not allowed. Check your sequence."%(pulse_str))
+            exc_pb.add_zero_pulse(padding)
+            excitation_duration += pulse_time+padding
+        exc_pb.add_zero_until(repetition_period)
+        ro_pb.add_zero_pulse(excitation_duration)\
+                    .add_dc_pulse(readout_duration)\
+                    .add_zero_until(repetition_period)
+
+        return exc_pb.build(), ro_pb.build()

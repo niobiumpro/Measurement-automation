@@ -3,21 +3,18 @@ from lib2.VNATimeResolvedDispersiveMeasurement1D import *
 
 class DispersiveAPE(VNATimeResolvedDispersiveMeasurement1D):
 
-    def __init__(self, name, sample_name, vna_name, ro_awg_name, q_awg_name,
+    def __init__(self, name, sample_name, vna_name, ro_awg, q_awg,
                 q_lo_name, line_attenuation_db = 60):
-        super().__init__(name, sample_name, vna_name, ro_awg_name, q_awg_name,
+        super().__init__(name, sample_name, vna_name, ro_awg, q_awg,
                     q_lo_name, line_attenuation_db)
 
         self._measurement_result = DispersiveAPEResult(name,
                     sample_name)
+        self._sequence_generator = PulseBuilder.build_dispersive_APE_sequences
+        self._swept_parameter_name = "ramsey_angle"
 
     def set_swept_parameters(self, ramsey_angles):
-        super().set_swept_parameters("ramsey_angle", ramsey_angles)
-
-    def _output_pulse_sequence(self, ramsey_angle):
-        self._pulse_sequence_parameters["ramsey_angle"] = ramsey_angle
-        self._output_APE_sequence()
-
+        super().set_swept_parameters(self._swept_parameter_name, ramsey_angles)
 
 class DispersiveAPEResult(VNATimeResolvedDispersiveMeasurement1DResult):
 
@@ -29,7 +26,7 @@ class DispersiveAPEResult(VNATimeResolvedDispersiveMeasurement1DResult):
         return A*sin(ramsey_angle*pi+phase_error*pi)+offset
 
     def _generate_fit_arguments(self, x, data):
-        bounds =([0, -1, -pi], [1, 1, pi])
+        bounds =([0, -10, -pi], [10, 10, pi])
         p0 = [(max(data)-min(data))/2, mean((max(data), min(data))), 0]
         return p0, bounds
 
