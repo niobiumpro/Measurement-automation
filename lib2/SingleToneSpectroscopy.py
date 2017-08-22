@@ -102,10 +102,11 @@ class SingleToneSpectroscopyResult(MeasurementResult):
         ax_amps.set_xlabel(self._parameter_name[0].upper()+self._parameter_name[1:])
         ax_phas.ticklabel_format(axis='x', style='sci', scilimits=(-2,2))
         ax_phas.set_xlabel(self._parameter_name[0].upper()+self._parameter_name[1:])
-        cax_amps, kw = colorbar.make_axes(ax_amps)
-        cax_phas, kw = colorbar.make_axes(ax_phas)
-        cax_amps.set_title("$|S_{21}|$")
-        cax_phas.set_title("$\\angle S_{21}$ [%s]"%self._phase_units)
+        plt.tight_layout(pad=2, h_pad=-10)
+        cax_amps, kw = colorbar.make_axes(ax_amps, aspect=40)
+        cax_phas, kw = colorbar.make_axes(ax_phas, aspect=49)
+        cax_amps.set_title("$|S_{21}|$", position=(0.5,-0.05))
+        cax_phas.set_title("$\\angle S_{21}$\n [%s]"%self._phase_units, position=(0.5,-0.1))
         ax_amps.grid()
         ax_phas.grid()
         return fig, axes, (cax_amps, cax_phas)
@@ -126,7 +127,7 @@ class SingleToneSpectroscopyResult(MeasurementResult):
 
 
     def _plot(self, axes, caxes):
-        
+
         ax_amps, ax_phas = axes
         cax_amps, cax_phas = caxes
 
@@ -146,8 +147,9 @@ class SingleToneSpectroscopyResult(MeasurementResult):
         extent = [X[0], X[-1], Y[0], Y[-1]]
         amps_map = ax_amps.imshow(abs(Z).T, origin='lower', cmap="RdBu_r",
                         aspect = 'auto', vmax=self.max_abs, vmin=self.min_abs, extent=extent)
-        plt.colorbar(amps_map, cax = cax_amps)
-
+        amp_cb = plt.colorbar(amps_map, cax = cax_amps)
+        amp_cb.formatter.set_powerlimits((0, 0))
+        amp_cb.update_ticks()
 
         phases = phases if self._phase_units == "rad" else phases*180/pi
 
