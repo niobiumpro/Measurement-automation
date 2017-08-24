@@ -70,6 +70,7 @@ class Tektronix_AWG5014(Instrument):
 		self._nop = nop
 		self._waveforms = [None]*4
 		self._markers = [None]*8
+		self._clear_all_waveforms()
 
 		# Add parameters
 		self.add_parameter('waveform', type=list,
@@ -122,12 +123,25 @@ class Tektronix_AWG5014(Instrument):
 		channel: 1 or 2
 			channel which will output the waveform
 		'''
+		for idx, existing_waveform in enumerate(self._waveforms):
+			if self._waveforms[idx] is not None:
+				if (len(existing_waveform) != len(waveform)) and (idx != channel-1):
+					self._waveforms[idx] = None
+					self._clear_waveform(idx+1)
+
+		self._waveforms[channel-1] = waveform
+
 		self.do_set_waveform(waveform/4.5*2, repetition_rate, channel)
 		self.do_set_output(1, channel)
 		self.run()
 		if block:
 			self._visainstrument.query("*OPC?")
 
+	def _clear_waveform(self, channel):
+		self._visainstrument.write('WLIST:WAVeform:DELETE "CH%iWFM"'%channel)
+
+	def _clear_all_waveforms(self):
+		self._visainstrument.write('WLIST:WAVeform:DELETE ALL')
 
 	def run(self):
 		'''
@@ -273,10 +287,9 @@ class Tektronix_AWG5014(Instrument):
 
 		filename = 'test_ch{0}.wfm'.format(channel)
 
-		self._waveforms[channel-1] = w
 		self.send_waveform(w,m1,m2,filename, repetition_rate*num_points)
-		self.do_set_filename(filename, channel=channel)
-		self.do_set_output(1, channel=channel)
+		self.load_waveform(channel, filename)
+		# self.do_set_filename(filename, channel=channel)
 
 	def do_get_waveform(self, channel):
 		return self._waveforms[channel-1]
@@ -320,6 +333,9 @@ class Tektronix_AWG5014(Instrument):
 
 	def do_get_digital(self, channel):
 		return self._markers[channel-1]
+
+	# def set_filename_fast(self, name, channel):
+
 
 	def do_set_filename(self, name, channel):
 		'''
