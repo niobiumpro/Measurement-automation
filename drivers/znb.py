@@ -9,8 +9,8 @@ class Znb(instr.Instr):
         self.cls()
         # self.current_channel = 0
         # self.current_measurement_name = None
-        self.visa_instr.read_termination = '\n'
-        self.visa_instr.timeout = 5000
+        self._visainstrument.read_termination = '\n'
+        self._visainstrument.timeout = 5000
         self.write("ROSCillator EXT")
         channel = self.list_channels()
         if channel:
