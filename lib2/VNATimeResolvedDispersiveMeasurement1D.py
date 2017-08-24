@@ -121,7 +121,7 @@ class VNATimeResolvedDispersiveMeasurement1DResult(\
                         " [%s]"%self._x_axis_units
         axes["phase"].set_xlabel(xlabel)
         axes["imag"].set_xlabel(xlabel)
-
+        plt.tight_layout(pad=2)
         self._plot_fit(axes)
 
     def _generate_annotation_string(self, opt_params, err):
