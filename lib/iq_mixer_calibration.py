@@ -57,7 +57,7 @@ class IQCalibrationData():
 
 class IQCalibrator():
 
-    def __init__(self, awg, sa, lo, mixer_id, iq_attenuation, side_band_to_maintain="left"):
+    def __init__(self, awg, sa, lo, mixer_id, iq_attenuation, sideband_to_maintain="left"):
         '''
         IQCalibrator is a class that allows you to calibrate automatically an IQ mixer to obtain a Single Sideband (SSB)
         with desired parameters.
@@ -67,7 +67,7 @@ class IQCalibrator():
         self._lo = lo
         self._mixer_id = mixer_id
         self._iq_attenuation = iq_attenuation
-        self.side = side_band_to_maintain
+        self.side = sideband_to_maintain
 
     def calibrate(self, lo_frequency, if_frequency, lo_power, ssb_power, waveform_resolution=1, initial_guess=None,
                 sa_res_bandwidth=500, iterations=5, minimize_iterlimit=20):
@@ -105,16 +105,16 @@ class IQCalibrator():
             Object containing the parameters and results of the optimization
         '''
 
-        def loss_function_dc_offsets(voltages):
-            vdc1, vdc2 = voltages
-            self._awg.output_continuous_wave(frequency=0, amplitude=0, phase=0,
-                offset=vdc1, waveform_resolution=waveform_resolution, channel=1)
-            self._awg.output_continuous_wave(frequency=0, amplitude=0, phase=0,
-                offset=vdc2, waveform_resolution=waveform_resolution, channel=2)
+        def loss_function_dc_offsets(dc_offsets):
+            self._awg.output_continuous_IQ_waves(frequency=0,
+                amplitudes=(0,0), relative_phase=0, offsets=dc_offsets,
+                waveform_resolution=waveform_resolution)
             self._sa.prepare_for_stb();self._sa.sweep_single();self._sa.wait_for_stb()
             data = self._sa.get_tracedata()
 
-            print("\rDC offsets: ", format_number_list(voltages), format_number_list(data), end=", ", flush=True)
+            print("\rDC offsets: ", format_number_list(dc_offsets),
+                                    format_number_list(data),
+                                    end=", ", flush=True)
             clear_output(wait=True)
 
             if( self.side == "right" ):
@@ -122,35 +122,37 @@ class IQCalibrator():
             answer =  data[0]
             return answer
 
-        def loss_function_dc_offsets_open(voltages):
-            vdc1, vdc2 = voltages
-            self._awg.output_continuous_wave(frequency=0, amplitude=0, phase=0,
-                offset=vdc1, waveform_resolution=waveform_resolution, channel=1)
-            self._awg.output_continuous_wave(frequency=0, amplitude=0, phase=0,
-                offset=vdc2, waveform_resolution=waveform_resolution, channel=2)
+        def loss_function_dc_offsets_open(dc_offsets_open):
+
+            self._awg.output_continuous_IQ_waves(frequency=0,
+                amplitudes=(0,0), relative_phase=0, offsets=dc_offsets_open,
+                waveform_resolution=waveform_resolution)
+
             self._sa.prepare_for_stb();self._sa.sweep_single();self._sa.wait_for_stb()
             data = self._sa.get_tracedata()
 
-            print("\rDC offsets open: ", format_number_list(voltages), format_number_list(data), end=", ", flush=True)
+            print("\rDC offsets open: ", format_number_list(dc_offsets_open),
+                                         format_number_list(data),
+                                         end=", ", flush=True)
             clear_output(wait=True)
 
             if( self.side == "right" ):
                 data.reverse()
-            answer = abs(data[0]-ssb_power)+10*abs(vdc1-vdc2)
+            answer = abs(data[0]-ssb_power)+10*abs(dc_offsets_open[1]-dc_offsets_open[0])
             return answer
 
-        def loss_function_if_offsets(voltages, args):
-            vdc1, vdc2 = voltages
-            amp1, amp2 = args[0]
+        def loss_function_if_offsets(if_offsets, args):
+            if_amplitudes = args[0]
             phase = args[1]
-            self._awg.output_continuous_wave(frequency=if_frequency, amplitude=amp1,
-                phase=phase, offset=vdc1, waveform_resolution=waveform_resolution, channel=1)
-            self._awg.output_continuous_wave(frequency=if_frequency, amplitude=amp2,
-                phase=0, offset=vdc2, waveform_resolution=waveform_resolution, channel=2)
+            self._awg.output_continuous_IQ_waves(frequency=if_frequency,
+                amplitudes=if_amplitudes, relative_phase=phase, offsets=if_offsets,
+                waveform_resolution=waveform_resolution)
             self._sa.prepare_for_stb();self._sa.sweep_single();self._sa.wait_for_stb()
             data = self._sa.get_tracedata()
 
-            print("\rIF offsets: ", format_number_list(voltages), format_number_list(data), end="            ", flush=True)
+            print("\rIF offsets: ", format_number_list(if_amplitudes),
+                                    format_number_list(data),
+                                     end="            ", flush=True)
             clear_output(wait=True)
 
             if( self.side == "right" ):
@@ -158,34 +160,36 @@ class IQCalibrator():
             answer =  data[1]
             return answer
 
-        def loss_function_if_amplitudes(amplitudes, args):
-            amp1, amp2 = amplitudes
-            vdc1, vdc2 = args[0]
+        def loss_function_if_amplitudes(if_amplitudes, args):
+            amp1, amp2 = if_amplitudes
+            if_offsets = args[0]
             phase = args[1]
-            self._awg.output_continuous_wave(frequency=if_frequency, amplitude=amp1,
-                phase=phase, offset=vdc1, waveform_resolution=waveform_resolution, channel=1)
-            self._awg.output_continuous_wave(frequency=if_frequency, amplitude=amp2,
-                phase=0, offset=vdc2, waveform_resolution=waveform_resolution, channel=2)
+            self._awg.output_continuous_IQ_waves(frequency=if_frequency,
+                amplitudes=if_amplitudes, relative_phase=phase, offsets=if_offsets,
+                waveform_resolution=waveform_resolution)
             self._sa.prepare_for_stb();self._sa.sweep_single();self._sa.wait_for_stb()
             data = self._sa.get_tracedata()
 
             if( self.side == "left" ):
-                answer =  data[2] + 10*abs(ssb_power - data[0]) + 0 if abs(abs(amp1)-abs(amp2))<.2 else 10**(10*abs(abs(amp1)-abs(amp2)))
+                answer =  data[2] + 10*abs(ssb_power - data[0]) + 0\
+                    if abs(abs(amp1)-abs(amp2))<.2 else 10**(10*abs(abs(amp1)-abs(amp2)))
             if( self.side == "right" ):
-                answer =  data[0] + 10*abs(ssb_power - data[2]) + 0 if abs(abs(amp1)-abs(amp2))<.2 else 10**(10*abs(abs(amp2)-abs(amp1)))
-            print("\rAmplitudes: ", format_number_list(amplitudes), format_number_list(data), "loss:", answer, end="          ", flush=True)
+                answer =  data[0] + 10*abs(ssb_power - data[2]) + 0\
+                    if abs(abs(amp1)-abs(amp2))<.2 else 10**(10*abs(abs(amp2)-abs(amp1)))
+            print("\rAmplitudes: ", format_number_list(if_amplitudes),
+                                    format_number_list(data),
+                                    "loss:", answer, end="          ", flush=True)
             clear_output(wait=True)
 
 
             return answer
 
         def loss_function_if_phase(phase, args):
-            vdc1, vdc2 = args[0]
-            amp1, amp2 = args[1]
-            self._awg.output_continuous_wave(frequency=if_frequency, amplitude=amp1,
-                phase=phase, offset=vdc1, waveform_resolution=waveform_resolution, channel=1)
-            self._awg.output_continuous_wave(frequency=if_frequency, amplitude=amp2,
-                phase=0, offset=vdc2, waveform_resolution=waveform_resolution, channel=2)
+            if_offsets = args[0]
+            if_amplitudes = args[1]
+            self._awg.output_continuous_IQ_waves(frequency=if_frequency,
+                amplitudes=if_amplitudes, relative_phase=phase, offsets=if_offsets,
+                waveform_resolution=waveform_resolution)
             self._sa.prepare_for_stb();self._sa.sweep_single();self._sa.wait_for_stb()
             data = self._sa.get_tracedata()
 

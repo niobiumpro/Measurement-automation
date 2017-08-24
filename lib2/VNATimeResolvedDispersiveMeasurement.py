@@ -43,7 +43,8 @@ class VNATimeResolvedDispersiveMeasurement(Measurement):
 
         if detect_resonator:
             res_freq = self._detect_resonator(vna_parameters,
-                                    ro_awg_parameters["calibration"])
+                                    ro_awg_parameters["calibration"],
+                                    q_awg_parameters["calibration"])
             vna_parameters["freq_limits"] = (res_freq, res_freq)
 
         super().set_fixed_parameters(vna=vna_parameters, q_lo=q_lo_parameters,
@@ -55,7 +56,7 @@ class VNATimeResolvedDispersiveMeasurement(Measurement):
         vna.sweep_single(); vna.wait_for_stb();
         return mean(vna.get_sdata())
 
-    def _detect_resonator(self, vna_parameters, ro_calibration):
+    def _detect_resonator(self, vna_parameters, ro_calibration, q_calibration):
         self._q_lo.set_output_state("OFF")
         print("Detecting a resonator within provided frequency range of the VNA %s\
                     "%(str(vna_parameters["freq_limits"])))
@@ -68,8 +69,11 @@ class VNATimeResolvedDispersiveMeasurement(Measurement):
         rep_period = self._pulse_sequence_parameters["repetition_period"]
         ro_duration = self._pulse_sequence_parameters["readout_duration"]
         ro_pb = PulseBuilder(ro_calibration)
+        q_pb = PulseBuilder(q_calibration)
         self._ro_awg.output_pulse_sequence(ro_pb\
                     .add_dc_pulse(ro_duration).add_zero_until(rep_period).build())
+        self._q_awg.output_pulse_sequence(q_pb.add_zero_until(rep_period).build())
+
         res_freq, res_amp, res_phase = super()._detect_resonator()
         print("Detected frequency is %.5f GHz, at %.2f mU and %.2f degrees"%\
                     (res_freq/1e9, res_amp*1e3, res_phase/pi*180))
@@ -81,7 +85,7 @@ class VNATimeResolvedDispersiveMeasurement(Measurement):
         ro_pb = self._ro_awg.get_pulse_builder()
         q_seq, ro_seq = self._sequence_generator(q_pb, ro_pb,
                                         self._pulse_sequence_parameters)
-        self._q_awg.output_pulse_sequence(q_seq)
+        self._q_awg.output_pulse_sequence(q_seq, blocking=False)
         self._ro_awg.output_pulse_sequence(ro_seq)
 
 

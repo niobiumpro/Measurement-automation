@@ -108,8 +108,9 @@ class SingleToneSpectroscopyResult(MeasurementResult):
         plt.tight_layout(pad=2, h_pad=-10)
         cax_amps, kw = colorbar.make_axes(ax_amps, aspect=40)
         cax_phas, kw = colorbar.make_axes(ax_phas, aspect=40)
-        cax_amps.set_title("$|S_{21}|$")
-        cax_phas.set_title("$\\angle S_{21}$ [%s]"%self._phase_units)
+        cax_amps.set_title("$|S_{21}|$", position=(0.5,-0.05))
+        cax_phas.set_title("$\\angle S_{21}$\n [%s]"%self._phase_units,
+                                                            position=(0.5,-0.1))
         ax_amps.grid()
         ax_phas.grid()
         return fig, axes, (cax_amps, cax_phas)
@@ -150,6 +151,7 @@ class SingleToneSpectroscopyResult(MeasurementResult):
 
         X, Y, Z = self._prepare_data_for_plot(data)
         phases = angle(Z).T if not self._unwrap_phase else unwrap(unwrap(angle(Z)).T)
+        phases = phases if self._phase_units == "rad" else phases*180/pi
 
         if self._plot_limits_fixed is False:
             self.max_abs = max(abs(Z)[abs(Z)!=0])
@@ -163,8 +165,6 @@ class SingleToneSpectroscopyResult(MeasurementResult):
         amp_cb = plt.colorbar(amps_map, cax = cax_amps)
         amp_cb.formatter.set_powerlimits((0, 0))
         amp_cb.update_ticks()
-
-        phases = phases if self._phase_units == "rad" else phases*180/pi
 
         phas_map = ax_phas.imshow(phases, origin='lower', aspect = 'auto',
                     cmap="RdBu_r", vmin=self.min_phase, vmax=self.max_phase, extent=extent)
