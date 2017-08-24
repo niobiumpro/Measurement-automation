@@ -4,11 +4,11 @@ from lib2.VNATimeResolvedDispersiveMeasurement1D import *
 
 class DispersiveRandomizedInterleavedBenchmarking(VNATimeResolvedDispersiveMeasurement):
 
-    def __init__(self, name, sample_name, vna_name, ro_awg, q_awg,
+    def __init__(self, name, sample_name, vna_name, ro_iqawg, q_iqawg,
                 q_lo_name, line_attenuation_db = 60):
-        super().__init__(name, sample_name, vna_name, ro_awg, q_awg,
+        super().__init__(name, sample_name, vna_name, ro_iqawg, q_iqawg,
                     q_lo_name, line_attenuation_db)
-        self._measurement_result = DispersiveRabiOscillationsResult(name,
+        self._measurement_result = DispersiveRandomizedInterleavedBenchmarkingResult(name,
                     sample_name)
 
     def set_swept_parameters(self, excitation_durations):
