@@ -100,7 +100,9 @@ class VNATimeResolvedDispersiveMeasurementResult(MeasurementResult):
             "imag":(imag, "Transmission imaginary part [a.u.]")}
 
     def _unwrapped_phase(self, sdata):
-        return unwrap(angle(sdata))[sdata!=0]
+        unwrapped_phase = unwrap(angle(sdata))
+        unwrapped_phase[sdata==0] = 0
+        return unwrapped_phase
 
     def _prepare_figure(self):
         fig, axes = plt.subplots(2, 2, figsize=(15,7), sharex=True)
