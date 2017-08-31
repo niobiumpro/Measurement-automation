@@ -233,18 +233,21 @@ class IQCalibrator():
 
             results = None
             if initial_guess==None:
-                results = {"dc_offsets":(1,1), "dc_offsets_open":(1,1), "if_offsets":(1,1), "if_amplitudes":(0.5,0.5), "if_phase":pi*0.54}
+                results = {"dc_offsets":(1,1), "dc_offsets_open":(1,1), "if_offsets":(1,1),
+                                "if_amplitudes":(0.5,0.5), "if_phase":pi*0.54}
             else:
                 results = initial_guess
 
             self._sa.setup_list_sweep([lo_frequency], [sa_res_bandwidth])
 
             res_dc_offs = minimize(loss_function_dc_offsets, results["dc_offsets"],
-                          method="Nelder-Mead", options={"maxiter":minimize_iterlimit*iterations,"xatol":1e-3, "fatol":100})
+                          method="Nelder-Mead", options={"maxiter":minimize_iterlimit*iterations,
+                          "xatol":1e-3, "fatol":100})
 
             if if_frequency == 0:
                 res_dc_offs_open = minimize(loss_function_dc_offsets_open, array(results["dc_offsets_open"]),
-                              method="Nelder-Mead", options={"maxiter":minimize_iterlimit*iterations,"xatol":1e-3, "fatol":100})
+                              method="Nelder-Mead", options={"maxiter":minimize_iterlimit*iterations,
+                              "xatol":1e-3, "fatol":100})
                 spectral_values = {"dc":res_dc_offs.fun, "dc_open":self._sa.get_tracedata()}
                 elapsed_time = (datetime.now() - start).total_seconds()
                 return IQCalibrationData(self._mixer_id, self._iq_attenuation,

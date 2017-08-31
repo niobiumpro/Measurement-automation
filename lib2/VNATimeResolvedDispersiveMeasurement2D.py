@@ -29,6 +29,7 @@ class VNATimeResolvedDispersiveMeasurement2DResult(
 
     def _prepare_figure(self):
         fig, axes, caxes = super()._prepare_figure()
+        plt.tight_layout(pad=4)
         caxes = []
         for ax in axes:
             caxes.append(colorbar.make_axes(ax)[0])
