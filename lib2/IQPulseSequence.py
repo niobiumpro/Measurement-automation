@@ -409,7 +409,8 @@ class PulseBuilder():
         return exc_pb.build(), ro_pb.build()
 
     @staticmethod
-    def build_interleaved_benchmarking_sequence(exc_pb, ro_pb, benchmarking_sequence, pulse_sequence_parameters):
+    def build_interleaved_benchmarking_sequence(exc_pb, ro_pb, \
+        pulse_sequence_parameters):
         awg_trigger_reaction_delay = \
                 pulse_sequence_parameters["awg_trigger_reaction_delay"]
         readout_duration = \
@@ -420,6 +421,8 @@ class PulseBuilder():
                 pulse_sequence_parameters["pi_pulse_duration"]
         padding = \
                 pulse_sequence_parameters["padding"]
+        benchmarking_sequence = \
+                pulse_sequence_parameters["benchmarking_sequence"]
 
         exc_pb.add_zero_pulse(awg_trigger_reaction_delay)
         global_phase = 0
@@ -434,9 +437,10 @@ class PulseBuilder():
             elif pulse_ax == "X":
                 exc_pb.add_sine_pulse(phase=pulse_phase, duration=pulse_time)
             elif pulse_ax == "Y":
-                exc_pb.add_sine_pulse(phase=pulse_phase+pi/2, duration=pulse_time)
+                exc_pb.add_sine_pulse(phase=pulse_phase-pi/2, duration=pulse_time)
             elif pulse_ax == "Z":
                 global_phase += pi*pulse_angle
+                pulse_time = 0
             else:
                 raise ValueError("Axis of %s is not allowed. Check your sequence."%(pulse_str))
             exc_pb.add_zero_pulse(padding)

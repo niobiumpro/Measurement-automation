@@ -4,16 +4,31 @@ from random import choice
 
 class InterleavedBenchmarkingSequenceGenerator():
 
-    def __init__(self, N_seqs=2, lk_array=linspace(1,10,10), N_e=10, gate="X/2"):
-        self._gate = gate
-        self._N_seqs = N_seqs
-        self._axis_string = ["I","I/2","X","X/2","Y","Y/2","Z","Z/2"]
-        self._lk_array = lk_array
-        self._seq_length = int(max(self._lk_array))
+    def __init__(self, number_of_sequences=2, max_sequence_length=10,
+        gate_to_benchmark="X/2"):
+
+        self._gate_to_benchmark = gate_to_benchmark
+        self._number_of_sequences = number_of_sequences
+        self._cliffords = ["I", "X", "X/2", "Y", "Y/2"]
+        self._max_sequence_length = max_sequence_length
+
+    def generate_full_sequences(self):
         self._reference_sequences =\
-            [self._generate_reference_sequence() for i in range(N_seqs)]
-        self._interleaved_sequences = [self._generate_interleaved_sequence(sequence)\
+            [self._generate_reference_sequence()\
+                for i in range(self._number_of_sequences)]
+        self._interleaved_sequences =\
+            [self._generate_interleaved_sequence(sequence)\
                 for sequence in self._reference_sequences]
+
+    def generate_partial_sequences(self, subsequence_length):
+        recovered_reference_sequences =\
+            [self._calculate_and_insert_recovery_gate(sequence[:subsequence_length])\
+                for sequence in self._reference_sequences]
+        recovered_interleaved_sequences =\
+            [self._calculate_and_insert_recovery_gate(sequence[:subsequence_length*2])\
+                for sequence in self._interleaved_sequences]
+
+        return recovered_reference_sequences, recovered_interleaved_sequences
 
     def _generate_reference_sequence(self):
         """
@@ -21,23 +36,25 @@ class InterleavedBenchmarkingSequenceGenerator():
         output is in the format ["-X", "+X/2", "-Z", "-Y", ...]
         """
         signs = ["+", "-"]
-        return [choice(signs)+choice(self._axis_string) for i in range(self._seq_length)]
+        return [choice(signs)+choice(self._cliffords) for i in range(self._max_sequence_length)]
 
     def _generate_interleaved_sequence(self, sequence):
         """
-        Places the gate which was passed to the constructor to every odd position of the sequence.
+        Places the gate which was passed to the constructor after each gate in
+        the sequence and returns the result.
         """
         interleaved_sequence = []
         for gate in sequence:
             interleaved_sequence.append(gate)
-            interleaved_sequence.append(self._gate)
+            interleaved_sequence.append(self._gate_to_benchmark)
         return interleaved_sequence
 
-    def _calc_and_insert_recovery_gate(self, sequence):
+    def _calculate_and_insert_recovery_gate(self, sequence):
         """
-        Calculates the final quantum state of a qubit after all the pulses in sequence are applied to |0> state.
-        Then defines which gate has to be applied in order to return the qubit to a state with <sig_z> = -1.
-        Inserts this gate to the end of a given sequence.
+        Calculates the final quantum state of a qubit after all the pulses in the
+        given sequence are applied to |0> state. Then defines which gate has to
+        be applied in order to return the qubit to |0> state. Adds this gate
+        to the end of the given sequence and returns the result.
 
         """
         qs = QuantumState("pulses", sequence)
