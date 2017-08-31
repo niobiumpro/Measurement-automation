@@ -38,3 +38,12 @@ class DispersiveRabiOscillationsResult(VNATimeResolvedDispersiveMeasurement1DRes
                 least_freq_error = errors[2]
                 name = name
         return 1/(self._fit_params[name][2]/2/pi)/2
+
+    def get_basis(self):
+        real_fit = self._fit_params["real"]
+        A_real, offset_real = real_fit[0], real_fit[-1]
+        imag_fit = self._fit_params["imag"]
+        A_imag, offset_imag = imag_fit[0], imag_fit[-1]
+        ground_state = A_real+offset_real+1j*(A_imag+offset_imag)
+        excited_state = -A_real+offset_real+1j*(-A_imag+offset_imag)
+        return ground_state, excited_state

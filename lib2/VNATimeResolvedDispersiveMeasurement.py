@@ -52,9 +52,16 @@ class VNATimeResolvedDispersiveMeasurement(Measurement):
 
     def _recording_iteration(self):
         vna = self._vna
+        q_lo = self._q_lo
         vna.avg_clear(); vna.prepare_for_stb();
         vna.sweep_single(); vna.wait_for_stb();
-        return mean(vna.get_sdata())
+        data = vna.get_sdata();
+        q_lo.set_output_state("OFF")
+        vna.avg_clear(); vna.prepare_for_stb();
+        vna.sweep_single(); vna.wait_for_stb();
+        bg = vna.get_sdata();
+        q_lo.set_output_state("ON")
+        return mean(data)/mean(bg)
 
     def _detect_resonator(self, vna_parameters, ro_calibration, q_calibration):
         self._q_lo.set_output_state("OFF")
@@ -104,9 +111,12 @@ class VNATimeResolvedDispersiveMeasurementResult(MeasurementResult):
             "imag":(imag, "Transmission imaginary part [a.u.]")}
 
     def _unwrapped_phase(self, sdata):
-        unwrapped_phase = unwrap(angle(sdata))
-        unwrapped_phase[sdata==0] = 0
-        return unwrapped_phase
+        try:
+            unwrapped_phase = unwrap(angle(sdata))
+            unwrapped_phase[sdata==0] = 0
+            return unwrapped_phase
+        except:
+            return angle(sdata)
 
     def _prepare_figure(self):
         fig, axes = plt.subplots(2, 2, figsize=(15,7), sharex=True)
