@@ -9,7 +9,7 @@ class InterleavedBenchmarkingSequenceGenerator():
 
         self._gate_to_benchmark = gate_to_benchmark
         self._number_of_sequences = number_of_sequences
-        self._cliffords = ["I", "X", "X/2", "Y", "Y/2"]
+        self._cliffords = ["I", "X/2", "Y/2"]
         self._max_sequence_length = max_sequence_length
 
     def generate_full_sequences(self):

@@ -56,12 +56,12 @@ class VNATimeResolvedDispersiveMeasurement(Measurement):
         vna.avg_clear(); vna.prepare_for_stb();
         vna.sweep_single(); vna.wait_for_stb();
         data = vna.get_sdata();
-        q_lo.set_output_state("OFF")
-        vna.avg_clear(); vna.prepare_for_stb();
-        vna.sweep_single(); vna.wait_for_stb();
-        bg = vna.get_sdata();
-        q_lo.set_output_state("ON")
-        return mean(data)/mean(bg)
+        # q_lo.set_output_state("OFF")
+        # vna.avg_clear(); vna.prepare_for_stb();
+        # vna.sweep_single(); vna.wait_for_stb();
+        # bg = vna.get_sdata();
+        # q_lo.set_output_state("ON")
+        return mean(data)#/mean(bg)
 
     def _detect_resonator(self, vna_parameters, ro_calibration, q_calibration):
         self._q_lo.set_output_state("OFF")
@@ -92,8 +92,8 @@ class VNATimeResolvedDispersiveMeasurement(Measurement):
         ro_pb = self._ro_awg.get_pulse_builder()
         q_seq, ro_seq = self._sequence_generator(q_pb, ro_pb,
                                         self._pulse_sequence_parameters)
-        self._q_awg.output_pulse_sequence(q_seq, blocking=False)
-        self._ro_awg.output_pulse_sequence(ro_seq)
+        self._ro_awg.output_pulse_sequence(ro_seq, blocking=False)
+        self._q_awg.output_pulse_sequence(q_seq)
 
 
 class VNATimeResolvedDispersiveMeasurementResult(MeasurementResult):

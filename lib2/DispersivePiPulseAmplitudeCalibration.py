@@ -4,21 +4,19 @@ from lib2.VNATimeResolvedDispersiveMeasurement1D import *
 
 class DispersivePiPulseAmplitudeCalibration(VNATimeResolvedDispersiveMeasurement1D):
 
-    def __init__(self, name, sample_name, vna_name, ro_awg_name, q_awg_name,
+    def __init__(self, name, sample_name, vna_name, ro_awg, q_awg,
                 q_lo_name, line_attenuation_db = 60):
-        super().__init__(name, sample_name, vna_name, ro_awg_name, q_awg_name,
+        super().__init__(name, sample_name, vna_name, ro_awg, q_awg,
                     q_lo_name, line_attenuation_db)
         self._measurement_result =\
             DispersivePiPulseAmplitudeCalibrationResult(name, sample_name)
+        self._sequence_generator = PulseBuilder.build_dispersive_rabi_sequences
+        self._swept_parameter_name = "excitation_amplitude"
 
     def set_swept_parameters(self, excitation_amplitudes):
         super().set_swept_parameters("excitation_amplitude",
                                                     excitation_amplitudes)
 
-    def _output_pulse_sequence(self, excitation_amplitude):
-        self._pulse_sequence_parameters["excitation_amplitude"] =\
-                                                    excitation_amplitude
-        self._output_rabi_sequence()
 
 class DispersivePiPulseAmplitudeCalibrationResult(VNATimeResolvedDispersiveMeasurement1DResult):
 

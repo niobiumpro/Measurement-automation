@@ -68,6 +68,7 @@ class IQCalibrator():
         self._mixer_id = mixer_id
         self._iq_attenuation = iq_attenuation
         self.side = sideband_to_maintain
+        self._iterations = 0
 
     def calibrate(self, lo_frequency, if_frequency, lo_power, ssb_power, waveform_resolution=1, initial_guess=None,
                 sa_res_bandwidth=500, iterations=5, minimize_iterlimit=20):
@@ -111,9 +112,9 @@ class IQCalibrator():
                 waveform_resolution=waveform_resolution)
             self._sa.prepare_for_stb();self._sa.sweep_single();self._sa.wait_for_stb()
             data = self._sa.get_tracedata()
-
+            self._iterations += 1
             print("\rDC offsets: ", format_number_list(dc_offsets),
-                                    format_number_list(data),
+                                    format_number_list(data), self._iterations,
                                     end=", ", flush=True)
             clear_output(wait=True)
 
@@ -150,7 +151,7 @@ class IQCalibrator():
             self._sa.prepare_for_stb();self._sa.sweep_single();self._sa.wait_for_stb()
             data = self._sa.get_tracedata()
 
-            print("\rIF offsets: ", format_number_list(if_amplitudes),
+            print("\rIF offsets: ", format_number_list(if_offsets),
                                     format_number_list(data),
                                      end="            ", flush=True)
             clear_output(wait=True)
@@ -242,7 +243,7 @@ class IQCalibrator():
 
             res_dc_offs = minimize(loss_function_dc_offsets, results["dc_offsets"],
                           method="Nelder-Mead", options={"maxiter":minimize_iterlimit*iterations,
-                          "xatol":1e-3, "fatol":100})
+                          "xatol":0.5e-3, "fatol":100})
 
             if if_frequency == 0:
                 res_dc_offs_open = minimize(loss_function_dc_offsets_open, array(results["dc_offsets_open"]),
