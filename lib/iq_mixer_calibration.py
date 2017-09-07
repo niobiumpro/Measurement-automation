@@ -68,6 +68,7 @@ class IQCalibrator():
         self._mixer_id = mixer_id
         self._iq_attenuation = iq_attenuation
         self.side = sideband_to_maintain
+        self._iterations = 0
 
     def calibrate(self, lo_frequency, if_frequency, lo_power, ssb_power, waveform_resolution=1, initial_guess=None,
                 sa_res_bandwidth=500, iterations=5, minimize_iterlimit=20):
@@ -111,9 +112,9 @@ class IQCalibrator():
                 waveform_resolution=waveform_resolution)
             self._sa.prepare_for_stb();self._sa.sweep_single();self._sa.wait_for_stb()
             data = self._sa.get_tracedata()
-
+            self._iterations += 1
             print("\rDC offsets: ", format_number_list(dc_offsets),
-                                    format_number_list(data),
+                                    format_number_list(data), self._iterations,
                                     end=", ", flush=True)
             clear_output(wait=True)
 

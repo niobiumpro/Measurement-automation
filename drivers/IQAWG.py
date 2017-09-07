@@ -32,7 +32,6 @@ class AWGChannel():
         self._host_awg.output_arbitrary_waveform(waveform, frequency,
                                 self._channel_number, blocking)
 
-
 class IQAWG():
 
     def __init__(self, channel_I, channel_Q):
@@ -89,9 +88,9 @@ class IQAWG():
             channel which will output the wave
         '''
         self._output_continuous_wave(frequency, amplitudes[0], relative_phase,
-            offsets[0],    waveform_resolution, 1, blocking = False)
+            offsets[0], waveform_resolution, 1, blocking = False)
         self._output_continuous_wave(frequency, amplitudes[1], 0,
-            offsets[1],    waveform_resolution, 2, blocking = True)
+            offsets[1], waveform_resolution, 2, blocking = True)
 
     def _output_continuous_wave(self, frequency, amplitude, phase, offset,
             waveform_resolution, channel, blocking):
