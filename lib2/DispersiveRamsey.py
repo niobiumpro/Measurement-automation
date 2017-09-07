@@ -28,5 +28,5 @@ class DispersiveRamseyResult(VNATimeResolvedDispersiveMeasurement1DResult):
         return p0, bounds
 
     def _generate_annotation_string(self, opt_params, err):
-        return "$T_2^*=%.2f\pm%.2f \mu$s\n$|\Delta\omega/2\pi| = %.2f\pm%.2f$ MHz"%\
+        return "$T_2^*=%.2f\pm%.2f \mu$s\n$|\Delta\omega/2\pi| = %.3f\pm%.3f$ MHz"%\
             (opt_params[1], err[1], opt_params[2]/2/pi, err[2]/2/pi)

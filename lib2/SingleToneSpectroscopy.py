@@ -39,8 +39,10 @@ class SingleToneSpectroscopy(Measurement):
     ----------------
     '''
 
-    def __init__(self, name, sample_name, line_attenuation_db = 60, **devs_aliases_map):
-        super().__init__(name, sample_name, list(devs_aliases_map.values()))
+    def __init__(self, name, sample_name, line_attenuation_db = 60,
+        plot_update_interval=5, **devs_aliases_map):
+        super().__init__(name, sample_name, list(devs_aliases_map.values()),
+                                                            plot_update_interval)
 
         self._devs_aliases = list(devs_aliases_map.keys())
         for alias, dev_name in devs_aliases_map.items():

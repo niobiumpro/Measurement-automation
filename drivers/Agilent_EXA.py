@@ -444,6 +444,7 @@ class Agilent_EXA_N9010A(Instrument):
             resolution bandwidth for each point
         '''
         self._visainstrument.write(":CONFigure:SAN")
+        self._visainstrument.write(":DET:trace1 POS")
         self._list_sweep = False
         self.do_set_centerfreq(center_freq)
         self.do_set_span(span)

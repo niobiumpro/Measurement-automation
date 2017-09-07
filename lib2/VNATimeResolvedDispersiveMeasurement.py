@@ -56,12 +56,12 @@ class VNATimeResolvedDispersiveMeasurement(Measurement):
         vna.avg_clear(); vna.prepare_for_stb();
         vna.sweep_single(); vna.wait_for_stb();
         data = vna.get_sdata();
-        q_lo.set_output_state("OFF")
-        vna.avg_clear(); vna.prepare_for_stb();
-        vna.sweep_single(); vna.wait_for_stb();
-        bg = vna.get_sdata();
-        q_lo.set_output_state("ON")
-        return mean(data)/mean(bg)
+        # q_lo.set_output_state("OFF")
+        # vna.avg_clear(); vna.prepare_for_stb();
+        # vna.sweep_single(); vna.wait_for_stb();
+        # bg = vna.get_sdata();
+        # q_lo.set_output_state("ON")
+        return mean(data)#/mean(bg)
 
     def _detect_resonator(self, vna_parameters, ro_calibration, q_calibration):
         self._q_lo.set_output_state("OFF")
