@@ -76,7 +76,7 @@ class KeysightAWG(Instrument):
 
 	# High-level functions
 
-	def output_arbitrary_waveform(self, waveform, repetition_rate, channel):
+	def output_arbitrary_waveform(self, waveform, repetition_rate, channel, blocking=True):
 		'''
 		Prepare and output an arbitrary waveform repeated at some repetition_rate
 
@@ -89,7 +89,8 @@ class KeysightAWG(Instrument):
 		channel: 1 or 2
 			channel which will output the waveform
 		'''
-		self.load_arbitrary_waveform_to_volatile_memory(waveform/2.5, channel)
+
+		self.load_arbitrary_waveform_to_volatile_memory(waveform[:-1]/2.5, channel)
 		self.prepare_waveform(WaveformType.arbitrary, repetition_rate, 5, 0, channel)
 		self.set_output(channel, 1)
 
@@ -128,7 +129,7 @@ class KeysightAWG(Instrument):
 	def apply_waveform(self, waveform, freq, amp, offset, channel=1):
 		'''
 		Set one of the pre-loaded waveforms as output and output it.
-		This function will turn both + and - outputs of the channel. If you
+		This function will turn on both + and - outputs of the channel. If you
 		don't want this behaviour, you may use the prepare_waveform fucntion.
 
 		Parameters:
@@ -147,10 +148,11 @@ class KeysightAWG(Instrument):
 		'''
 
 		self._visainstrument.write("*OPC")
-		self._visainstrument.write(":APPL%i:%s %f, %f, %f"%(channel, waveform.value, freq, amp, offset))
+		self._visainstrument.write(":APPL%i:%s %f, %f, %f"%(channel, waveform.value,
+													freq, amp, offset))
 		self._visainstrument.query("*OPC?")
 
-	def prepare_waveform(self, waveform, freq, amp, offset, channel=1):
+	def prepare_waveform(self, waveform, freq, amp, offset, channel=1, blocking=True):
 		'''
 		Set one of the pre-loaded waveforms as output, but do not output anything.
 
@@ -169,12 +171,14 @@ class KeysightAWG(Instrument):
 
 		'''
 		self._visainstrument.write("*OPC")
-		self._visainstrument.write(":FUNC{0} {1}; :FREQ{0} {2}; :VOLT{0} {3}; :VOLT{0}:OFFS {4}".format(channel, waveform.value, freq, amp, offset))
+		self._visainstrument.write(":FUNC{0} {1}; :FREQ{0} {2}; :VOLT{0} {3};\
+		 	:VOLT{0}:OFFS {4}".format(channel, waveform.value, freq, amp, offset))
 		self._visainstrument.write("*OPC?")
 
 	def list_arbitrary_waveforms(self, channel=1):
 		'''
-		Get all waveform names currently loaded in the permanent memory of the specified channel.
+		Get all waveform names currently loaded in the permanent memory of the
+		specified channel.
 
 		Parameters:
 		-----------
@@ -182,7 +186,8 @@ class KeysightAWG(Instrument):
 				The channel for shich the waveforms will be listed
 
 		'''
-		return self._visainstrument.query(":DATA%d:CAT?"%channel).replace('"', "").replace('\n', "").split(",")
+		return self._visainstrument.query(":DATA%d:CAT?"%channel)\
+								.replace('"', "").replace('\n', "").split(",")
 
 
 	def select_arbitary_waveform(self, waveform_name, channel=1):
@@ -245,7 +250,8 @@ class KeysightAWG(Instrument):
 		waveform_array = around(waveform_array*8191).astype(int)
 		self._visainstrument.write("*OPC")
 		# self._visainstrument.write(":DATA%d VOLATILE, "%channel+array_string)
-		self._visainstrument.write_binary_values(":DATA%d:DAC VOLATILE,"%channel, waveform_array, "h", True)
+		self._visainstrument.write_binary_values(":DATA%d:DAC VOLATILE,"%channel,
+													waveform_array, "h", True)
 		self._visainstrument.query("*OPC?")
 
 
