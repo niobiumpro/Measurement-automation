@@ -68,7 +68,6 @@ class SingleToneSpectroscopy(Measurement):
         '''
         super().set_swept_parameters(**swept_parameter)
         par_name = list(swept_parameter.keys())[0]
-        self._measurement_result.set_parameter_name(par_name)
 
     def _recording_iteration(self):
         vna = self._vna
@@ -95,18 +94,15 @@ class SingleToneSpectroscopyResult(MeasurementResult):
         self.min_abs = 0
         self._unwrap_phase = False
 
-
-    def set_parameter_name(self, parameter_name):
-        self._parameter_name = parameter_name
-
     def _prepare_figure(self):
         fig, axes = plt.subplots(1, 2, figsize=(15,7), sharey=True, sharex=True)
         ax_amps, ax_phas = axes
         ax_amps.ticklabel_format(axis='x', style='sci', scilimits=(-2,2))
         ax_amps.set_ylabel("Frequency [GHz]")
-        ax_amps.set_xlabel(self._parameter_name[0].upper()+self._parameter_name[1:])
+        xlabel = self._parameter_names[0][0].upper()+self._parameter_names[0][1:]
+        ax_amps.set_xlabel(xlabel)
         ax_phas.ticklabel_format(axis='x', style='sci', scilimits=(-2,2))
-        ax_phas.set_xlabel(self._parameter_name[0].upper()+self._parameter_name[1:])
+        ax_phas.set_xlabel(xlabel)
         plt.tight_layout(pad=2, h_pad=-10)
         cax_amps, kw = colorbar.make_axes(ax_amps, aspect=40)
         cax_phas, kw = colorbar.make_axes(ax_phas, aspect=40)
@@ -182,7 +178,7 @@ class SingleToneSpectroscopyResult(MeasurementResult):
     def _prepare_data_for_plot(self, data):
         s_data = self._remove_delay(data["frequency"], data["data"])
         #s_data = self.remove_background('avg_cur')
-        return data[self._parameter_name], data["frequency"]/1e9, s_data
+        return data[self._parameter_names[0]], data["frequency"]/1e9, s_data
 
     def remove_delay(self):
         copy = self.copy()

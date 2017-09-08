@@ -23,7 +23,7 @@ class DispersiveRabiOscillationsResult(VNATimeResolvedDispersiveMeasurement1DRes
 
     def _generate_fit_arguments(self, x, data):
         bounds =([-10, 0, 0, -10], [10, 100, 1e3, 10])
-        p0 = [-(max(data)-min(data))/2, 1, 10*2*pi, mean((max(data), min(data)))]
+        p0 = [-(max(data)-min(data))/2, 1, 20*2*pi, mean((max(data), min(data)))]
         return p0, bounds
 
     def _generate_annotation_string(self, opt_params, err):

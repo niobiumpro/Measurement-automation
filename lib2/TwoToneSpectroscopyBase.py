@@ -6,16 +6,14 @@ Paramatric single-tone spectroscopy is perfomed with a Vector Network Analyzer
 passed to the SingleToneSpectroscopy class when it is created.
 '''
 
-
 from numpy import *
 from lib2.SingleToneSpectroscopy import *
 from datetime import datetime as dt
 from lib2.Measurement import *
 
-
 class TwoToneSpectroscopyBase(Measurement):
 
-    def __init__(self, name, sample_name, parameter_name, line_attenuation_db,
+    def __init__(self, name, sample_name, line_attenuation_db,
                     vna_name, mw_src_name, current_src_name):
         devs_names = [vna_name, mw_src_name, current_src_name]
         super().__init__(name, sample_name, devs_names)
@@ -23,93 +21,52 @@ class TwoToneSpectroscopyBase(Measurement):
         self._mw_src = self._actual_devices[mw_src_name]
         self._current_src = self._actual_devices[current_src_name]
 
-        self._parameter_name = parameter_name
         self._measurement_result = TwoToneSpectroscopyResult(name,
-                    sample_name, parameter_name)
+                    sample_name)
         self._interrupted = False
 
-    def setup_control_parameters(self, vna_parameters, mw_src_parameters,
-                mw_src_frequencies, parameter_values):
+    def set_fixed_parameters(self, vna_parameters, mw_src_parameters, current,
+        detect_resonator=True):
 
-        self._vna_parameters = vna_parameters
-        self._parameter_values = parameter_values
-        self._pre_measurement_vna_parameters = self._vna.get_parameters()
+        self._current_src.set_current(current)
 
-        self._mw_src_parameters = mw_src_parameters
-        self._mw_src_frequencies = mw_src_frequencies
+        if detect_resonator:
+            self._mw_src.set_output_state("OFF")
+            print("Detecting a resonator within provided frequency range of the VNA %s \
+                        at %.2f mA"%(str(vna_parameters["freq_limits"]),
+                            current*1e3), flush=True)
+            res_freq, res_amp, res_phase = self._detect_resonator(vna_parameters)
+            print("Detected frequency is %.5f GHz, at %.2f mU and %.2f degrees"%(res_freq/1e9, res_amp*1e3, res_phase/pi*180))
+            vna_parameters["freq_limits"] = (res_freq, res_freq)
+            self._measurement_result.get_context() \
+                .get_equipment()["vna"] = vna_parameters
+            self._mw_src.set_output_state("ON")
 
-        self._measurement_result.get_context() \
-            .get_equipment()["vna"] = self._vna_parameters
-        self._measurement_result.get_context()\
-                .get_equipment()["mw_src"] = self._mw_src_parameters
+        super().set_fixed_parameters(vna=vna_parameters, mw_src=mw_src_parameters)
 
-    def _detect_resonator(self, plot=True, bandwidth_factor = 10):
-        self._vna._visainstrument.write("SENS:SWE:TYPE LIN")
+    def _detect_resonator(self, vna_parameters, plot=True, bandwidth_factor = 10):
         self._vna.set_nop(400)
-        self._vna.set_freq_limits(*self._vna_parameters["freq_limits"])
-        self._vna.set_power(self._vna_parameters["power"])
-        self._vna.set_bandwidth(self._vna_parameters["bandwidth"]*bandwidth_factor)
-        self._vna.set_averages(self._vna_parameters["averages"])
+        self._vna.set_freq_limits(*vna_parameters["freq_limits"])
+        self._vna.set_power(vna_parameters["power"])
+        self._vna.set_bandwidth(vna_parameters["bandwidth"]*bandwidth_factor)
+        self._vna.set_averages(vna_parameters["averages"])
         return super()._detect_resonator(plot)
 
-    def set_plot_range( self, min_abs, max_abs, min_phas=None, max_phas=None ):
-        super().set_plot_range(min_abs, max_abs, min_phas, max_phas)
-
-    def _record_data(self):
+    def _recording_iteration(self):
         vna = self._vna
-        mw_src = self._mw_src
-
-        vna.set_parameters(self._vna_parameters)
-        mw_src.set_parameters(self._mw_src_parameters)
-
-        raw_s_data = zeros((len(self._parameter_values), len(self._mw_src_frequencies)), dtype=complex_)
-
-        done_sweeps = 0
-        total_sweeps = len(self._parameter_values)*len(self._mw_src_frequencies)
-        vna.sweep_hold()
-
-        for idx, value in enumerate(self._parameter_values):
-
-            self._parameter_setter(value)
-
-            for idx2, frequency in enumerate(self._mw_src_frequencies):
-
-                self._mw_src.set_frequency(frequency)
-
-                if self._interrupted:
-                    self._interrupted = False
-                    self._vna.set_parameters(self._pre_measurement_vna_parameters)
-                    return
-
-                vna.avg_clear(); vna.prepare_for_stb(); vna.sweep_single(); vna.wait_for_stb()
-
-                raw_s_data[idx, idx2] = mean(vna.get_sdata())
-
-                raw_data = {"frequency":self._mw_src_frequencies,
-                            self._parameter_name:self._parameter_values,
-                            "data":raw_s_data}
-                self._measurement_result.set_data(raw_data)
-                done_sweeps += 1
-                avg_time = (dt.now() -  self._measurement_result.get_start_datetime())\
-                                .total_seconds()/done_sweeps
-                print("\rTime left: "+self._format_time_delta(avg_time*(total_sweeps-done_sweeps))+\
-                        ", parameter value: "+\
-                        "%.3e"%value+", average cycle time: "+\
-                        str(round(avg_time, 2))+" s          ",
-                        end="", flush=True)
-
-        self._vna.set_parameters(self._pre_measurement_vna_parameters)
-        self._measurement_result.set_is_finished(True)
+        vna.avg_clear(); vna.prepare_for_stb();
+        vna.sweep_single(); vna.wait_for_stb();
+        data = vna.get_sdata();
+        return mean(data)
 
 class TwoToneSpectroscopyResult(SingleToneSpectroscopyResult):
 
-    def __init__(self, name, sample_name, parameter_name):
+    def __init__(self, name, sample_name):
         super().__init__(name, sample_name)
         self._context = ContextBase()
         self._is_finished = False
         self._phase_units = "rad"
-        self._parameter_name = parameter_name
 
 
     def _prepare_data_for_plot(self, data):
-        return data[self._parameter_name], data["frequency"]/1e9, data["data"]
+        return data[self._parameter_names[0]], data["Frequency [Hz]"]/1e9, data["data"]
