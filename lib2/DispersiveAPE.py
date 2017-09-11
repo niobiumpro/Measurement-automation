@@ -23,7 +23,7 @@ class DispersiveAPEResult(VNATimeResolvedDispersiveMeasurement1DResult):
         self._x_axis_units = "$\pi$ rad"
 
     def _theoretical_function(self, ramsey_angle, A, offset, phase_error):
-        return A*sin(ramsey_angle*pi+phase_error*pi)+offset
+        return A*sin(ramsey_angle+phase_error)+offset
 
     def _generate_fit_arguments(self, x, data):
         bounds =([0, -10, -pi], [10, 10, pi])
@@ -31,7 +31,7 @@ class DispersiveAPEResult(VNATimeResolvedDispersiveMeasurement1DResult):
         return p0, bounds
 
     def _prepare_data_for_plot(self, data):
-        return data[self._parameter_names[0]]/pi, data["data"]
+        return data[self._parameter_names[0]], data["data"]
 
     def _generate_annotation_string(self, opt_params, err):
         return "$\phi_{err} = %.2f\pm%.2f$ deg"%\

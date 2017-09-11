@@ -209,6 +209,7 @@ class Measurement():
         parameters_values = []
         parameters_idxs = []
         done_iterations = 0
+        start_time = self._measurement_result.get_start_datetime()
 
         parameters_values = \
                 [self._swept_pars[parameter_name][1] for parameter_name in par_names]
@@ -239,8 +240,7 @@ class Measurement():
 
             done_iterations += 1
 
-            avg_time = (dt.now() - self._measurement_result.get_start_datetime())\
-                                            .total_seconds()/done_iterations
+            avg_time = (dt.now() - start_time).total_seconds()/done_iterations
             time_left = self._format_time_delta(avg_time*(total_iterations-done_iterations))
 
             formatted_values_group = \
@@ -254,7 +254,10 @@ class Measurement():
             if self._interrupted:
                 self._interrupted = False
                 return
-
+        self._measurement_result.set_recording_time(dt.now()-start_time)
+        print("\nElapsed time: %s"%\
+                    self._format_time_delta((dt.now()-start_time)\
+                                                            .total_seconds()))
         self._measurement_result.set_is_finished(True)
 
     def _recording_iteration(self):

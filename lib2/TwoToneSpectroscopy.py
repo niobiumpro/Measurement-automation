@@ -16,95 +16,66 @@ class FluxTwoToneSpectroscopy(TwoToneSpectroscopyBase):
     def __init__(self, name, sample_name, line_attenuation_db = 60,
         vna_name = "vna2", mw_src_name = "mxg", current_src_name = "yok3"):
 
-        super().__init__(name, sample_name, "Current [A]",
+        super().__init__(name, sample_name,
                 line_attenuation_db, vna_name, mw_src_name, current_src_name)
-        self._parameter_setter = self._current_src.set_current
 
-    def setup_control_parameters(self, vna_parameters, mw_src_parameters,
-                mw_src_frequencies, current_values, sweet_spot_current = None):
-        super().setup_control_parameters(vna_parameters, mw_src_parameters,
-                    mw_src_frequencies, current_values)
+    def set_fixed_parameters(self, vna_parameters, mw_src_parameters, sweet_spot_current):
+        super().set_fixed_parameters(vna_parameters, mw_src_parameters, sweet_spot_current)
 
-        self._mw_src.set_output_state("OFF")
-
-        if sweet_spot_current is None:
-            sweet_spot_current = mean((current_values[-1], current_values[0]))
-
-        self._parameter_setter(sweet_spot_current)
-
-        print("Detecting a resonator within provided frequency range of the VNA %s\
-                    at qubit's sweet spot (%.2f mA)"%(str(vna_parameters["freq_limits"]),
-                        sweet_spot_current*1e3), flush=True)
-        res_freq, res_amp, res_phase = self._detect_resonator()
-        print("Detected frequency is %.5f GHz, at %.2f mU and %.2f degrees"%(res_freq/1e9, res_amp*1e3, res_phase/pi*180))
-        self._vna_parameters["freq_limits"] = (res_freq, res_freq)
-        self._measurement_result.get_context() \
-            .get_equipment()["vna"] = self._vna_parameters
-
-        self._mw_src.set_output_state("ON")
-
+    def set_swept_parameters(self, mw_src_frequencies, current_values):
+        swept_pars = {"Current [A]":(self._current_src.set_current, current_values),
+                "Frequency [Hz]":(self._mw_src.set_frequency, mw_src_frequencies)}
+        super().set_swept_parameters(**swept_pars)
 
 class PowerTwoToneSpectroscopy(TwoToneSpectroscopyBase):
 
     def __init__(self, name, sample_name, line_attenuation_db = 60,
                 vna_name = "vna2", mw_src_name = "mxg", current_src_name = "yok3"):
-        super().__init__(name, sample_name, "Power [dBm]",
-                line_attenuation_db, vna_name, mw_src_name, current_src_name)
-        self._parameter_setter = self._mw_src.set_power
+        super().__init__(name, sample_name, line_attenuation_db, vna_name,
+                                            mw_src_name, current_src_name)
 
-    def setup_control_parameters(self, vna_parameters, mw_src_parameters,
-                mw_src_frequencies, mw_src_power_values, current):
-        super().setup_control_parameters(vna_parameters, mw_src_parameters,
-                    mw_src_frequencies, mw_src_power_values)
-
-        self._mw_src.set_output_state("OFF")
-        self._current_src.set_current(current)
-
-        print("Detecting a resonator within provided frequency range of the VNA %s\
-                    at current of %.2f mA"%(str(vna_parameters["freq_limits"]),
-                        current*1e3), flush=True)
-        res_freq, res_amp, res_phase = self._detect_resonator()
-        print("Detected frequency is %.5f GHz, at %.2f mU and %.2f degrees"%(res_freq/1e9, res_amp*1e3, res_phase/pi*180))
-        self._vna_parameters["freq_limits"] = (res_freq, res_freq)
-        self._measurement_result.get_context() \
-            .get_equipment()["vna"] = self._vna_parameters
-        self._mw_src.set_output_state("ON")
+    def set_swept_parameters(self, mw_src_frequencies, power_values):
+        swept_pars = {"Power [dBm]":(self._mw_src.set_power, power_values),
+                "Frequency [Hz]":(self._mw_src.set_frequency, mw_src_frequencies)}
+        super().set_swept_parameters(**swept_pars)
 
 class AcStarkTwoToneSpectroscopy(TwoToneSpectroscopyBase):
 
     def __init__(self, name, sample_name, line_attenuation_db = 60,
             vna_name = "vna2", mw_src_name = "mxg", current_src_name = "yok3"):
 
-        super().__init__(name, sample_name, "Readout power [dBm]",
-                line_attenuation_db, vna_name, mw_src_name, current_src_name)
-        self._parameter_setter = self._power_and_averages_setter
+        super().__init__(name, sample_name, line_attenuation_db, vna_name,
+                                        mw_src_name, current_src_name)
 
-    def setup_control_parameters(self, vna_parameters, mw_src_parameters,
-                        mw_src_frequencies, vna_power_values, current):
-
-        super().setup_control_parameters(vna_parameters, mw_src_parameters,
-                    mw_src_frequencies, vna_power_values)
-
+    def set_fixed_parameters(self, vna_parameters, mw_src_parameters, current):
         self._resonator_area = vna_parameters["freq_limits"]
-        self._current_src.set_current(current)
+        super().set_fixed_parameters(vna_parameters, mw_src_parameters,
+                                                                current, False)
+
+    def set_swept_parameters(self, mw_src_frequencies, power_values):
+        swept_pars =\
+            {"Readout power [dBm]":(self._power_and_averages_setter, power_values),
+                "Frequency [Hz]":(self._mw_src.set_frequency, mw_src_frequencies)}
+        super().set_swept_parameters(**swept_pars)
 
     def _power_and_averages_setter(self, power):
-        powers = self._parameter_values
-        start_averages = self._vna_parameters["averages"]
+        powers = self._swept_pars["Readout power [dBm]"][1]
+        vna_parameters = self._fixed_pars["vna"]
+        start_averages = vna_parameters["averages"]
         avg_factor = exp((power - powers[0])/powers[0]*log(start_averages))
-        self._vna_parameters["averages"] = round(start_averages*avg_factor)
-        self._vna_parameters["power"] = power
-        self._vna_parameters["freq_limits"] = self._resonator_area
+        vna_parameters["averages"] = round(start_averages*avg_factor)
+        vna_parameters["power"] = power
+        vna_parameters["freq_limits"] = self._resonator_area
 
         self._mw_src.set_output_state("OFF")
         print("\rDetecting a resonator within provided frequency range of the VNA %s\
-                    "%(str(self._vna_parameters["freq_limits"])), flush=True, end="")
-        res_freq, res_amp, res_phase = self._detect_resonator(plot=False,
+                    "%(str(vna_parameters["freq_limits"])), flush=True, end="")
+        res_freq, res_amp, res_phase = self._detect_resonator(vna_parameters, plot=False,
                                                             bandwidth_factor=2)
         print("\rDetected frequency is %.5f GHz, at %.2f mU and %.2f \
                     degrees"%(res_freq/1e9, res_amp*1e3, res_phase/pi*180), end="")
 
         self._mw_src.set_output_state("ON")
-        self._vna_parameters["freq_limits"] = (res_freq, res_freq)
+        vna_parameters["freq_limits"] = (res_freq, res_freq)
 
-        self._vna.set_parameters(self._vna_parameters)
+        self._vna.set_parameters(vna_parameters)

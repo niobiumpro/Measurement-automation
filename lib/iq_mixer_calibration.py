@@ -194,7 +194,7 @@ class IQCalibrator():
             self._sa.prepare_for_stb();self._sa.sweep_single();self._sa.wait_for_stb()
             data = self._sa.get_tracedata()
 
-            print("\rPhase: ", "%2.4f"%(phase/pi), format_number_list(data), end="             ", flush=True)
+            print("\rPhase: ", "%3.2f"%(phase/pi*180), format_number_list(data), end="             ", flush=True)
             clear_output(wait=True)
 
             if( self.side == "right" ):
@@ -204,7 +204,7 @@ class IQCalibrator():
 
         def iterate_minimization(prev_results, n=2):
 
-            options = {"maxiter":minimize_iterlimit, "xatol":1e-3, "fatol":10}
+            options = {"maxiter":minimize_iterlimit, "xatol":.5e-3, "fatol":10}
             res_if_offs = minimize(loss_function_if_offsets, prev_results["if_offsets"],
                 args=[prev_results["if_amplitudes"], prev_results["if_phase"]],
                 method="Nelder-Mead", options=options)
@@ -233,7 +233,7 @@ class IQCalibrator():
             self._awg.set_channel_coupling(True)
 
             results = None
-            if initial_guess==None:
+            if initial_guess is None:
                 results = {"dc_offsets":(1,1), "dc_offsets_open":(1,1), "if_offsets":(1,1),
                                 "if_amplitudes":(0.5,0.5), "if_phase":pi*0.54}
             else:
@@ -243,7 +243,7 @@ class IQCalibrator():
 
             res_dc_offs = minimize(loss_function_dc_offsets, results["dc_offsets"],
                           method="Nelder-Mead", options={"maxiter":minimize_iterlimit*iterations,
-                          "xatol":0.5e-3, "fatol":100})
+                          "xatol":.5e-3, "fatol":100})
 
             if if_frequency == 0:
                 res_dc_offs_open = minimize(loss_function_dc_offsets_open, array(results["dc_offsets_open"]),
@@ -269,10 +269,10 @@ class IQCalibrator():
                     results["if_phase"], spectral_values, elapsed_time, datetime.now())
 
         except KeyboardInterrupt:
-            pass
+            return results
 
         finally:
-             self._sa.setup_swept_sa(lo_frequency, 5*if_frequency, nop=1001, rbw=2e4)
+             self._sa.setup_swept_sa(lo_frequency, 7.5*if_frequency, nop=1001, rbw=1e4)
              self._sa.set_continuous()
 
 def format_number_list(number_list):
