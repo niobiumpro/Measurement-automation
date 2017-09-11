@@ -120,39 +120,9 @@ class PulseBuilder():
         self._pulse_seq_Q.append_pulse(zeros(N_time_steps+1)+vdc2)
         return self
 
-    # def modulate_rectangle(self, amplitude):
-    #     pulse_length = len(self._pulse_seq_I.get_pulse(-1))
-    #     modulation = amplitude*ones(pulse_length)
-    #     self._pulse_seq_I.modulate_pulse(-1, modulation)
-    #     self._pulse_seq_Q.modulate_pulse(-1, modulation)
-    #     return self
-    #
-    # def modulate_chebwin(self, lobe_attenuation=70):
-    #     pulse_length = len(self._pulse_seq_I.get_pulse(-1))
-    #     modulation = chebwin(pulse_length, lobe_attenuation)
-    #     self._pulse_seq_I.modulate_pulse(-1, modulation)
-    #     self._pulse_seq_Q.modulate_pulse(-1, modulation)
-    #     return self
-
-    # def modulate_hamming(self, amplitude=1):
-    #     pulse_length = len(self._pulse_seq_I.get_pulse(-1))
-    #     X = array(range(0, pulse_length))
-    #     modulation = amplitude*.5*(1-cos(2*pi*X/(pulse_length-1)))
-    #     self._pulse_seq_I.modulate_pulse(-1, modulation)
-    #     self._pulse_seq_Q.modulate_pulse(-1, modulation)
-    #     return self
-    #
-    # def modulate_gauss(self, amplitude, sigma):
-    #     pulse_length = len(self._pulse_seq_I.get_pulse(-1))
-    #     X = linspace(-pulse_length/2*self._waveform_resolution, pulse_length/2*self._waveform_resolution, pulse_length)
-    #     modulation = amplitude*exp(-X**2/sigma**2)
-    #     self._pulse_seq_I.modulate_pulse(-1, modulation)
-    #     self._pulse_seq_Q.modulate_pulse(-1, modulation)
-    #     return self
-
 
     def add_sine_pulse(self, duration, phase = 0, amplitude = 1,
-        window = "rectangular"):
+        window = "rectangular", hd_amplitude = 0):
         """
         Adds a pulse with amplitude defined by the iqmx_calibration at frequency
         f_lo-f_if and some phase to the sequence. All sine pulses will be parts
@@ -176,6 +146,10 @@ class PulseBuilder():
                 Rectangular window.
             "gaussian"
                 Gaussian window, see F. Motzoi et al. PRL (2009).
+            "hahn"
+                Hahn sin^2 window
+        hd_amplitude: float
+            correction for the Half Derivative method, theoretically should be 1
         """
         if_offs1, if_offs2 =\
              self._iqmx_calibration.get_optimization_results()[0]["if_offsets"]
@@ -197,14 +171,30 @@ class PulseBuilder():
                 self._waveform_resolution*frequency
 
         points = linspace(0, duration, N_time_steps+1)
-        carrier_I = if_amp1*sin(frequency*points+if_phase+phase)
-        carrier_Q = if_amp2*sin(frequency*points+phase)
+        carrier_I = if_amp1*exp(1j*(frequency*points+if_phase+phase))
+        carrier_Q = if_amp2*exp(1j*(frequency*points+phase))
 
-        if window == "gaussian" and duration > 0:
+        def rectangular():
+            return ones_like(points), zeros_like(points)
+
+        def gaussian():
             B = exp(-(duration/2)**2/2/(duration/3)**2)
             window = (exp(-(points-duration/2)**2/2/(duration/3)**2) - B)/(1-B)
-            carrier_I = window*carrier_I
-            carrier_Q = window*carrier_Q
+            derivative = gradient(window, self._waveform_resolution)
+            return window, derivative
+
+        def hahn():
+            window = sin(pi*points/N_time_steps)**2
+            derivative = gradient(window, self._waveform_resolution)
+            derivative[0] = derivative[-1] = 0
+            return window, derivative
+
+        windows = {"rectangular":rectangular, "gaussian":gaussian, "hahn":hahn}
+        window, derivative = windows[window]()
+
+        hd_corretion = - derivative*hd_amplitude/2/(-2*pi*0.2) #anharmonicity
+        carrier_I = window*real(carrier_I)+hd_corretion*imag(carrier_I)
+        carrier_Q = window*real(carrier_Q)+hd_corretion*imag(carrier_Q)
 
         self._pulse_seq_I.append_pulse(carrier_I + if_offs1)
         self._pulse_seq_Q.append_pulse(carrier_Q + if_offs2)
@@ -382,29 +372,34 @@ class PulseBuilder():
                 pulse_sequence_parameters["excitation_amplitude"]
         padding = \
                 pulse_sequence_parameters["padding"]
+        try:
+            hd_amplitude = \
+                pulse_sequence_parameters["hd_amplitude"]
+        except KeyError:
+            hd_amplitude = 0
 
         exc_pb.add_zero_pulse(awg_trigger_reaction_delay)\
             .add_sine_pulse(half_pi_pulse_duration, 0,
-                            amplitude=amplitude, window=window)\
+                amplitude=amplitude, window=window, hd_amplitude=hd_amplitude)\
             .add_zero_pulse(padding)
 
         for i in range(pseudo_I_pulses_count):
             exc_pb.add_sine_pulse(half_pi_pulse_duration, 0,
-                        amplitude=amplitude, window=window)\
+                amplitude=amplitude, window=window, hd_amplitude=hd_amplitude)\
                   .add_zero_pulse(padding)\
                   .add_sine_pulse(half_pi_pulse_duration, pi,
-                        amplitude=amplitude, window=window)\
+                amplitude=amplitude, window=window, hd_amplitude=hd_amplitude)\
                   .add_zero_pulse(padding)\
 
         exc_pb.add_sine_pulse(half_pi_pulse_duration, ramsey_angle,
-                        amplitude=amplitude, window=window)\
+                amplitude=amplitude, window=window, hd_amplitude=hd_amplitude)\
             .add_zero_pulse(readout_duration)\
             .add_zero_until(repetition_period)
 
         ro_pb.add_zero_pulse(2*half_pi_pulse_duration+padding+\
               pseudo_I_pulses_count*2*(padding+half_pi_pulse_duration))\
              .add_zero_pulse(padding).add_dc_pulse(readout_duration)\
-             .add_zero_pulse(100)
+             .add_zero_until(repetition_period)
 
         return exc_pb.build(), ro_pb.build()
 
@@ -423,6 +418,15 @@ class PulseBuilder():
                 pulse_sequence_parameters["padding"]
         benchmarking_sequence = \
                 pulse_sequence_parameters["benchmarking_sequence"]
+        amplitude =\
+                pulse_sequence_parameters["excitation_amplitude"]
+        window =\
+                pulse_sequence_parameters["modulating_window"]
+        try:
+            hd_amplitude = \
+                pulse_sequence_parameters["hd_amplitude"]
+        except KeyError:
+            hd_amplitude = 0
 
         exc_pb.add_zero_pulse(awg_trigger_reaction_delay)
         global_phase = 0

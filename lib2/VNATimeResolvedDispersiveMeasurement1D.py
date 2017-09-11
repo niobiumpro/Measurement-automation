@@ -3,7 +3,8 @@ from lib2.Measurement import *
 from lib2.VNATimeResolvedDispersiveMeasurement import *
 from lib2.IQPulseSequence import *
 
-from scipy.optimize import curve_fit
+from numpy.linalg import inv
+from scipy.optimize import least_squares, curve_fit
 
 class VNATimeResolvedDispersiveMeasurement1D(VNATimeResolvedDispersiveMeasurement):
 
@@ -40,17 +41,11 @@ class VNATimeResolvedDispersiveMeasurement1DResult(\
     def __init__(self, name, sample_name):
         super().__init__(name, sample_name)
         self._x_axis_units = "$\mu$s"
-        self._fit_params = {}
-        self._fit_errors = {}
+        self._fit_params = None
+        self._fit_errors = None
         self._annotation_bbox_props = dict(boxstyle="round", fc="white",
                 ec="black", lw=1, alpha=0.5)
         self._annotation_v_pos = "bottom"
-
-    def _theoretical_function(self):
-        '''
-        Should be implemented in child classes
-        '''
-        pass
 
     def _generate_fit_arguments(self):
         '''
@@ -59,10 +54,33 @@ class VNATimeResolvedDispersiveMeasurement1DResult(\
         Returns:
         p0: array
             Initial parameters
+        scale: tuple
+            characteristic scale of the parameters
         bounds: tuple of 2 arrays
-            See scipy.optimize.curve_fit(...) documentation
+            See scipy.optimize.least_squares(...) documentation
         '''
         pass
+
+    def _model(self, *params):
+        '''
+        Fit theoretical function. Should be implemented in child classes
+        '''
+        return None
+
+    def _cost_function(self, params, x, data):
+        return abs(self._model(x, *params)-data)
+
+    def _fit_complex_curve(self, X, data):
+        p0, bounds = self._generate_fit_arguments(X, data)
+        if self._fit_params is not None:
+            p0 = self._fit_params
+        optp, err = curve_fit(lambda x, *params: real(self._model(x, *params))\
+            +imag(self._model(x, *params)), X, real(data)+imag(data),
+                                                        p0=p0, bounds=bounds)
+        result = least_squares(self._cost_function, optp, args=(X,data),
+                                bounds=bounds, x_scale="jac")
+        sigma = std(abs(self._model(X, *result.x)-data))
+        return result, sqrt(diag(sigma**2*inv(result.jac.T.dot(result.jac))))
 
     def fit(self, verbose=True):
 
@@ -70,27 +88,15 @@ class VNATimeResolvedDispersiveMeasurement1DResult(\
         data = meas_data["data"][meas_data["data"]!=0]
         if len(data)<5:
             return
+
         X = self._prepare_data_for_plot(meas_data)[0]
         X = X[:len(data)]
-        for name in self._data_formats.keys():
-            Y = self._data_formats[name][0](data)
-            try:
-                p0, bounds = self._generate_fit_arguments(X, Y)
-                opt_params, pcov = curve_fit(self._theoretical_function,
-                            X, Y, p0, bounds = bounds,
-                            maxfev=10000)
-                std = sqrt(abs(diag(pcov)))
-                if (abs(opt_params)>std).all():
-                    self._fit_params[name] = opt_params
-                    self._fit_errors[name] = std
-                else:
-                    if verbose:
-                        print("Fit of %s had low accuracy:\n popt: %s, std: %s"%\
-                                (name, str(opt_params), str(std)))
-            except RuntimeError:
-                if verbose:
-                    print("Fit of %s did not converge"%name)
-                continue
+
+        result, err = self._fit_complex_curve(X, data)
+        if result.success:
+            for name in self._data_formats.keys():
+                self._fit_params = result.x
+                self._fit_errors = err
 
     def _prepare_data_for_plot(self, data):
         return data[self._parameter_names[0]]/1e3, data["data"]
@@ -142,13 +148,15 @@ class VNATimeResolvedDispersiveMeasurement1DResult(\
 
     def _plot_fit(self, axes):
         self.fit(verbose=False)
+        if self._fit_params is None:
+            return
 
-        for idx, name in enumerate(self._fit_params.keys()):
+        for idx, name in enumerate(self._data_formats.keys()):
             ax = axes[name]
-            opt_params = self._fit_params[name]
-            err = self._fit_errors[name]
+            opt_params = self._fit_params
+            err = self._fit_errors
 
             X = self._prepare_data_for_plot(self.get_data())[0]
-            Y = self._theoretical_function(X, *opt_params)
+            Y = self._data_formats[name][0](self._model(X, *opt_params))
             ax.plot(X, Y, "C%d"%list(self._data_formats.keys()).index(name))
             self._annotate_fit_plot(ax, opt_params, err)

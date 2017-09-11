@@ -15,7 +15,7 @@ class DispersivePiPulseAmplitudeCalibration(VNATimeResolvedDispersiveMeasurement
 
     def set_swept_parameters(self, excitation_amplitudes):
         super().set_swept_parameters("excitation_amplitude",
-                                                    excitation_amplitudes)
+                                            excitation_amplitudes)
 
 
 class DispersivePiPulseAmplitudeCalibrationResult(VNATimeResolvedDispersiveMeasurement1DResult):
@@ -24,8 +24,8 @@ class DispersivePiPulseAmplitudeCalibrationResult(VNATimeResolvedDispersiveMeasu
         return A*cos(pi*amplitude/pi_amplitude)+offset
 
     def _generate_fit_arguments(self, x, data):
-        bounds =([-1, 0, -1e3], [0, 1e3, 1e3])
-        p0 = [-(max(data)-min(data))/2, 1, mean((max(data), min(data)))]
+        bounds =([-1, 0, -1e3], [0, 10, 10])
+        p0 = [-(max(data)-min(data))/2, 3, mean((max(data), min(data)))]
         return p0, bounds
 
     def _prepare_data_for_plot(self, data):

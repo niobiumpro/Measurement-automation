@@ -20,29 +20,17 @@ class DispersiveDecay(VNATimeResolvedDispersiveMeasurement1D):
 
 class DispersiveDecayResult(VNATimeResolvedDispersiveMeasurement1DResult):
 
-    def _theoretical_function(self, t, A, T_1, offset):
-        return A*exp(-1/T_1*t)+offset
+    def __init__(self, name, sample_name):
+        super().__init__(name, sample_name)
+        self._annotation_v_pos = "top"
+
+    def _model(self, t, A_r, A_i, T_1, offset_r, offset_i):
+        return (A_i+A_r*1j)*exp(-1/T_1*t)+offset_r+1j*offset_i
 
     def _generate_fit_arguments(self, x, data):
-        bounds =([-1e3, 0, -1e3], [1e3, 100, 1e3])
-        p0 = [(max(data)-min(data))/2, 1, min(data)]
+        bounds =([-1, -1, 0.1, -1, -1], [1, 1, 100, 1, 1])
+        p0 = [ptp(real(data))/2, ptp(imag(data))/2, 1, min(real(data)), min(imag(data))]
         return p0, bounds
 
-    def _plot_fit(self, axes):
-        self.fit(verbose=False)
-
-        for idx, name in enumerate(self._fit_params.keys()):
-            ax = axes[name]
-            opt_params = self._fit_params[name]
-            err = self._fit_errors[name]
-
-            X = self.get_data()[self._parameter_names[0]]/1e3
-            Y = self._theoretical_function(X, *opt_params)
-            ax.plot(X, Y, "C%d"%list(self._data_formats.keys()).index(name))
-
-            bbox_props = dict(boxstyle="round", fc="white",
-                    ec="black", lw=1, alpha=0.5)
-            ax.annotate("$T_1=%.2f\pm%.2f \mu$s"%\
-                (opt_params[1], err[1]), (mean(ax.get_xlim()),
-                .1*ax.get_ylim()[0]+.9*ax.get_ylim()[1]),
-                bbox=bbox_props, ha="center")
+    def _generate_annotation_string(self, opt_params, err):
+        return "$T_1=%.2f \pm %.2f\mu$s"%(opt_params[2], err[2])
