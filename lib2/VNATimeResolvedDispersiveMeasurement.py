@@ -53,21 +53,21 @@ class VNATimeResolvedDispersiveMeasurement(Measurement):
     def _recording_iteration(self):
         vna = self._vna
         q_lo = self._q_lo
-        vna.avg_clear(); vna.prepare_for_stb();
-        vna.sweep_single(); vna.wait_for_stb();
-        data = vna.get_sdata();
         # q_lo.set_output_state("OFF")
         # vna.avg_clear(); vna.prepare_for_stb();
         # vna.sweep_single(); vna.wait_for_stb();
         # bg = vna.get_sdata();
         # q_lo.set_output_state("ON")
+        vna.avg_clear(); vna.prepare_for_stb();
+        vna.sweep_single(); vna.wait_for_stb();
+        data = vna.get_sdata();
         return mean(data)#/mean(bg)
 
     def _detect_resonator(self, vna_parameters, ro_calibration, q_calibration):
         self._q_lo.set_output_state("OFF")
         print("Detecting a resonator within provided frequency range of the VNA %s\
                     "%(str(vna_parameters["freq_limits"])))
-        self._vna.set_nop(200)
+        self._vna.set_nop(501)
         self._vna.set_freq_limits(*vna_parameters["freq_limits"])
         self._vna.set_power(vna_parameters["power"])
         self._vna.set_bandwidth(vna_parameters["bandwidth"]*10)

@@ -86,7 +86,7 @@ class DispersiveAPEResult(VNATimeResolvedDispersiveMeasurementResult):
         ax2 = plt.subplot(gs[1, 0])
         ax3 = plt.subplot(gs[:, 1])
         axes = (ax1,ax2,ax3)
-
+        plt.tight_layout(pad=2)
         return fig, axes, None
 
     def _plot(self, axes, caxes):
@@ -101,7 +101,8 @@ class DispersiveAPEResult(VNATimeResolvedDispersiveMeasurementResult):
         for ax in axes:
             ax.clear()
             ax.grid()
-            ax.ticklabel_format(axis='y', style='sci', scilimits=(-2,2))
+        axes[0].ticklabel_format(axis='y', style='sci', scilimits=(-2,2))
+        axes[1].ticklabel_format(axis='y', style='sci', scilimits=(-2,2))
 
 
         fit_results = []
@@ -135,8 +136,9 @@ class DispersiveAPEResult(VNATimeResolvedDispersiveMeasurementResult):
             fit_results = array(fit_results)
 
             error_plot_ax.errorbar(pseudo_I_pulses_counts[:ready_fits_count],
-                fit_results[:,0,-1]/pi*180, yerr=fit_results[:,1,-1]/pi*180,
-                                            marker='o', markerfacecolor="none")
+                fit_results[:,0,-1]/pi*180*sign(fit_results[:,0,1]),
+                    yerr=fit_results[:,1,-1]/pi*180, marker='o',
+                                        markerfacecolor="none")
         error_plot_ax.set_xlim(pseudo_I_pulses_counts[0], pseudo_I_pulses_counts[-1])
         error_plot_ax.set_xlabel("Pseudo I pulses count")
         error_plot_ax.set_ylabel("Phase error [deg]")
