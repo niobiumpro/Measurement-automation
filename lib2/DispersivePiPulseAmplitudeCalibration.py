@@ -20,25 +20,29 @@ class DispersivePiPulseAmplitudeCalibration(VNATimeResolvedDispersiveMeasurement
 
 class DispersivePiPulseAmplitudeCalibrationResult(VNATimeResolvedDispersiveMeasurement1DResult):
 
-    def _theoretical_function(self, amplitude, A, pi_amplitude, offset):
-        return A*cos(pi*amplitude/pi_amplitude)+offset
+    def __init__(self, name, sample_name):
+        super().__init__(name, sample_name)
+        if_amps = self._context.get_equipment()["q_awg"]["calibration"]\
+                                                                ._if_amplitudes
+        self._x_axis_units = r"$\times$ cal values (%.2f %.2f)"%(if_amps[0],
+                                                                    if_amps[1])
+
+
+    def _model(self, amplitude, A_r, A_i, pi_amplitude,
+        offset_r, offset_i):
+        return (A_r+1j*A_i)*cos(pi*amplitude/pi_amplitude)+(offset_r+offset_i*1j)
 
     def _generate_fit_arguments(self, x, data):
-        bounds =([-1, 0, -1e3], [0, 10, 10])
-        p0 = [-(max(data)-min(data))/2, 3, mean((max(data), min(data)))]
+        bounds =([-10, -10, 0, -10, -10], [10, 10, 10, 10, 10])
+        amp_r, amp_i = -ptp(real(data))/2, -ptp(imag(data))/2
+        p0 = [amp_r, amp_i, 3, max(real(data))-amp_r, max(imag(data))-amp_i]
         return p0, bounds
 
     def _prepare_data_for_plot(self, data):
         return data["excitation_amplitude"], data["data"]
 
     def _generate_annotation_string(self, opt_params, err):
-        return "$(\pi) = %.2f\pm%.2f$ a.u."%(opt_params[1], err[1]/2/pi)
+        return "$(\pi) = %.2f \pm %.2f$ a.u."%(opt_params[2], err[2]/2/pi)
 
     def get_pi_pulse_amplitude(self):
-        smallest_pi_amp_error = 1e3
-        name = ""
-        for name, errors in self._fit_errors.items():
-            if errors[1]<smallest_pi_amp_error:
-                smallest_pi_amp_error = errors[1]
-                name = name
-        return self._fit_params[name][1]
+        return self._fit_params[2]

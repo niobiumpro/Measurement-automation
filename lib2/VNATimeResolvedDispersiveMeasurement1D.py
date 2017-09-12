@@ -74,13 +74,15 @@ class VNATimeResolvedDispersiveMeasurement1DResult(\
         p0, bounds = self._generate_fit_arguments(X, data)
         if self._fit_params is not None:
             p0 = self._fit_params
-        optp, err = curve_fit(lambda x, *params: real(self._model(x, *params))\
-            +imag(self._model(x, *params)), X, real(data)+imag(data),
+        try:
+            p0, err = curve_fit(lambda x, *params: real(self._model(x, *params))\
+             +imag(self._model(x, *params)), X, real(data)+imag(data),
                                                         p0=p0, bounds=bounds)
-        result = least_squares(self._cost_function, optp, args=(X,data),
+        finally:
+            result = least_squares(self._cost_function, p0, args=(X,data),
                                 bounds=bounds, x_scale="jac")
-        sigma = std(abs(self._model(X, *result.x)-data))
-        return result, sqrt(diag(sigma**2*inv(result.jac.T.dot(result.jac))))
+            sigma = std(abs(self._model(X, *result.x)-data))
+            return result, sqrt(diag(sigma**2*inv(result.jac.T.dot(result.jac))))
 
     def fit(self, verbose=True):
 

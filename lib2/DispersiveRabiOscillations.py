@@ -18,19 +18,12 @@ class DispersiveRabiOscillations(VNATimeResolvedDispersiveMeasurement1D):
 
 class DispersiveRabiOscillationsResult(VNATimeResolvedDispersiveMeasurement1DResult):
 
-    def _generate_fit_arguments(self, x, data):
-        bounds =([-10, -10, 0.1, 1*2*pi, -10, -10, -pi],
-                        [10, 10, 100, 20*2*pi, 10, 10, pi])
-        amp_r, amp_i = ptp(real(data))/2, ptp(imag(data))/2
-        p0 = (amp_r, amp_i, 1, 5*2*pi, max(real(data))-amp_r,
-                                max(imag(data))-amp_i, 0)
-        return p0, bounds
 
     def _model(self, t, A_r, A_i, T_R, Omega_R, offset_r, offset_i):
         return -(A_r+1j*A_i)*exp(-1/T_R*t)*cos(Omega_R*t)+offset_r+offset_i*1j
 
     def _generate_fit_arguments(self, x, data):
-        bounds =([-1, -1, 0.1, 1*2*pi, -1, -1], [1, 1, 100, 50*2*pi, 1, 1])
+        bounds =([-10, -10, 0.1, 1*2*pi, -10, -10], [10, 10, 100, 50*2*pi, 10, 10])
         amp_r, amp_i = ptp(real(data))/2, ptp(imag(data))/2
         p0 = [amp_r, amp_i, 1, 20*2*pi, max(real(data))-amp_r, max(imag(data))-amp_i]
         return p0, bounds
