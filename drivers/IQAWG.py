@@ -114,9 +114,9 @@ class IQAWG():
             channel which will output the wave
         '''
 
-        N_points = 1/frequency*2/waveform_resolution*1e9+1 if frequency !=0 else 3
-        waveform = amplitude*sin(2*pi*linspace(0,1,N_points)*2+phase) + offset
-        self._channels[channel-1].output_arbitrary_waveform(waveform, frequency/2,
+        N_points = 1/frequency/waveform_resolution*1e9+1 if frequency !=0 else 3
+        waveform = amplitude*sin(2*pi*linspace(0,1,N_points)+phase) + offset
+        self._channels[channel-1].output_arbitrary_waveform(waveform, frequency,
                                                             blocking=blocking)
 
     def output_pulse_sequence(self, pulse_sequence, blocking=True):
