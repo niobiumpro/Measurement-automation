@@ -57,7 +57,8 @@ class IQCalibrationData():
 
 class IQCalibrator():
 
-    def __init__(self, awg, sa, lo, mixer_id, iq_attenuation, sideband_to_maintain="left"):
+    def __init__(self, awg, sa, lo, mixer_id, iq_attenuation,
+                 sideband_to_maintain="left", sidebands_to_suppress=6):
         '''
         IQCalibrator is a class that allows you to calibrate automatically an IQ mixer to obtain a Single Sideband (SSB)
         with desired parameters.
@@ -68,6 +69,7 @@ class IQCalibrator():
         self._mixer_id = mixer_id
         self._iq_attenuation = iq_attenuation
         self.side = sideband_to_maintain
+        self._N_sup = sidebands_to_suppress
         self._iterations = 0
 
     def calibrate(self, lo_frequency, if_frequency, lo_power, ssb_power, waveform_resolution=1, initial_guess=None,
@@ -139,7 +141,7 @@ class IQCalibrator():
 
             if( self.side == "right" ):
                 data.reverse()
-            answer = abs(data[0]-ssb_power)+10*abs(dc_offsets_open[1]-dc_offsets_open[0])
+            answer = abs(data[self._N_sup//2]-ssb_power)+10*abs(dc_offsets_open[1]-dc_offsets_open[0])
             return answer
 
         def loss_function_if_offsets(if_offsets, args):
@@ -158,7 +160,7 @@ class IQCalibrator():
 
             if( self.side == "right" ):
                 data.reverse()
-            answer =  data[1]
+            answer =  10**(data[self._N_sup//2+1]/10)
             return answer
 
         def loss_function_if_amplitudes(if_amplitudes, args):
@@ -171,12 +173,12 @@ class IQCalibrator():
             self._sa.prepare_for_stb();self._sa.sweep_single();self._sa.wait_for_stb()
             data = self._sa.get_tracedata()
 
-            if( self.side == "left" ):
-                answer =  data[2] + 10*abs(ssb_power - data[0]) + 0\
-                    if abs(abs(amp1)-abs(amp2))<.2 else 10**(10*abs(abs(amp1)-abs(amp2)))
-            if( self.side == "right" ):
-                answer =  data[0] + 10*abs(ssb_power - data[2]) + 0\
-                    if abs(abs(amp1)-abs(amp2))<.2 else 10**(10*abs(abs(amp2)-abs(amp1)))
+            answer =  25e3*sum(array([abs((self._N_sup//2-i+.1))**(-1.8)*10**(psd/10) \
+                        for i,psd in enumerate(data) if psd != data[self._N_sup//2]])) + 10**(abs(ssb_power - data[self._N_sup//2])/10)\
+                if abs(abs(amp1)-abs(amp2))<.2 else 2*self._N_sup*10**(10*abs(abs(amp1)-abs(amp2)))
+        #    if( self.side == "right" ):
+        #        answer =  data[0] + 10*abs(ssb_power - data[2]) + 0\
+        #            if abs(abs(amp1)-abs(amp2))<.2 else 10**(10*abs(abs(amp2)-abs(amp1)))
             print("\rAmplitudes: ", format_number_list(if_amplitudes),
                                     format_number_list(data),
                                     "loss:", answer, end="          ", flush=True)
@@ -199,12 +201,12 @@ class IQCalibrator():
 
             if( self.side == "right" ):
                 data.reverse()
-            answer =  data[2] - data[0]
+            answer =  data[self._N_sup//2+2] - data[self._N_sup//2]
             return answer
 
         def iterate_minimization(prev_results, n=2):
 
-            options = {"maxiter":minimize_iterlimit, "xatol":.5e-3, "fatol":10}
+            options = {"maxiter":minimize_iterlimit, "xatol":.5e-3, "fatol":3}
             res_if_offs = minimize(loss_function_if_offsets, prev_results["if_offsets"],
                 args=[prev_results["if_amplitudes"], prev_results["if_phase"]],
                 method="Nelder-Mead", options=options)
@@ -243,7 +245,7 @@ class IQCalibrator():
 
             res_dc_offs = minimize(loss_function_dc_offsets, results["dc_offsets"],
                           method="Nelder-Mead", options={"maxiter":minimize_iterlimit*iterations,
-                          "xatol":.5e-3, "fatol":100})
+                          "xatol":.5e-3, "fatol":10})
 
             if if_frequency == 0:
                 res_dc_offs_open = minimize(loss_function_dc_offsets_open, array(results["dc_offsets_open"]),
@@ -257,8 +259,9 @@ class IQCalibrator():
                     elapsed_time, datetime.now())
 
             else:
-                self._sa.setup_list_sweep([lo_frequency-if_frequency, lo_frequency,
-                        lo_frequency+if_frequency], [sa_res_bandwidth]*3)
+                self._sa.setup_list_sweep(list(arange(lo_frequency-self._N_sup//2*if_frequency,\
+                                                         lo_frequency+(self._N_sup//2+1)*if_frequency,\
+                                                          if_frequency)-if_frequency), [sa_res_bandwidth]*3)
                 results["if_offsets"]=res_dc_offs.x
                 iterate_minimization(results, iterations)
                 spectral_values = {"dc":res_dc_offs.fun, "if":self._sa.get_tracedata()}
@@ -272,7 +275,7 @@ class IQCalibrator():
             return results
 
         finally:
-             self._sa.setup_swept_sa(lo_frequency, 7.5*if_frequency, nop=1001, rbw=1e4)
+             self._sa.setup_swept_sa(lo_frequency, 10*if_frequency, nop=1001, rbw=1e4)
              self._sa.set_continuous()
 
 def format_number_list(number_list):
