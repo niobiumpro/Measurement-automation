@@ -157,7 +157,9 @@ class SingleToneSpectroscopyResult(MeasurementResult):
             self.max_phase = max(phases[phases!=0])
             self.min_phase = min(phases[phases!=0])
 
-        extent = [X[0], X[-1], Y[0], Y[-1]]
+        step_x = X[1]-X[0]
+        step_y = Y[1]-Y[0]
+        extent = [X[0]-step_x/2, X[-1]+step_x/2, Y[0]-step_y/2, Y[-1]+step_y/2]
         amps_map = ax_amps.imshow(abs(Z).T, origin='lower', cmap="RdBu_r",
                         aspect = 'auto', vmax=self.max_abs, vmin=self.min_abs, extent=extent)
         amp_cb = plt.colorbar(amps_map, cax = cax_amps)

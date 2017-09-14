@@ -248,14 +248,18 @@ class IQCalibrator():
                           "xatol":.5e-3, "fatol":10})
 
             if if_frequency == 0:
-                res_dc_offs_open = minimize(loss_function_dc_offsets_open, array(results["dc_offsets_open"]),
-                              method="Nelder-Mead", options={"maxiter":minimize_iterlimit*iterations,
-                              "xatol":1e-3, "fatol":100})
+                for i in range(0,iterations):
+                    res_dc_offs_open = minimize(loss_function_dc_offsets_open, array(results["dc_offsets_open"]),
+                                  method="Nelder-Mead", options={"maxiter":minimize_iterlimit,
+                                  "xatol":1e-3, "fatol":100})
+                    self._iterations = 0
+
+                    results["dc_offsets_open"] = res_dc_offs_open.x
                 spectral_values = {"dc":res_dc_offs.fun, "dc_open":self._sa.get_tracedata()}
                 elapsed_time = (datetime.now() - start).total_seconds()
                 return IQCalibrationData(self._mixer_id, self._iq_attenuation,
                     lo_frequency, lo_power, if_frequency, ssb_power, waveform_resolution,
-                    res_dc_offs.x, res_dc_offs_open.x, None, None, None, spectral_values,
+                    results["dc_offsets"], results["dc_offsets_open"], None, None, None, spectral_values,
                     elapsed_time, datetime.now())
 
             else:
@@ -275,7 +279,7 @@ class IQCalibrator():
             return results
 
         finally:
-             self._sa.setup_swept_sa(lo_frequency, 10*if_frequency, nop=1001, rbw=1e4)
+             self._sa.setup_swept_sa(lo_frequency, 10*if_frequency if if_frequency>0 else 1e9, nop=1001, rbw=1e4)
              self._sa.set_continuous()
 
 def format_number_list(number_list):

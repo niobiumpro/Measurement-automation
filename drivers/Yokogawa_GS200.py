@@ -27,8 +27,8 @@ import numpy
 import sys
 
 def format_e(n):
-	a = '%e' % n
-	return a.split('e')[0].rstrip('0').rstrip('.') + 'e' + a.split('e')[1]
+    a = '%e' % n
+    return a.split('e')[0].rstrip('0').rstrip('.') + 'e' + a.split('e')[1]
 
 class Yokogawa_GS210(Instrument):
     '''
@@ -110,11 +110,12 @@ class Yokogawa_GS210(Instrument):
             print("Tough luck, mode is voltage source, cannot set current.")
             return False
         else:
-        	if (self._mincurrent <= current <= self._maxcurrent):
-        		self._visainstrument.write("SOUR:LEVEL %e"%current)
-        		sys.stdout.flush()
-        	else:
-        		print("Error: current limits,",(self._mincurrent, self._maxcurrent)," exceeded.")
+            if (self._mincurrent <= current <= self._maxcurrent):
+                self._visainstrument.write("SOUR:LEVEL %e"%current)
+                time.sleep(0.1)
+                sys.stdout.flush()
+            else:
+                print("Error: current limits,",(self._mincurrent, self._maxcurrent)," exceeded.")
 
     def do_get_current(self):
         '''Get current'''
@@ -200,16 +201,16 @@ class Yokogawa_GS210(Instrument):
                 self._visainstrument.write("SOUR:RANG %e"%maxval)
 
     def set_appropriate_range(self, maxcurrent=1E-3, mincurrent=-1E-3):
-    	'''Detect which range includes limits and set it'''
+        '''Detect which range includes limits and set it'''
 
-    	required_current = max(abs(maxcurrent), abs(mincurrent))
-    	for current_range in self.current_ranges_supported:
-    		if current_range >= required_current:
-    			self.set_range(current_range)
-    			return True
-    		if(current_range == self.current_ranges_supported[-1]):
-    			print("Current is too big, can't handle it!")
-    			return False
+        required_current = max(abs(maxcurrent), abs(mincurrent))
+        for current_range in self.current_ranges_supported:
+            if current_range >= required_current:
+                self.set_range(current_range)
+                return True
+            if(current_range == self.current_ranges_supported[-1]):
+                print("Current is too big, can't handle it!")
+                return False
 
 
     def set_src_mode_volt(self, current_compliance = .001):
@@ -241,32 +242,32 @@ class Yokogawa_GS210(Instrument):
             return True
 
     def set_current_limits(self, mincurrent = -1E-3, maxcurrent = 1E-3):
-    	''' Sets a limits within the range if needed for safe sweeping'''
-    	if (self._visainstrument.ask(":SOUR:FUNC?") == "CURR\n"):
-    		if mincurrent >= -1.2*self.get_range():
-       			self._mincurrent = mincurrent
-    		else:
-    			print("Too low mincurrent asked to set.")
-    		if maxcurrent <= 1.2*self.get_range():
-    			self._maxcurrent = maxcurrent
-    		else:
-    			print("Too high maxcurrent asked to set.")
-    	else:
-    		print("Go in current mode first.")
+        ''' Sets a limits within the range if needed for safe sweeping'''
+        if (self._visainstrument.ask(":SOUR:FUNC?") == "CURR\n"):
+            if mincurrent >= -1.2*self.get_range():
+                   self._mincurrent = mincurrent
+            else:
+                print("Too low mincurrent asked to set.")
+            if maxcurrent <= 1.2*self.get_range():
+                self._maxcurrent = maxcurrent
+            else:
+                print("Too high maxcurrent asked to set.")
+        else:
+            print("Go in current mode first.")
 
     def set_voltage_limits(self, minvoltage = -1E-3, maxvoltage = 1E-3):
-    	''' Sets a voltage limits within the range if needed for safe sweeping'''
-    	if (self._visainstrument.ask(":SOUR:FUNC?") == "VOLT\n"):
-    		if minvoltage >= -1*self.get_range():
-       			self._minvoltage = minvoltage
-    		else:
-    			print("Too low minvoltage asked to set.")
-    		if maxvoltage <= self.get_range():
-    			self._maxvoltage = maxvoltage
-    		else:
-    			print("Too high maxvoltage asked to set.")
-    	else:
-    		print("Go in voltage mode first.")
+        ''' Sets a voltage limits within the range if needed for safe sweeping'''
+        if (self._visainstrument.ask(":SOUR:FUNC?") == "VOLT\n"):
+            if minvoltage >= -1*self.get_range():
+                   self._minvoltage = minvoltage
+            else:
+                print("Too low minvoltage asked to set.")
+            if maxvoltage <= self.get_range():
+                self._maxvoltage = maxvoltage
+            else:
+                print("Too high maxvoltage asked to set.")
+        else:
+            print("Go in voltage mode first.")
 
 
 

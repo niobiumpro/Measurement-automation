@@ -5,9 +5,9 @@ from scipy.signal import *
 
 
 class PulseSequence():
-    def __init__(self, waveform = ndarray(1), pulses = []):
-        self._waveform = waveform
-        self._pulses = pulses
+    def __init__(self):
+        self._waveform = ndarray(1)
+        self._pulses = []
 
     def append_pulse(self, points):
         if len(points)>1:
@@ -173,6 +173,7 @@ class PulseBuilder():
         points = linspace(0, duration, N_time_steps+1)
         carrier_I = if_amp1*exp(1j*(frequency*points+if_phase+phase))
         carrier_Q = if_amp2*exp(1j*(frequency*points+phase))
+        # print(real(carrier_Q)
 
         def rectangular():
             return ones_like(points), zeros_like(points)
@@ -372,6 +373,8 @@ class PulseBuilder():
                 pulse_sequence_parameters["excitation_amplitude"]
         padding = \
                 pulse_sequence_parameters["padding"]
+        max_pseudo_I_pulses_count = \
+                pulse_sequence_parameters["max_pseudo_I_pulses_count"]
         try:
             hd_amplitude = \
                 pulse_sequence_parameters["hd_amplitude"]
@@ -389,7 +392,10 @@ class PulseBuilder():
                   .add_zero_pulse(padding)\
                   .add_sine_pulse(half_pi_pulse_duration, pi,
                 amplitude=amplitude, window=window, hd_amplitude=hd_amplitude)\
-                  .add_zero_pulse(padding)\
+                  .add_zero_pulse(padding)
+
+        for i in range(max_pseudo_I_pulses_count-pseudo_I_pulses_count):
+            exc_pb.add_zero_pulse(2*(half_pi_pulse_duration+padding))
 
         exc_pb.add_sine_pulse(half_pi_pulse_duration, ramsey_angle,
                 amplitude=amplitude, window=window, hd_amplitude=hd_amplitude)\
@@ -397,11 +403,56 @@ class PulseBuilder():
             .add_zero_until(repetition_period)
 
         ro_pb.add_zero_pulse(2*half_pi_pulse_duration+padding+\
-              pseudo_I_pulses_count*2*(padding+half_pi_pulse_duration))\
+              max_pseudo_I_pulses_count*2*(padding+half_pi_pulse_duration))\
              .add_zero_pulse(padding).add_dc_pulse(readout_duration)\
              .add_zero_until(repetition_period)
 
         return exc_pb.build(), ro_pb.build()
+
+    @staticmethod
+    def build_dispersive_pi_half_calibration_sequences(exc_pb, ro_pb,
+        pulse_sequence_parameters):
+        awg_trigger_reaction_delay = \
+                pulse_sequence_parameters["awg_trigger_reaction_delay"]
+        readout_duration = \
+                pulse_sequence_parameters["readout_duration"]
+        repetition_period = \
+                pulse_sequence_parameters["repetition_period"]
+        half_pi_pulse_duration = \
+                pulse_sequence_parameters["half_pi_pulse_duration"]
+        twice_pi_half_pulses_count = \
+                pulse_sequence_parameters["twice_pi_half_pulses_count"]
+        window =\
+                pulse_sequence_parameters["modulating_window"]
+        amplitude =\
+                pulse_sequence_parameters["excitation_amplitude"]
+        padding = \
+                pulse_sequence_parameters["padding"]
+        try:
+            hd_amplitude = \
+                pulse_sequence_parameters["hd_amplitude"]
+        except KeyError:
+            hd_amplitude = 0
+
+        exc_pb.add_zero_pulse(awg_trigger_reaction_delay)\
+                .add_sine_pulse(half_pi_pulse_duration, 0, amplitude=amplitude,
+                    window=window, hd_amplitude=hd_amplitude).add_zero_pulse(padding)
+
+        for i in range(twice_pi_half_pulses_count):
+            exc_pb.add_sine_pulse(half_pi_pulse_duration, 0, amplitude=amplitude,
+                            window=window, hd_amplitude=hd_amplitude)\
+                  .add_zero_pulse(padding)\
+                  .add_sine_pulse(half_pi_pulse_duration, 0, amplitude=amplitude,
+                            window=window, hd_amplitude=hd_amplitude)\
+                  .add_zero_pulse(padding)
+
+        exc_pb.add_zero_until(repetition_period)
+
+        ro_pb.add_zero_pulse((half_pi_pulse_duration+padding)*(1+2*twice_pi_half_pulses_count))\
+                .add_dc_pulse(readout_duration).add_zero_until(repetition_period)
+
+        return exc_pb.build(), ro_pb.build()
+
 
     @staticmethod
     def build_interleaved_benchmarking_sequence(exc_pb, ro_pb, \

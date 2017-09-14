@@ -5,13 +5,19 @@ from lib2.VNATimeResolvedDispersiveMeasurement1D import *
 class DispersivePiPulseAmplitudeCalibration(VNATimeResolvedDispersiveMeasurement1D):
 
     def __init__(self, name, sample_name, vna_name, ro_awg, q_awg,
-                q_lo_name, line_attenuation_db = 60):
+                q_lo_name, line_attenuation_db = 60, **kwargs):
         super().__init__(name, sample_name, vna_name, ro_awg, q_awg,
-                    q_lo_name, line_attenuation_db)
+                    q_lo_name, line_attenuation_db, **kwargs)
         self._measurement_result =\
             DispersivePiPulseAmplitudeCalibrationResult(name, sample_name)
         self._sequence_generator = PulseBuilder.build_dispersive_rabi_sequences
         self._swept_parameter_name = "excitation_amplitude"
+
+    def set_fixed_parameters(self, vna_parameters, ro_awg_params, q_awg_params,
+        exc_frequency, sequence_parameters):
+        super().set_fixed_parameters(vna_parameters, ro_awg_params, q_awg_params,
+            exc_frequency, sequence_parameters)
+        self._measurement_result.set_x_axis_units()
 
     def set_swept_parameters(self, excitation_amplitudes):
         super().set_swept_parameters("excitation_amplitude",
@@ -22,6 +28,8 @@ class DispersivePiPulseAmplitudeCalibrationResult(VNATimeResolvedDispersiveMeasu
 
     def __init__(self, name, sample_name):
         super().__init__(name, sample_name)
+
+    def set_x_axis_units(self):
         if_amps = self._context.get_equipment()["q_awg"]["calibration"]\
                                                                 ._if_amplitudes
         self._x_axis_units = r"$\times$ cal values (%.2f %.2f)"%(if_amps[0],
@@ -42,7 +50,7 @@ class DispersivePiPulseAmplitudeCalibrationResult(VNATimeResolvedDispersiveMeasu
         return data["excitation_amplitude"], data["data"]
 
     def _generate_annotation_string(self, opt_params, err):
-        return "$(\pi) = %.2f \pm %.2f$ a.u."%(opt_params[2], err[2]/2/pi)
+        return "$(\pi) = %.2f \pm %.2f$ a.u."%(opt_params[2], err[2])
 
     def get_pi_pulse_amplitude(self):
         return self._fit_params[2]

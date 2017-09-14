@@ -10,6 +10,7 @@ from numpy import *
 from lib2.SingleToneSpectroscopy import *
 from datetime import datetime as dt
 from lib2.Measurement import *
+from scipy.optimize import curve_fit
 
 class TwoToneSpectroscopyBase(Measurement):
 
@@ -66,7 +67,48 @@ class TwoToneSpectroscopyResult(SingleToneSpectroscopyResult):
         self._context = ContextBase()
         self._is_finished = False
         self._phase_units = "rad"
+        self._annotation_bbox_props = dict(boxstyle="round", fc="white",
+                ec="black", lw=1, alpha=0.5)
 
+    def _tr_spectrum(self, current, sweet_spot_current, frequency, period):
+        return frequency*sqrt(cos((current-sweet_spot_current)/period))
+
+    def _lorentzian_peak(self, frequency, amplitude, offset, res_frequency, width):
+        return amplitude*(0.5*width)**2/((frequency - res_frequency)**2+(0.5*width)**2)+offset
+
+    def _find_peaks(self, freqs, data):
+        peaks = []
+        for row in data:
+            try:
+                popt = curve_fit(self._lorentzian_peak,
+                    freqs, row, p0=(ptp(row), median(row), freqs[argmax(row)], 10e6))[0]
+                peaks.append(popt[2])
+            except:
+                peaks.append(freqs[argmax(row)])
+        return array(peaks)
+
+
+    def find_transmon_spectrum(self, axes, current_limits=(0,-1)):
+        data = self.get_data()
+        # max_idcs = argmax(abs(data["data"]), 1)
+        # y = data["Frequency [Hz]"][max_idcs]
+        x = data[self._parameter_names[0]][current_limits[0]:current_limits[1]]
+        freqs = data[self._parameter_names[1]]
+        y = self._find_peaks(freqs, abs(data["data"][current_limits[0]:current_limits[1]]))
+        try:
+            popt = curve_fit(self._tr_spectrum, x, y, p0=(mean(x), max(y), ptp(x)))[0]
+            annotation_string = "Sweet spot at: %.3f $\mu$A"%(popt[0]*1e6)
+            for ax in axes:
+                h_pos = mean(ax.get_xlim())
+                v_pos = .1*ax.get_ylim()[0]+.9*ax.get_ylim()[1]
+                ax.plot(x, y/1e9, ".")
+                ax.plot(x, self._tr_spectrum(x, *popt)/1e9)
+                ax.plot([popt[0]], [popt[1]/1e9], "+")
+                ax.annotate(annotation_string, (h_pos, v_pos),
+                            bbox=self._annotation_bbox_props, ha="center")
+            return popt[0], popt[1]
+        except Exception as e:
+            print("Could not find transmon spectral line"+str(e))
 
     def _prepare_data_for_plot(self, data):
         return data[self._parameter_names[0]], data["Frequency [Hz]"]/1e9, data["data"]

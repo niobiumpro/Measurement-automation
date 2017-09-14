@@ -43,9 +43,9 @@ def find(pattern, path):
 
 class ContextBase():
 
-    def __init__(self,equipment={},comment=''):
-        self._equipment = equipment
-        self._comment = comment
+    def __init__(self):
+        self._equipment = {}
+        self._comment = ""
 
     def get_equipment(self):
         return self._equipment
