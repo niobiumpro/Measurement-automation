@@ -6,17 +6,20 @@ from lib2.VNATimeResolvedDispersiveMeasurement import *
 
 class DispersiveAPE(VNATimeResolvedDispersiveMeasurement):
 
-    def __init__(self, name, sample_name, vna_name, ro_awg, q_awg,
+    def __init__(self, name, sample_name, just_ramsey, vna_name, ro_awg, q_awg,
                 q_lo_name, line_attenuation_db = 60):
         super().__init__(name, sample_name, vna_name, ro_awg, q_awg,
                     q_lo_name, line_attenuation_db)
+
+        self._just_ramsey = just_ramsey
 
         self._measurement_result = DispersiveAPEResult(name,
                     sample_name)
         self._sequence_generator = PulseBuilder.build_dispersive_APE_sequences
 
     def set_fixed_parameters(self, vna_parameters, ro_awg_parameters,
-        q_awg_parameters, excitation_frequency, pulse_sequence_parameters):
+        q_awg_parameters, excitation_frequency, pulse_sequence_parameters,
+        just_ramsey = False):
 
         vna_parameters["power"] = ro_awg_parameters["calibration"]\
             .get_radiation_parameters()["lo_power"]
@@ -33,14 +36,22 @@ class DispersiveAPE(VNATimeResolvedDispersiveMeasurement):
             detect_resonator=True)
 
 
-    def set_swept_parameters(self, pseudo_I_pulse_counts, ramsey_angles):
+    def set_swept_parameters(self, pseudo_I_pulses_counts, ramsey_angles):
+        self._pulse_sequence_parameters["max_pseudo_I_pulses_count"] = \
+            max(pseudo_I_pulses_counts)
         super().set_swept_parameters(**{"pseudo_I_pulse_count":
-                        (self._set_pseudo_I_pulses_count, pseudo_I_pulse_counts),
+                        (self._set_pseudo_I_pulses_count, pseudo_I_pulses_counts),
                         "ramsey_angles":
                         (self._set_ramsey_angle_and_output, ramsey_angles)})
 
     def _set_pseudo_I_pulses_count(self, pseudo_I_pulses_count):
-        self._pulse_sequence_parameters["pseudo_I_pulses_count"] = pseudo_I_pulses_count
+        if not self._just_ramsey:
+            self._pulse_sequence_parameters["pseudo_I_pulses_count"] =\
+                                                            pseudo_I_pulses_count
+        else:
+            self._pulse_sequence_parameters["pseudo_I_pulses_count"] = 0
+            self._pulse_sequence_parameters["max_pseudo_I_pulses_count"] =\
+                                                            pseudo_I_pulses_count
 
     def _set_ramsey_angle_and_output(self, ramsey_angle):
         self._pulse_sequence_parameters["ramsey_angle"] = ramsey_angle
@@ -86,7 +97,7 @@ class DispersiveAPEResult(VNATimeResolvedDispersiveMeasurementResult):
         ax2 = plt.subplot(gs[1, 0])
         ax3 = plt.subplot(gs[:, 1])
         axes = (ax1,ax2,ax3)
-        plt.tight_layout(pad=2)
+        plt.tight_layout(pad=3)
         return fig, axes, None
 
     def _plot(self, axes, caxes):
@@ -134,9 +145,9 @@ class DispersiveAPEResult(VNATimeResolvedDispersiveMeasurementResult):
         ready_fits_count = len(fit_results)
         if ready_fits_count>0:
             fit_results = array(fit_results)
-
+            fit_phase_correction = pi*0.5*(1-sign(fit_results[:,0,1]))
             error_plot_ax.errorbar(pseudo_I_pulses_counts[:ready_fits_count],
-                fit_results[:,0,-1]/pi*180*sign(fit_results[:,0,1]),
+                (fit_phase_correction+fit_results[:,0,-1])/pi*180,
                     yerr=fit_results[:,1,-1]/pi*180, marker='o',
                                         markerfacecolor="none")
         error_plot_ax.set_xlim(pseudo_I_pulses_counts[0], pseudo_I_pulses_counts[-1])

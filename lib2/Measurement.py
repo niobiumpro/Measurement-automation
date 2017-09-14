@@ -186,8 +186,10 @@ class Measurement():
         plt.ion()
 
         self._measurement_result.set_start_datetime(dt.now())
+        if self._measurement_result.is_finished():
+            print("Starting with a result from a previous launch")
+            self._measurement_result.set_is_finished(False)
         print("Started at: ", self._measurement_result.get_start_datetime())
-
         t = Thread(target=self._record_data)
         t.start()
         try:
