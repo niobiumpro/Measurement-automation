@@ -398,11 +398,13 @@ class PulseBuilder():
         tomo_phase = \
                 pulse_sequence_parameters["tomo_phase"]
         prep_pulse = \
-                pulse_sequence_parameters["prep_pulse"]   # string with pulse, i.e. '+X/2'
+                pulse_sequence_parameters["prep_pulse"]   # list with strings of pulses, i.e. '+X/2'
         prep_pulse_pi_amplitude = \
                 pulse_sequence_parameters["prep_pulse_pi_amplitude"]
         tomo_delay = \
                 pulse_sequence_parameters["tomo_delay"]
+        padding = \
+                pulse_sequence_parameters["padding"]
         pulse_length = \
                 pulse_sequence_parameters["pulse_length"]
         tomo_pulse_amplitude =\
@@ -415,16 +417,21 @@ class PulseBuilder():
         except KeyError:
             hd_amplitude = 0
 
-        exc_pb.add_zero_pulse(awg_trigger_reaction_delay)\
-            .add_sine_pulse_from_string(prep_pulse,pulse_length,prep_pulse_pi_amplitude,
-                                            window=window)\
-            .add_zero_pulse(tomo_delay)\
+        prep_total_duration = 0
+        exc_pb.add_zero_pulse(awg_trigger_reaction_delay)
+        for idx, pulse_str in enumerate(prep_pulse):
+            exc_pb.add_sine_pulse_from_string(pulse_str,pulse_length,prep_pulse_pi_amplitude,
+                                            window=window)
+            exc_pb.add_zero_pulse(padding)
+            prep_total_duration += pulse_length + padding
+
+        exc_pb.add_zero_pulse(tomo_delay)\
             .add_sine_pulse(pulse_length, tomo_phase,
                 amplitude=tomo_pulse_amplitude, window=window, hd_amplitude=hd_amplitude)\
             .add_zero_pulse(readout_duration)\
             .add_zero_until(repetition_period)
 
-        ro_pb.add_zero_pulse(pulse_length+tomo_delay+pulse_length)\
+        ro_pb.add_zero_pulse(prep_total_duration+tomo_delay+pulse_length)\
              .add_dc_pulse(readout_duration)\
              .add_zero_until(repetition_period)
 
