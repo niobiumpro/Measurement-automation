@@ -201,6 +201,41 @@ class PulseBuilder():
         self._pulse_seq_Q.append_pulse(carrier_Q + if_offs2)
         return self
 
+    def add_sine_pulse_from_string(self, pulse_string, pulse_duration,
+                                        pulse_amplitude, window='gaussian'):
+        '''
+        pulse_duration is pi_pulse_duraton for rectangular window
+        and is arbitrary for gaussian window.
+
+        pulse_amplitude is pi_pulse_amplitude for gaussian window and
+        is arbitrary for rectangular window.
+        '''
+        global_phase = 0
+        pulse_ax = pulse_string[1]
+        pulse_angle = eval(pulse_string.replace(pulse_ax,"1"))  # in pi's
+        if window == "rectangular":
+            pulse_time = pulse_duration*abs(pulse_angle)
+        elif window == "gaussian":
+            pulse_time = pulse_duration
+            pulse_amplitude = pulse_angle*pulse_amplitude
+        pulse_phase = pi/2*(1-sign(pulse_angle))+global_phase
+        if pulse_ax == "I":
+            self.add_zero_pulse(pulse_time)
+        elif pulse_ax == "X":
+            self.add_sine_pulse(duration=pulse_time, phase=pulse_phase,
+                                amplitude=pulse_amplitude,
+                                window=window)
+        elif pulse_ax == "Y":
+            self.add_sine_pulse(duration=pulse_time, phase=pulse_phase-pi/2,
+                                amplitude=pulse_amplitude,
+                                window=window)
+        elif pulse_ax == "Z":
+            global_phase += pi*pulse_angle
+            pulse_time = 0
+        else:
+            raise ValueError("Axis of %s is not allowed. Check your sequence."%(pulse_str))
+        return self
+
     def add_zero_until(self, total_duration):
         '''
         Adds a pulse with zero amplitude to the sequence of such length that the
@@ -352,6 +387,57 @@ class PulseBuilder():
         return exc_pb.build(), ro_pb.build()
 
     @staticmethod
+    def build_radial_tomography_pulse_sequences(exc_pb, ro_pb,
+                    pulse_sequence_parameters):
+        awg_trigger_reaction_delay = \
+                pulse_sequence_parameters["awg_trigger_reaction_delay"]
+        readout_duration = \
+                pulse_sequence_parameters["readout_duration"]
+        repetition_period = \
+                pulse_sequence_parameters["repetition_period"]
+        tomo_phase = \
+                pulse_sequence_parameters["tomo_phase"]
+        prep_pulse = \
+                pulse_sequence_parameters["prep_pulse"]   # list with strings of pulses, i.e. '+X/2'
+        prep_pulse_pi_amplitude = \
+                pulse_sequence_parameters["prep_pulse_pi_amplitude"]
+        tomo_delay = \
+                pulse_sequence_parameters["tomo_delay"]
+        padding = \
+                pulse_sequence_parameters["padding"]
+        pulse_length = \
+                pulse_sequence_parameters["pulse_length"]
+        tomo_pulse_amplitude =\
+                pulse_sequence_parameters["tomo_pulse_amplitude"]
+        window =\
+                pulse_sequence_parameters["modulating_window"]
+        try:
+            hd_amplitude = \
+                    pulse_sequence_parameters["hd_amplitude"]
+        except KeyError:
+            hd_amplitude = 0
+
+        prep_total_duration = 0
+        exc_pb.add_zero_pulse(awg_trigger_reaction_delay)
+        for idx, pulse_str in enumerate(prep_pulse):
+            exc_pb.add_sine_pulse_from_string(pulse_str,pulse_length,prep_pulse_pi_amplitude,
+                                            window=window)
+            exc_pb.add_zero_pulse(padding)
+            prep_total_duration += pulse_length + padding
+
+        exc_pb.add_zero_pulse(tomo_delay)\
+            .add_sine_pulse(pulse_length, tomo_phase,
+                amplitude=tomo_pulse_amplitude, window=window, hd_amplitude=hd_amplitude)\
+            .add_zero_pulse(readout_duration)\
+            .add_zero_until(repetition_period)
+
+        ro_pb.add_zero_pulse(prep_total_duration+tomo_delay+pulse_length)\
+             .add_dc_pulse(readout_duration)\
+             .add_zero_until(repetition_period)
+
+        return exc_pb.build(), ro_pb.build()
+
+    @staticmethod
     def build_dispersive_APE_sequences(exc_pb, ro_pb,
         pulse_sequence_parameters):
 
@@ -459,20 +545,22 @@ class PulseBuilder():
         pulse_sequence_parameters):
         awg_trigger_reaction_delay = \
                 pulse_sequence_parameters["awg_trigger_reaction_delay"]
+        window =\
+                pulse_sequence_parameters["modulating_window"]
+        pulse_duration = \
+                    pulse_sequence_parameters["pulse_duration"]
+        pulse_amplitude =\
+                    pulse_sequence_parameters["excitation_amplitude"]
         readout_duration = \
                 pulse_sequence_parameters["readout_duration"]
         repetition_period = \
                 pulse_sequence_parameters["repetition_period"]
-        pi_pulse_duration = \
-                pulse_sequence_parameters["pi_pulse_duration"]
+
         padding = \
                 pulse_sequence_parameters["padding"]
         benchmarking_sequence = \
                 pulse_sequence_parameters["benchmarking_sequence"]
-        amplitude =\
-                pulse_sequence_parameters["excitation_amplitude"]
-        window =\
-                pulse_sequence_parameters["modulating_window"]
+
         try:
             hd_amplitude = \
                 pulse_sequence_parameters["hd_amplitude"]
@@ -483,21 +571,8 @@ class PulseBuilder():
         global_phase = 0
         excitation_duration = 0
         for idx, pulse_str in enumerate(benchmarking_sequence):
-            pulse_ax = pulse_str[1]
-            pulse_angle = eval(pulse_str.replace(pulse_ax,"1"))  # in pi's
-            pulse_time = pi_pulse_duration*abs(pulse_angle)
-            pulse_phase = pi/2*(1-sign(pulse_angle))+global_phase
-            if pulse_ax == "I":
-                exc_pb.add_zero_pulse(pulse_time)
-            elif pulse_ax == "X":
-                exc_pb.add_sine_pulse(phase=pulse_phase, duration=pulse_time)
-            elif pulse_ax == "Y":
-                exc_pb.add_sine_pulse(phase=pulse_phase-pi/2, duration=pulse_time)
-            elif pulse_ax == "Z":
-                global_phase += pi*pulse_angle
-                pulse_time = 0
-            else:
-                raise ValueError("Axis of %s is not allowed. Check your sequence."%(pulse_str))
+            exc_pb.add_sine_pulse_from_string(window, pulse_str,
+                                        pulse_duration, pulse_amplitude)
             exc_pb.add_zero_pulse(padding)
             excitation_duration += pulse_time+padding
         exc_pb.add_zero_until(repetition_period)
