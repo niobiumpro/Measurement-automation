@@ -39,7 +39,7 @@ class DispersivePiPulseAmplitudeFineCalibrationResult(VNATimeResolvedDispersiveM
 
     def get_correct_pi_half_amplitude(self):
         old_amp = self.get_context()\
-                    .get_pulse_sequence_parameters()["pi_half_pulse_amplitude"]
+                    .get_pulse_sequence_parameters()["excitation_amplitude"]
         return old_amp/(pi/2-self._fit_params[0])*(pi/2)
 
     def _model(self, twice_pi_half_pulses_count, epsilon,

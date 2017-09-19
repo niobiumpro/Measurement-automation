@@ -201,7 +201,8 @@ class IQCalibrator():
 
             if( self.side == "right" ):
                 data.reverse()
-            answer =  data[self._N_sup//2+2] - data[self._N_sup//2]
+            answer =  25e3*sum(array([abs((self._N_sup//2-i+.1))**(-1.8)*10**(psd/10) \
+                        for i,psd in enumerate(data) if psd != data[self._N_sup//2]])) + 10**(abs(ssb_power - data[self._N_sup//2])/10)
             return answer
 
         def iterate_minimization(prev_results, n=2):
@@ -243,9 +244,12 @@ class IQCalibrator():
 
             self._sa.setup_list_sweep([lo_frequency], [sa_res_bandwidth])
 
-            res_dc_offs = minimize(loss_function_dc_offsets, results["dc_offsets"],
-                          method="Nelder-Mead", options={"maxiter":minimize_iterlimit*iterations,
-                          "xatol":.5e-3, "fatol":10})
+            for i in range(0, iterations):
+                res_dc_offs = minimize(loss_function_dc_offsets, results["dc_offsets"],
+                              method="Nelder-Mead", options={"maxiter":minimize_iterlimit,
+                              "xatol":.5e-3, "fatol":10})
+                self._iterations = 0
+                results["dc_offsets"] = res_dc_offs.x
 
             if if_frequency == 0:
                 for i in range(0,iterations):
@@ -253,8 +257,9 @@ class IQCalibrator():
                                   method="Nelder-Mead", options={"maxiter":minimize_iterlimit,
                                   "xatol":1e-3, "fatol":100})
                     self._iterations = 0
-
                     results["dc_offsets_open"] = res_dc_offs_open.x
+
+                print('\n',results["dc_offsets_open"],'\n')
                 spectral_values = {"dc":res_dc_offs.fun, "dc_open":self._sa.get_tracedata()}
                 elapsed_time = (datetime.now() - start).total_seconds()
                 return IQCalibrationData(self._mixer_id, self._iq_attenuation,
