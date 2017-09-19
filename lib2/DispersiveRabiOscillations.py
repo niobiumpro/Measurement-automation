@@ -12,9 +12,23 @@ class DispersiveRabiOscillations(VNATimeResolvedDispersiveMeasurement1D):
                     sample_name)
         self._sequence_generator = PulseBuilder.build_dispersive_rabi_sequences
         self._swept_parameter_name = "excitation_duration"
+        self._basis = None
 
     def set_swept_parameters(self, excitation_durations):
         super().set_swept_parameters(self._swept_parameter_name, excitation_durations)
+
+    def set_basis(self, basis):
+        self._basis = basis
+
+    def _recording_iteration(self):
+        data = super()._recording_iteration()
+        if self._basis is None:
+            return data
+        basis = self._basis
+        p_r = (real(data) - real(basis[0]))/(real(basis[1]) - real(basis[0]))
+        p_i = (imag(data) - imag(basis[0]))/(imag(basis[1]) - imag(basis[0]))
+        return p_r+1j*p_i
+
 
 class DispersiveRabiOscillationsResult(VNATimeResolvedDispersiveMeasurement1DResult):
 
@@ -38,6 +52,6 @@ class DispersiveRabiOscillationsResult(VNATimeResolvedDispersiveMeasurement1DRes
     def get_basis(self):
         fit = self._fit_params
         A_r, A_i, offset_r, offset_i = fit[0], fit[1], fit[-2], fit[-1]
-        ground_state = A_r+offset_r+1j*(A_i+offset_i)
-        excited_state = -A_r+offset_r+1j*(-A_i+offset_i)
-        return ground_state, excited_state
+        ground_state = -A_r+offset_r+1j*(-A_i+offset_i)
+        excited_state = A_r+offset_r+1j*(A_i+offset_i)
+        return array((ground_state, excited_state))

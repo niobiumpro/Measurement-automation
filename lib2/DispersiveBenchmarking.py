@@ -40,8 +40,7 @@ class DispersiveRandomizedInterleavedBenchmarking(VNATimeResolvedDispersiveMeasu
             InterleavedBenchmarkingSequenceGenerator(self._number_of_sequences, \
                             self._max_sequence_length, self._gate_to_benchmark)
         self._rb_sequence_generator.generate_full_sequences()
-
-        self._measurement_result._basis = basis
+        self._basis = basis
 
     def set_swept_parameters(self, subsequence_lengths):
         swept_pars = {"subsequence_length":\
@@ -68,6 +67,12 @@ class DispersiveRandomizedInterleavedBenchmarking(VNATimeResolvedDispersiveMeasu
             self._interleaved_sequence if is_interleaved else self._reference_sequence
         super()._output_pulse_sequence()
 
+    def _recording_iteration(self):
+        data = super()._recording_iteration()
+        basis = self._basis
+        p_r = (real(data) - real(basis[0]))/(real(basis[1]) - real(basis[0]))
+        p_i = (imag(data) - imag(basis[0]))/(imag(basis[1]) - imag(basis[0]))
+        return p_r+1j*p_i
 
 class DispersiveRandomizedInterleavedBenchmarkingResult(VNATimeResolvedDispersiveMeasurementResult):
 
@@ -121,11 +126,6 @@ class DispersiveRandomizedInterleavedBenchmarkingResult(VNATimeResolvedDispersiv
                 ax.plot(X[:len(Y)], Y, "C%d"%is_interleaved, ls=":", marker="o",
                                                 markerfacecolor='none', zorder=2)
 
-            if self._basis is not None:
-                ax.plot(X, ones_like(X)*self\
-                    ._data_formats[name][0](self._basis[0]), '--', color="black")
-                ax.plot(X, ones_like(X)*self\
-                    ._data_formats[name][0](self._basis[1]), "--", color="black")
 
             ax.set_xlim(X[0], X[-1])
             ax.set_ylabel(self._data_formats[name][1])
