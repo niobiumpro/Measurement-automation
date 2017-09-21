@@ -185,7 +185,7 @@ class PulseBuilder():
             return window, derivative
 
         def hahn():
-            window = sin(pi*points/N_time_steps)**2
+            window = sin(pi*linspace(0, N_time_steps, N_time_steps+1)/N_time_steps)**2
             derivative = gradient(window, self._waveform_resolution)
             derivative[0] = derivative[-1] = 0
             return window, derivative
@@ -215,7 +215,7 @@ class PulseBuilder():
         pulse_angle = eval(pulse_string.replace(pulse_ax,"1"))  # in pi's
         if window == "rectangular":
             pulse_time = pulse_duration*abs(pulse_angle)
-        elif window == "gaussian":
+        else:
             pulse_time = pulse_duration
             pulse_amplitude = pulse_angle*pulse_amplitude
         pulse_phase = pi/2*(1-sign(pulse_angle))+global_phase
