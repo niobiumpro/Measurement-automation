@@ -8,6 +8,12 @@ from scipy.optimize import least_squares, curve_fit
 
 class VNATimeResolvedDispersiveMeasurement1D(VNATimeResolvedDispersiveMeasurement):
 
+    def __init__(self,  name, sample_name, vna_name, ro_awg, q_awg,
+        q_lo_name, line_attenuation_db = 60, plot_update_interval = 1):
+        super().__init__(name, sample_name, vna_name, ro_awg, q_awg,
+            q_lo_name, line_attenuation_db, plot_update_interval)
+        self._basis = None
+
     def set_fixed_parameters(self, vna_parameters, ro_awg_parameters,
             q_awg_parameters, qubit_frequency, pulse_sequence_parameters):
 
@@ -35,6 +41,18 @@ class VNATimeResolvedDispersiveMeasurement1D(VNATimeResolvedDispersiveMeasuremen
         self._pulse_sequence_parameters[self._swept_parameter_name] = sequence_parameter
         super()._output_pulse_sequence()
 
+    def set_basis(self, basis):
+        self._basis = basis
+
+    def _recording_iteration(self):
+        data = super()._recording_iteration()
+        if self._basis is None:
+            return data
+        basis = self._basis
+        p_r = (real(data) - real(basis[0]))/(real(basis[1]) - real(basis[0]))
+        p_i = (imag(data) - imag(basis[0]))/(imag(basis[1]) - imag(basis[0]))
+        return p_r+1j*p_i
+
 class VNATimeResolvedDispersiveMeasurement1DResult(\
                     VNATimeResolvedDispersiveMeasurementResult):
 
@@ -46,6 +64,7 @@ class VNATimeResolvedDispersiveMeasurement1DResult(\
         self._annotation_bbox_props = dict(boxstyle="round", fc="white",
                 ec="black", lw=1, alpha=0.5)
         self._annotation_v_pos = "bottom"
+        self._data_formats_used = ["real", "imag"]
 
     def _generate_fit_arguments(self):
         '''
@@ -73,7 +92,9 @@ class VNATimeResolvedDispersiveMeasurement1DResult(\
     def _fit_complex_curve(self, X, data):
         p0, bounds = self._generate_fit_arguments(X, data)
         if self._fit_params is not None:
-            p0 = self._fit_params
+            if logical_and(array(bounds[1])>self._fit_params,
+                                array(bounds[0])<self._fit_params).all():
+                p0 = self._fit_params
         try:
             p0, err = curve_fit(lambda x, *params: real(self._model(x, *params))\
              +imag(self._model(x, *params)), X, real(data)+imag(data),
@@ -94,17 +115,26 @@ class VNATimeResolvedDispersiveMeasurement1DResult(\
         X = self._prepare_data_for_plot(meas_data)[0]
         X = X[:len(data)]
 
-        result, err = self._fit_complex_curve(X, data)
-        if result.success:
-            for name in self._data_formats.keys():
-                self._fit_params = result.x
-                self._fit_errors = err
+        try:
+            result, err = self._fit_complex_curve(X, data)
+            if result.success:
+                for name in self._data_formats.keys():
+                    self._fit_params = result.x
+                    self._fit_errors = err
+        except:
+            pass
+
+
+    def _prepare_figure(self):
+        fig, axes = plt.subplots(2, 1, figsize=(15,7), sharex=True)
+        axes = ravel(axes)
+        return fig, axes, (None, None)
 
     def _prepare_data_for_plot(self, data):
         return data[self._parameter_names[0]]/1e3, data["data"]
 
     def _plot(self, axes, caxes):
-        axes = dict(zip(self._data_formats.keys(), axes))
+        axes = dict(zip(self._data_formats_used, axes))
 
         data = self.get_data()
         if "data" not in data.keys():
@@ -112,7 +142,7 @@ class VNATimeResolvedDispersiveMeasurement1DResult(\
 
         X, Y_raw = self._prepare_data_for_plot(data)
 
-        for idx, name in enumerate(self._data_formats.keys()):
+        for idx, name in enumerate(self._data_formats_used):
             Y = self._data_formats[name][0](Y_raw)
             Y = Y[Y!=0]
             ax = axes[name]
@@ -127,7 +157,7 @@ class VNATimeResolvedDispersiveMeasurement1DResult(\
         xlabel = self._parameter_names[0][0].upper()+\
                     self._parameter_names[0][1:].replace("_", " ")+\
                         " [%s]"%self._x_axis_units
-        axes["phase"].set_xlabel(xlabel)
+        # axes["phase"].set_xlabel(xlabel)
         axes["imag"].set_xlabel(xlabel)
         plt.tight_layout(pad=2)
         self._plot_fit(axes)
@@ -153,12 +183,12 @@ class VNATimeResolvedDispersiveMeasurement1DResult(\
         if self._fit_params is None:
             return
 
-        for idx, name in enumerate(self._data_formats.keys()):
+        for idx, name in enumerate(self._data_formats_used):
             ax = axes[name]
             opt_params = self._fit_params
             err = self._fit_errors
 
             X = self._prepare_data_for_plot(self.get_data())[0]
             Y = self._data_formats[name][0](self._model(X, *opt_params))
-            ax.plot(X, Y, "C%d"%list(self._data_formats.keys()).index(name))
+            ax.plot(X, Y, "C%d"%idx)
             self._annotate_fit_plot(ax, opt_params, err)

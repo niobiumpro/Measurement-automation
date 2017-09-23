@@ -43,7 +43,6 @@ class DispersiveRadialTomography(VNATimeResolvedDispersiveMeasurement2D):
     def _set_exc_ampl_and_call_outp_puls_seq(self, tomo_pulse_amplitude):
         self._pulse_sequence_parameters["tomo_pulse_amplitude"] = \
                             tomo_pulse_amplitude
-
     def _recording_iteration(self):
         data = super()._recording_iteration()
         basis = self._basis
