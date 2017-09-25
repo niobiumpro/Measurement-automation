@@ -226,7 +226,7 @@ class PulseBuilder():
                                 amplitude=pulse_amplitude,
                                 window=window)
         elif pulse_ax == "Y":
-            self.add_sine_pulse(duration=pulse_time, phase=pulse_phase-pi/2,
+            self.add_sine_pulse(duration=pulse_time, phase=pulse_phase+pi/2,
                                 amplitude=pulse_amplitude,
                                 window=window)
         elif pulse_ax == "Z":
