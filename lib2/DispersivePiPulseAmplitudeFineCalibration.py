@@ -15,21 +15,13 @@ class DispersivePiPulseAmplitudeFineCalibration(VNATimeResolvedDispersiveMeasure
         self._swept_parameter_name = "twice_pi_half_pulses_count"
 
     def set_fixed_parameters(self, vna_parameters, ro_awg_params, q_awg_params,
-        exc_frequency, sequence_parameters, basis):
+        exc_frequency, sequence_parameters):
         super().set_fixed_parameters(vna_parameters, ro_awg_params, q_awg_params,
             exc_frequency, sequence_parameters)
-        self._basis = basis
 
     def set_swept_parameters(self, twice_pi_half_pulses_counts):
         super().set_swept_parameters(self._swept_parameter_name,
                                             array(twice_pi_half_pulses_counts))
-
-    def _recording_iteration(self):
-        data = super()._recording_iteration()
-        basis = self._basis
-        p_r = (real(data) - real(basis[0]))/(real(basis[1]) - real(basis[0]))
-        p_i = (imag(data) - imag(basis[0]))/(imag(basis[1]) - imag(basis[0]))
-        return p_r+1j*p_i
 
 class DispersivePiPulseAmplitudeFineCalibrationResult(VNATimeResolvedDispersiveMeasurement1DResult):
 
@@ -46,7 +38,7 @@ class DispersivePiPulseAmplitudeFineCalibrationResult(VNATimeResolvedDispersiveM
         offset_r, offset_i):
         # positive epsilon for under-rotation
         n = twice_pi_half_pulses_count*2+1
-        return -(1+1j)*(-1)**twice_pi_half_pulses_count*cos(pi/2-epsilon*n)/2+(offset_r+offset_i*1j)
+        return -(.5+.5j)*(-1)**twice_pi_half_pulses_count*cos(pi/2-epsilon*n)+(offset_r+offset_i*1j)
 
     def _generate_fit_arguments(self, x, data):
         bounds =([-pi, 0, 0], [pi, 1, 1])

@@ -119,29 +119,26 @@ class IQCalibrator():
                                     format_number_list(data), self._iterations,
                                     end=", ", flush=True)
             clear_output(wait=True)
-
-            if( self.side == "right" ):
-                data.reverse()
             answer =  data[0]
             return answer
 
-        def loss_function_dc_offsets_open(dc_offsets_open):
+        def loss_function_dc_offsets_open(dc_offset_open):
 
             self._awg.output_continuous_IQ_waves(frequency=0,
-                amplitudes=(0,0), relative_phase=0, offsets=dc_offsets_open,
+                amplitudes=(0,0), relative_phase=0, offsets=(dc_offset_open,)*2,
                 waveform_resolution=waveform_resolution)
 
             self._sa.prepare_for_stb();self._sa.sweep_single();self._sa.wait_for_stb()
             data = self._sa.get_tracedata()
 
-            print("\rDC offsets open: ", format_number_list(dc_offsets_open),
+            print("\rDC offsets open: ", format_number_list([dc_offset_open]*2),
                                          format_number_list(data),
                                          end=", ", flush=True)
             clear_output(wait=True)
 
             if( self.side == "right" ):
                 data.reverse()
-            answer = abs(data[self._N_sup//2]-ssb_power)+10*abs(dc_offsets_open[1]-dc_offsets_open[0])
+            answer = abs(data[0]-ssb_power)
             return answer
 
         def loss_function_if_offsets(if_offsets, args):
@@ -183,8 +180,6 @@ class IQCalibrator():
                                     format_number_list(data),
                                     "loss:", answer, end="          ", flush=True)
             clear_output(wait=True)
-
-
             return answer
 
         def loss_function_if_phase(phase, args):
@@ -237,7 +232,7 @@ class IQCalibrator():
 
             results = None
             if initial_guess is None:
-                results = {"dc_offsets":(1,1), "dc_offsets_open":(1,1), "if_offsets":(1,1),
+                results = {"dc_offsets":(1,1), "dc_offset_open":1, "if_offsets":(1,1),
                                 "if_amplitudes":(0.5,0.5), "if_phase":pi*0.54}
             else:
                 results = initial_guess
@@ -253,18 +248,17 @@ class IQCalibrator():
 
             if if_frequency == 0:
                 for i in range(0,iterations):
-                    res_dc_offs_open = minimize(loss_function_dc_offsets_open, array(results["dc_offsets_open"]),
-                                  method="Nelder-Mead", options={"maxiter":minimize_iterlimit,
+                    res_dc_offs_open = minimize(loss_function_dc_offsets_open,
+                            results["dc_offset_open"],  method="Nelder-Mead",
+                            options={"maxiter":minimize_iterlimit,
                                   "xatol":1e-3, "fatol":100})
                     self._iterations = 0
-                    results["dc_offsets_open"] = res_dc_offs_open.x
-
-                print('\n',results["dc_offsets_open"],'\n')
+                    results["dc_offset_open"] = res_dc_offs_open.x
                 spectral_values = {"dc":res_dc_offs.fun, "dc_open":self._sa.get_tracedata()}
                 elapsed_time = (datetime.now() - start).total_seconds()
                 return IQCalibrationData(self._mixer_id, self._iq_attenuation,
                     lo_frequency, lo_power, if_frequency, ssb_power, waveform_resolution,
-                    results["dc_offsets"], results["dc_offsets_open"], None, None, None, spectral_values,
+                    results["dc_offsets"], array([results["dc_offset_open"]]*2), None, None, None, spectral_values,
                     elapsed_time, datetime.now())
 
             else:

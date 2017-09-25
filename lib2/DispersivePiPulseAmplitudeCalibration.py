@@ -14,15 +14,15 @@ class DispersivePiPulseAmplitudeCalibration(VNATimeResolvedDispersiveMeasurement
         self._swept_parameter_name = "excitation_amplitude"
 
     def set_fixed_parameters(self, vna_parameters, ro_awg_params, q_awg_params,
-        exc_frequency, sequence_parameters):
+        exc_frequency, sequence_parameters, basis=None):
         super().set_fixed_parameters(vna_parameters, ro_awg_params, q_awg_params,
             exc_frequency, sequence_parameters)
         self._measurement_result.set_x_axis_units()
+        self._basis = basis
 
     def set_swept_parameters(self, excitation_amplitudes):
         super().set_swept_parameters("excitation_amplitude",
                                             excitation_amplitudes)
-
 
 class DispersivePiPulseAmplitudeCalibrationResult(VNATimeResolvedDispersiveMeasurement1DResult):
 
@@ -38,7 +38,7 @@ class DispersivePiPulseAmplitudeCalibrationResult(VNATimeResolvedDispersiveMeasu
 
     def _model(self, amplitude, A_r, A_i, pi_amplitude,
         offset_r, offset_i):
-        return (A_r+1j*A_i)*cos(pi*amplitude/pi_amplitude)+(offset_r+offset_i*1j)
+        return -(A_r+1j*A_i)*cos(pi*amplitude/pi_amplitude)+(offset_r+offset_i*1j)
 
     def _generate_fit_arguments(self, x, data):
         bounds =([-10, -10, 0, -10, -10], [10, 10, 10, 10, 10])
@@ -54,3 +54,10 @@ class DispersivePiPulseAmplitudeCalibrationResult(VNATimeResolvedDispersiveMeasu
 
     def get_pi_pulse_amplitude(self):
         return self._fit_params[2]
+
+    def get_basis(self):
+        fit = self._fit_params
+        A_r, A_i, offset_r, offset_i = fit[0], fit[1], fit[-2], fit[-1]
+        ground_state = -A_r+offset_r+1j*(-A_i+offset_i)
+        excited_state = A_r+offset_r+1j*(A_i+offset_i)
+        return array((ground_state, excited_state))
