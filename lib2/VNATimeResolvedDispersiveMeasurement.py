@@ -41,7 +41,8 @@ class VNATimeResolvedDispersiveMeasurement(Measurement):
                 .get_pulse_sequence_parameters()\
                 .update(pulse_sequence_parameters)
 
-        if detect_resonator:
+        freq_limits = vna_parameters["freq_limits"]
+        if detect_resonator and freq_limits[0]!=freq_limits[1]:
             res_freq = self._detect_resonator(vna_parameters,
                                     ro_awg_parameters["calibration"],
                                     q_awg_parameters["calibration"])
@@ -53,15 +54,15 @@ class VNATimeResolvedDispersiveMeasurement(Measurement):
     def _recording_iteration(self):
         vna = self._vna
         q_lo = self._q_lo
-        q_lo.set_output_state("OFF")
-        vna.avg_clear(); vna.prepare_for_stb();
-        vna.sweep_single(); vna.wait_for_stb();
-        bg = vna.get_sdata();
-        q_lo.set_output_state("ON")
+        # q_lo.set_output_state("OFF")
+        # vna.avg_clear(); vna.prepare_for_stb();
+        # vna.sweep_single(); vna.wait_for_stb();
+        # bg = vna.get_sdata();
+        # q_lo.set_output_state("ON")
         vna.avg_clear(); vna.prepare_for_stb();
         vna.sweep_single(); vna.wait_for_stb();
         data = vna.get_sdata();
-        return mean(data)/mean(bg)
+        return mean(data)#/mean(bg)
 
     def _detect_resonator(self, vna_parameters, ro_calibration, q_calibration):
         self._q_lo.set_output_state("OFF")
