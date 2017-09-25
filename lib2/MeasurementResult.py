@@ -79,7 +79,7 @@ class MeasurementResult():
 
 
     @staticmethod
-    def load(sample_name, name):
+    def load(sample_name, name, date = '', return_all=False):
         '''
         Finds all files with matching result name within the file structure of ./data/
         folder and prompts user to resolve any ambiguities.
@@ -95,14 +95,21 @@ class MeasurementResult():
         If the user hits EOF (*nix: Ctrl-D, Windows: Ctrl-Z+Return), raise EOFError.
         On *nix systems, readline is used if available.
         '''
-        paths = find(name+'.pkl', 'data/'+sample_name)
+        paths = find(name+'.pkl', 'data/'+sample_name+'/'+date)
         path = None
         if len(paths)>1:
-            for idx, file in enumerate(paths):
-                print(idx, file)
-            print("More than one file found. Enter an index from listed above:")
-            index = input()
-            path = paths[int(index)]
+            if return_all:
+                dict_of_res=[]
+                for idx, path in enumerate(paths):
+                    with open(path, "rb") as f:
+                        dict_of_res.append(pickle.load(f))
+                return dict_of_res
+            else:
+                for idx, file in enumerate(paths):
+                    print(idx, file)
+                print("More than one file found. Enter an index from listed above:")
+                index = input()
+                path = paths[int(index)]
         elif len(paths) == 1:
             path = paths[0]
         else:

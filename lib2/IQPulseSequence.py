@@ -217,7 +217,7 @@ class PulseBuilder():
             pulse_time = pulse_duration*abs(pulse_angle)
         elif window == "gaussian":
             pulse_time = pulse_duration
-            pulse_amplitude = pulse_angle*pulse_amplitude
+            pulse_amplitude = abs(pulse_angle)*pulse_amplitude
         pulse_phase = pi/2*(1-sign(pulse_angle))+global_phase
         if pulse_ax == "I":
             self.add_zero_pulse(pulse_time)
@@ -549,8 +549,8 @@ class PulseBuilder():
                 pulse_sequence_parameters["modulating_window"]
         pulse_duration = \
                     pulse_sequence_parameters["pulse_duration"]
-        pulse_amplitude =\
-                    pulse_sequence_parameters["excitation_amplitude"]
+        pi_pulse_amplitude =\
+                    pulse_sequence_parameters["pi_pulse_amplitude"]
         readout_duration = \
                 pulse_sequence_parameters["readout_duration"]
         repetition_period = \
@@ -571,10 +571,10 @@ class PulseBuilder():
         global_phase = 0
         excitation_duration = 0
         for idx, pulse_str in enumerate(benchmarking_sequence):
-            exc_pb.add_sine_pulse_from_string(window, pulse_str,
-                                        pulse_duration, pulse_amplitude)
+            exc_pb.add_sine_pulse_from_string(pulse_str,
+                                        pulse_duration, pi_pulse_amplitude, window)
             exc_pb.add_zero_pulse(padding)
-            excitation_duration += pulse_time+padding
+            excitation_duration += pulse_duration+padding
         exc_pb.add_zero_until(repetition_period)
         ro_pb.add_zero_pulse(excitation_duration)\
                     .add_dc_pulse(readout_duration)\
