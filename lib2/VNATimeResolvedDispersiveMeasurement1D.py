@@ -118,9 +118,8 @@ class VNATimeResolvedDispersiveMeasurement1DResult(\
         try:
             result, err = self._fit_complex_curve(X, data)
             if result.success:
-                for name in self._data_formats.keys():
-                    self._fit_params = result.x
-                    self._fit_errors = err
+                self._fit_params = result.x
+                self._fit_errors = err
         except:
             pass
 

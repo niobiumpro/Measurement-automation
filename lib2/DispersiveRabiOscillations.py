@@ -25,9 +25,13 @@ class DispersiveRabiOscillationsResult(VNATimeResolvedDispersiveMeasurement1DRes
 
     def _generate_fit_arguments(self, x, data):
         amp_r, amp_i = ptp(real(data))/2, ptp(imag(data))/2
-        offset_r, offset_i = max(real(data))-amp_r, max(imag(data))-amp_i
-        bounds =([-amp_r*1.5, -amp_i*1.5, 0.1, 1*2*pi, -10, -10],
-                    [amp_r*1.5, amp_i*1.5, 100, 50*2*pi, 10, 10])
+        if abs(max(real(data)) - real(data[0])) < abs(real(data[0])-min(real(data))):
+            amp_r = -amp_r
+        if abs(max(imag(data)) - imag(data[0])) < abs(imag(data[0])-min(imag(data))):
+            amp_i = -amp_i
+        offset_r, offset_i = max(real(data))-abs(amp_r), max(imag(data))-abs(amp_i)
+        bounds =([-abs(amp_r)*1.5, -abs(amp_i)*1.5, 0.1, 1*2*pi, -10, -10],
+                    [abs(amp_r)*1.5, abs(amp_i)*1.5, 100, 50*2*pi, 10, 10])
 
         frequency = random.random(1)*49+1
         p0 = [amp_r, amp_i, 1, frequency*2*pi, offset_r, offset_i]
