@@ -12,7 +12,6 @@ class VNATimeResolvedDispersiveMeasurement1D(VNATimeResolvedDispersiveMeasuremen
         q_lo_name, line_attenuation_db = 60, plot_update_interval = 1):
         super().__init__(name, sample_name, vna_name, ro_awg, q_awg,
             q_lo_name, line_attenuation_db, plot_update_interval)
-        self._basis = None
 
     def set_fixed_parameters(self, vna_parameters, ro_awg_parameters,
             q_awg_parameters, qubit_frequency, pulse_sequence_parameters):
@@ -41,17 +40,6 @@ class VNATimeResolvedDispersiveMeasurement1D(VNATimeResolvedDispersiveMeasuremen
         self._pulse_sequence_parameters[self._swept_parameter_name] = sequence_parameter
         super()._output_pulse_sequence()
 
-    def set_basis(self, basis):
-        self._basis = basis
-
-    def _recording_iteration(self):
-        data = super()._recording_iteration()
-        if self._basis is None:
-            return data
-        basis = self._basis
-        p_r = (real(data) - real(basis[0]))/(real(basis[1]) - real(basis[0]))
-        p_i = (imag(data) - imag(basis[0]))/(imag(basis[1]) - imag(basis[0]))
-        return p_r+1j*p_i
 
 class VNATimeResolvedDispersiveMeasurement1DResult(\
                     VNATimeResolvedDispersiveMeasurementResult):
@@ -59,32 +47,11 @@ class VNATimeResolvedDispersiveMeasurement1DResult(\
     def __init__(self, name, sample_name):
         super().__init__(name, sample_name)
         self._x_axis_units = "$\mu$s"
-        self._fit_params = None
-        self._fit_errors = None
         self._annotation_bbox_props = dict(boxstyle="round", fc="white",
                 ec="black", lw=1, alpha=0.5)
         self._annotation_v_pos = "bottom"
         self._data_formats_used = ["real", "imag"]
 
-    def _generate_fit_arguments(self):
-        '''
-        Should be implemented in child classes.
-
-        Returns:
-        p0: array
-            Initial parameters
-        scale: tuple
-            characteristic scale of the parameters
-        bounds: tuple of 2 arrays
-            See scipy.optimize.least_squares(...) documentation
-        '''
-        pass
-
-    def _model(self, *params):
-        '''
-        Fit theoretical function. Should be implemented in child classes
-        '''
-        return None
 
     def _cost_function(self, params, x, data):
         return abs(self._model(x, *params)-data)

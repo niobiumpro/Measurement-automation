@@ -1,6 +1,10 @@
 from matplotlib import pyplot as plt, colorbar
 from lib2.VNATimeResolvedDispersiveMeasurement2D import *
 from scipy.interpolate import interp2d
+from lib2.QuantumState import *
+from qutip import qeye, sigmax, sigmay, sigmaz, fidelity, Qobj, expect
+from scipy.optimize import least_squares
+from IPython.display import clear_output
 
 class DispersiveRadialTomography(VNATimeResolvedDispersiveMeasurement2D):
 
@@ -13,7 +17,7 @@ class DispersiveRadialTomography(VNATimeResolvedDispersiveMeasurement2D):
         self._sequence_generator = PulseBuilder.build_radial_tomography_pulse_sequences
 
     def set_fixed_parameters(self, vna_parameters, ro_awg_parameters,
-            q_awg_parameters, excitation_frequency, pulse_sequence_parameters, basis):
+            q_awg_parameters, excitation_frequency, pulse_sequence_parameters):
 
         q_if_frequency = q_awg_parameters["calibration"]\
                     .get_radiation_parameters()["if_frequency"]
@@ -24,7 +28,6 @@ class DispersiveRadialTomography(VNATimeResolvedDispersiveMeasurement2D):
 
         super().set_fixed_parameters(vna_parameters, q_lo_parameters,
             ro_awg_parameters, q_awg_parameters, pulse_sequence_parameters)
-        self._basis = basis
 
     def set_swept_parameters(self, tomo_phases, tomo_pulse_amplitudes):
         q_if_frequency = self._q_awg.get_calibration() \
@@ -43,12 +46,6 @@ class DispersiveRadialTomography(VNATimeResolvedDispersiveMeasurement2D):
     def _set_exc_ampl_and_call_outp_puls_seq(self, tomo_pulse_amplitude):
         self._pulse_sequence_parameters["tomo_pulse_amplitude"] = \
                             tomo_pulse_amplitude
-    def _recording_iteration(self):
-        data = super()._recording_iteration()
-        basis = self._basis
-        p_r = (real(data) - real(basis[0]))/(real(basis[1]) - real(basis[0]))
-        p_i = (imag(data) - imag(basis[0]))/(imag(basis[1]) - imag(basis[0]))
-        return p_r+1j*p_i
 
 class DispersiveRadialTomographyResult(VNATimeResolvedDispersiveMeasurementResult):
 
@@ -57,6 +54,76 @@ class DispersiveRadialTomographyResult(VNATimeResolvedDispersiveMeasurementResul
         self._pulse_sequence_parameters = self._context\
                 .get_pulse_sequence_parameters()
         self._smoothing_factor = smoothing_factor
+
+    def _dm_from_sph_coords(self, r, theta, phi):
+        x = r*cos(theta)*cos(phi)
+        y = r*cos(theta)*sin(phi)
+        z = r*sin(theta)
+        return 1/2*(qeye(2)+x*sigmax()+y*sigmay()+z*sigmaz())
+
+    def _model(self, amps, phis, r, theta, phi, A, offset):
+        tomo_z_data = []
+        rho_0 = self._dm_from_sph_coords(r, theta, phi)
+        for amp in amps:
+            phi_data = []
+            for phi in phis:
+                gate = (-1j*amp*pi/2*(cos(phi)*sigmax()+sin(phi)*sigmay())).expm()
+                rho_1 = gate*rho_0*gate.dag()
+                phi_data.append(expect(sigmaz(), rho_1))
+            tomo_z_data.append(phi_data)
+        return (array(tomo_z_data)+1)/2*A+offset
+
+    def _cost_function(self, params, amps, phis, data):
+        loss = (self._model(amps, phis, *params) - data).ravel()
+        clear_output(wait=True)
+        print("\rLoss:", sum(loss**2), " params:", params, end="")
+        return loss
+
+    def fit_and_plot(self, quadrature):
+        converter = imag if quadrature=="imag" else real
+        data = self.get_data()
+        amplitudes_exp, phases_exp, data_exp = data["tomo_pulse_amplitude"],\
+                                               data["tomo_phase"],\
+                                               data["data"]
+        amplitudes_exp = amplitudes_exp/self\
+                        ._pulse_sequence_parameters["prep_pulse_pi_amplitude"]
+
+        # data_exp = (converter(data_exp)-converter(data_exp).min())
+        # data_exp = data_exp/data_exp.max()
+
+        bounds = [0, -pi/2, -pi, 0.9, -1], [1, pi/2, pi, 1.1, 1]
+        step_size = max((len(amplitudes_exp), len(phases_exp)))//10
+        prep_pulse_seq = self._pulse_sequence_parameters['prep_pulse']
+        expected_state = QuantumState('pulses', prep_pulse_seq)
+        expected_state.change_represent('spherical')
+        print(expected_state._coords)
+        fit_result = least_squares(self._cost_function, expected_state._coords+[1,0],
+            args = (amplitudes_exp[::step_size], phases_exp[::step_size],
+            converter(data_exp[::step_size, ::step_size])),
+            ftol=1e-4, bounds=bounds)
+        z = self._model(amplitudes_exp, phases_exp, *fit_result.x)
+        expected_state.change_represent('dens_mat')
+        fidelya = fidelity(self._dm_from_sph_coords(*fit_result.x[:3]),\
+                            Qobj(expected_state._coords))
+
+        x_step = (phases_exp[1]-phases_exp[0])
+        X = concatenate((phases_exp-x_step/2, [phases_exp[-1]+x_step/2]))
+        y_step = (amplitudes_exp[1]-amplitudes_exp[0])
+        Y = concatenate((amplitudes_exp, [amplitudes_exp[-1]+y_step]))
+
+        plt.figure()
+        plt.subplot(121,projection="polar")
+        plt.pcolormesh(X, Y, z, cmap="RdBu_r",)
+        plt.colorbar(shrink=0.5)
+        plt.grid(True)
+        plt.subplot(122,projection="polar")
+        plt.pcolormesh(X, Y, converter(data_exp), cmap="RdBu_r",)
+        plt.colorbar(shrink=0.5)
+        plt.gcf().set_size_inches(7,7)
+        plt.grid(True)
+        plt.suptitle('Fidelity is: ' + str(fidelya)[:5])
+        return fit_result, self._dm_from_sph_coords(*fit_result.x[:3])
+
 
     def _prepare_figure(self):
         fig, axes = plt.subplots(1,2,subplot_kw=dict(projection='polar'),figsize=(12,7))
@@ -93,6 +160,7 @@ class DispersiveRadialTomographyResult(VNATimeResolvedDispersiveMeasurementResul
         Should be implemented in child classes
         '''
         pass
+
 
     def _plot(self, axes, caxes):
 

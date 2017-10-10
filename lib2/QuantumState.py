@@ -11,8 +11,8 @@ operators = {"I":eye, "X":sig_x,"Y":sig_y, "Z":sig_z}
 signs = {"+":1, "-":-1}
 
 def matrix_from_gate(gate):
-    angle = pi/4 if "/2" in gate else pi/2
-    return expm(-1j*signs[gate[0]]*operators[gate[1]]*angle)
+    angle = pi*eval(gate.replace(gate[1],"1"))
+    return expm(-1j*operators[gate[1]]*angle/2)
 
 class QuantumState():
     """
@@ -116,24 +116,16 @@ class QuantumState():
         of a given quantum state (not creating new object)
         """
         repr_from = self._represent
+        new_represent = repr_to
         if repr_from == "bloch":
             old_x, old_y, old_z = self._coords
             if repr_to == "dens_mat":
                 new_coords = 0.5*(eye + old_x*sig_x + old_y*sig_y + old_z*sig_z)
             elif repr_to == "spherical":
                 new_r = self._norm
-                if old_x == 0:
-                    if old_y == 0:
-                        new_phi = 0
-                        new_theta = pi*0.5*(1-sign(old_z))
-                    else:
-                        new_phi = pi-pi/2*sign(old_y)
-                        new_theta = pi/2-arctan(old_z/old_y)
-                else:
-                    pi_adder = 0.5*(1-sign(old_x))
-                    new_phi = pi*pi_adder+arctan(old_y/old_x)
-                    new_theta = pi/2+arctan(old_z/sqrt(old_y**2+old_x**2))
-                new_coords = (new_r, new_phi, new_theta)
+                new_phi = arctan2(real(old_y),real(old_x))
+                new_theta = arctan2(real(old_z),sqrt(real(old_y)**2+real(old_x)**2))
+                new_coords = [new_r, new_theta, new_phi]
             elif repr_to == "pulses":
                 self.change_represent("spherical")
                 self.change_represent("pulses")
@@ -141,29 +133,27 @@ class QuantumState():
             else:
                 raise ValueError("New representation is invalid.")
         if repr_from == "spherical":
-            old_r, old_phi, old_theta = self._coords
+            old_r, old_theta, old_phi = self._coords
             if repr_to == "bloch":
-                new_x = old_r*sin(old_theta)*cos(old_phi)
-                new_y = old_r*sin(old_theta)*sin(old_phi)
-                new_z = olr_r*cos(old_theta)
-                new_coords = (new_x, new_y, new_z)
+                new_x = old_r*cos(old_theta)*cos(old_phi)
+                new_y = old_r*cos(old_theta)*sin(old_phi)
+                new_z = old_r*sin(old_theta)
+                new_coords = [new_x, new_y, new_z]
             if repr_to == "dens_mat":
-                new_dm = 0.5*(eye + cos(old_phi)*sin(old_theta)*sig_x +\
+                new_dm = 0.5*(eye + cos(old_phi)*cos(old_theta)*sig_x +\
                                     sin(old_phi)*cos(old_theta)*sig_y +\
-                                    cos(old_theta)*sig_z)
+                                    sin(old_theta)*sig_z)
                 new_coords = new_dm
             if repr_to == "pulses":
                 if self.is_on_sphere() == False:
                     self.extend_to_sphere()
-                new_coords = [('Y',old_theta),('Z',old_phi)]
-            else:
-                raise ValueError("New representation is invalid.")
+                #new_coords = [old_theta,old_theta,('Z',old_phi)]
         if repr_from == "dens_mat":
             old_dm = self._coords
             if repr_to == "bloch":
                 new_x = 2*real(old_dm[0,1])
                 new_y = 2*imag(old_dm[1,0])
-                new_z = old_dm[0,0] - old_dm[0,1]
+                new_z = old_dm[0,0] - old_dm[1,1]
                 new_coords = [new_x, new_y, new_z]
             if repr_to == "spherical":
                 pass
@@ -173,7 +163,11 @@ class QuantumState():
                 for gate in self._coords:
                     state = matrix_from_gate(gate).dot(state)
                 new_coords =  state.dot(state.conj().T)
-        new_represent = repr_to
+            if repr_to == 'spherical':
+                self.change_represent('dens_mat')
+                self.change_represent('bloch')
+                self.change_represent('spherical')
+                return True
         if self._represent != new_represent:
             self._change_state(new_coords, repr_to)
             self._represent = new_represent

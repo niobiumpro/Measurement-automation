@@ -33,7 +33,7 @@ class DispersiveRabiOscillationsResult(VNATimeResolvedDispersiveMeasurement1DRes
         bounds =([-abs(amp_r)*1.5, -abs(amp_i)*1.5, 0.1, 1*2*pi, -10, -10],
                     [abs(amp_r)*1.5, abs(amp_i)*1.5, 100, 50*2*pi, 10, 10])
 
-        frequency = random.random(1)*49+1
+        frequency = 20#random.random(1)*49+1
         p0 = [amp_r, amp_i, 1, frequency*2*pi, offset_r, offset_i]
         return p0, bounds
 
