@@ -171,7 +171,7 @@ class SingleToneSpectroscopyResult(MeasurementResult):
         plt.colorbar(phas_map, cax = cax_phas)
 
 
-    def set_plot_range( self, min_abs, max_abs, min_phas=None, max_phas=None ):
+    def set_plot_range(self, min_abs, max_abs, min_phas=None, max_phas=None):
         self.max_phase = max_phas
         self.min_phase = min_phas
         self.max_abs = max_abs
@@ -179,8 +179,12 @@ class SingleToneSpectroscopyResult(MeasurementResult):
 
     def _prepare_data_for_plot(self, data):
         s_data = self._remove_delay(data["frequency"], data["data"])
+        parameter_list = data[self._parameter_names[0]]
+        if parameter_list[0]>parameter_list[-1]:
+            parameter_list = parameter_list[::-1]
+            s_data = s_data[::-1, :]
         #s_data = self.remove_background('avg_cur')
-        return data[self._parameter_names[0]], data["frequency"]/1e9, s_data
+        return parameter_list, data["frequency"]/1e9, s_data
 
     def remove_delay(self):
         copy = self.copy()
