@@ -131,7 +131,7 @@ class Tektronix_AWG5014(Instrument):
 
 		self._waveforms[channel-1] = waveform
 
-		self.do_set_waveform(waveform/4.5*2, repetition_rate, channel)
+		self.do_set_waveform(waveform/1.5*2, repetition_rate, channel)
 		self.do_set_output(1, channel)
 		self.run()
 		if block:

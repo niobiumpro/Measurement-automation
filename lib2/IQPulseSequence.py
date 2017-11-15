@@ -97,7 +97,7 @@ class PulseBuilder():
             pulse. If not specified, calibration data will be used
         '''
         vdc1, vdc2 = self._iqmx_calibration\
-                .get_optimization_results()[0]["dc_offsets_open"] \
+                .get_optimization_results()[0]["dc_offset_open"] \
                             if dc_voltage is None else (dc_voltage, dc_voltage)
         N_time_steps = int(round(duration/self._waveform_resolution))
         self._pulse_seq_I.append_pulse(zeros(N_time_steps+1)+vdc1)

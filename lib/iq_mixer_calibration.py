@@ -34,7 +34,7 @@ class IQCalibrationData():
         Returns:
             parameters, results: tuple
         '''
-        return dict(dc_offsets=self._dc_offsets, dc_offsets_open=self._dc_offsets_open,
+        return dict(dc_offsets=self._dc_offsets, dc_offset_open=self._dc_offsets_open,
             if_offsets=self._if_offsets, if_amplitudes=self._if_amplitudes,
                 if_phase=self._if_phase), self._spectral_values
 
@@ -170,9 +170,18 @@ class IQCalibrator():
             self._sa.prepare_for_stb();self._sa.sweep_single();self._sa.wait_for_stb()
             data = self._sa.get_tracedata()
 
-            answer =  25e3*sum(array([abs((self._N_sup//2-i+.1))**(-1.8)*10**(psd/10) \
-                        for i,psd in enumerate(data) if psd != data[self._N_sup//2]])) + 10**(abs(ssb_power - data[self._N_sup//2])/10)\
-                if abs(abs(amp1)-abs(amp2))<.2 else 2*self._N_sup*10**(10*abs(abs(amp1)-abs(amp2)))
+            answer = None
+            if abs(abs(amp1)-abs(amp2))<.2:
+                loss_value_amp = 0
+                for i,psd in enumerate(data):
+                    if psd != data[self._N_sup//2]:
+                        value = abs((self._N_sup//2-i+.1))**(-1.8)*10**(psd/10)
+                        loss_value_amp += value
+
+                answer = 50e3*loss_value_amp \
+                        + 10*(abs(ssb_power - data[self._N_sup//2]))
+            else:
+                answer = 10**(10*abs(abs(amp1)-abs(amp2)))
         #    if( self.side == "right" ):
         #        answer =  data[0] + 10*abs(ssb_power - data[2]) + 0\
         #            if abs(abs(amp1)-abs(amp2))<.2 else 10**(10*abs(abs(amp2)-abs(amp1)))
@@ -197,7 +206,8 @@ class IQCalibrator():
             if( self.side == "right" ):
                 data.reverse()
             answer =  25e3*sum(array([abs((self._N_sup//2-i+.1))**(-1.8)*10**(psd/10) \
-                        for i,psd in enumerate(data) if psd != data[self._N_sup//2]])) + 10**(abs(ssb_power - data[self._N_sup//2])/10)
+                        for i,psd in enumerate(data) if psd != data[self._N_sup//2]]))\
+                         + 10**(abs(ssb_power - data[self._N_sup//2])/10)
             return answer
 
         def iterate_minimization(prev_results, n=2):
@@ -206,12 +216,13 @@ class IQCalibrator():
             res_if_offs = minimize(loss_function_if_offsets, prev_results["if_offsets"],
                 args=[prev_results["if_amplitudes"], prev_results["if_phase"]],
                 method="Nelder-Mead", options=options)
-            res_amps = minimize(loss_function_if_amplitudes, prev_results["if_amplitudes"],
-                args=[res_if_offs.x, prev_results["if_phase"]],
-                method="Nelder-Mead", options=options)
             res_phase = minimize(loss_function_if_phase, prev_results["if_phase"],
-                args=[res_if_offs.x, res_amps.x],
+                args=[res_if_offs.x, prev_results["if_amplitudes"]],
                 method="Nelder-Mead", options=options)
+            res_amps = minimize(loss_function_if_amplitudes, prev_results["if_amplitudes"],
+                args=[res_if_offs.x, res_phase.x],
+                method="Nelder-Mead", options=options)
+
 
             results["if_offsets"] = res_if_offs.x
             results["if_amplitudes"] = res_amps.x
