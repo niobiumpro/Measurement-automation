@@ -91,17 +91,22 @@ class VNATimeResolvedDispersiveMeasurement1DResult(\
 
     def _fit_complex_curve(self, X, data):
         p0, bounds = self._generate_fit_arguments(X, data)
+
         if self._fit_params is not None:
             if logical_and(array(bounds[1])>self._fit_params,
                                 array(bounds[0])<self._fit_params).all():
-                p0 = self._fit_params
+                p0 = self._fit_params#+\
+                        #self._fit_params*0.1*(np.random.random(1)*2-1)
         try:
+            #print(p0, end=" -> ")
             p0, err = curve_fit(lambda x, *params: real(self._model(x, *params))\
              +imag(self._model(x, *params)), X, real(data)+imag(data),
                                                         p0=p0, bounds=bounds)
+            #print(p0)
         finally:
             result = least_squares(self._cost_function, p0, args=(X,data),
-                                bounds=bounds, x_scale="jac")
+                        bounds=bounds, x_scale="jac", max_nfev=10000, ftol=1e-5)
+            #print(result.x)
             sigma = std(abs(self._model(X, *result.x)-data))
             return result, sqrt(diag(sigma**2*inv(result.jac.T.dot(result.jac))))
 
