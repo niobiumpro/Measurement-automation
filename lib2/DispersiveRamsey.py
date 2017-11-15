@@ -27,7 +27,7 @@ class DispersiveRamseyResult(VNATimeResolvedDispersiveMeasurement1DResult):
         bounds =([-10, -10, 0.1, 1*2*pi, -10, -10, -pi],
                         [10, 10, 100, 20*2*pi, 10, 10, pi])
         amp_r, amp_i = ptp(real(data))/2, ptp(imag(data))/2
-        p0 = (amp_r, amp_i, 1, 5*2*pi, max(real(data))-amp_r,
+        p0 = (amp_r, amp_i, 3, 5*2*pi, max(real(data))-amp_r,
                                 max(imag(data))-amp_i, 0)
         return p0, bounds
 

@@ -29,6 +29,8 @@ class VNATimeResolvedDispersiveMeasurement(Measurement):
         self._q_awg = q_awg
         self._vna = self._actual_devices[vna_name]
         self._q_lo = self._actual_devices[q_lo_name]
+        self._basis = None
+        self._ult_calib = False
         self._pulse_sequence_parameters =\
             {"modulating_window":"rectangular", "excitation_amplitude":1}
 
@@ -51,18 +53,33 @@ class VNATimeResolvedDispersiveMeasurement(Measurement):
         super().set_fixed_parameters(vna=vna_parameters, q_lo=q_lo_parameters,
                             ro_awg=ro_awg_parameters, q_awg=q_awg_parameters)
 
+    def set_basis(self, basis):
+        self._basis = basis
+
+    def set_ult_calib(self, value=False):
+        self._ult_calib = value
+
     def _recording_iteration(self):
         vna = self._vna
         q_lo = self._q_lo
-        # q_lo.set_output_state("OFF")
-        # vna.avg_clear(); vna.prepare_for_stb();
-        # vna.sweep_single(); vna.wait_for_stb();
-        # bg = vna.get_sdata();
-        # q_lo.set_output_state("ON")
         vna.avg_clear(); vna.prepare_for_stb();
         vna.sweep_single(); vna.wait_for_stb();
         data = vna.get_sdata();
-        return mean(data)#/mean(bg)
+        if self._ult_calib:
+            q_lo.set_output_state("OFF")
+            vna.avg_clear(); vna.prepare_for_stb();
+            vna.sweep_single(); vna.wait_for_stb();
+            bg = vna.get_sdata();
+            q_lo.set_output_state("ON")
+            mean_data = mean(data)/mean(bg)
+        else:
+            mean_data = mean(data)
+        if self._basis is None:
+            return mean_data
+        basis = self._basis
+        p_r = (real(mean_data) - real(basis[0]))/(real(basis[1]) - real(basis[0]))
+        p_i = (imag(mean_data) - imag(basis[0]))/(imag(basis[1]) - imag(basis[0]))
+        return p_r+1j*p_i
 
     def _detect_resonator(self, vna_parameters, ro_calibration, q_calibration):
         self._q_lo.set_output_state("OFF")
@@ -104,6 +121,8 @@ class VNATimeResolvedDispersiveMeasurementResult(MeasurementResult):
         self._context =\
             VNATimeResolvedDispersiveMeasurementContext()
         self._is_finished = False
+        self._fit_params = None
+        self._fit_errors = None
         self._phase_units = "rad"
         self._data_formats = {
             "abs":(abs, "Transmission amplitude [a.u.]"),
@@ -111,6 +130,26 @@ class VNATimeResolvedDispersiveMeasurementResult(MeasurementResult):
             "phase":(self._unwrapped_phase, "Transmission phase [%s]"%self._phase_units),
             "imag":(imag, "Transmission imaginary part [a.u.]")}
 
+    def _generate_fit_arguments(self):
+        '''
+        Should be implemented in child classes.
+
+        Returns:
+        p0: array
+            Initial parameters
+        scale: tuple
+            characteristic scale of the parameters
+        bounds: tuple of 2 arrays
+            See scipy.optimize.least_squares(...) documentation
+        '''
+        pass
+
+    def _model(self, *params):
+        '''
+        Fit theoretical function. Should be implemented in child classes
+        '''
+        return None
+    
     def _unwrapped_phase(self, sdata):
         try:
             unwrapped_phase = unwrap(angle(sdata))
