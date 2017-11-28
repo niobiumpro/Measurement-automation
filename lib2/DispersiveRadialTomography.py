@@ -140,20 +140,23 @@ class DispersiveRadialTomographyResult(VNATimeResolvedDispersiveMeasurementResul
         r = data[self._parameter_names[0]]
         theta = data[self._parameter_names[1]]
         s_data = data["data"]
-
-        f_r = interp2d(theta, r, real(s_data), kind="cubic")
-        f_i = interp2d(theta, r, imag(s_data), kind="cubic")
-        new_len_r = (len(r)-1)*self._smoothing_factor+1
-        new_len_theta = (len(theta)-1)*self._smoothing_factor+1
-        r = linspace(r[0], r[-1], new_len_r)
-        theta = linspace(theta[0], theta[-1], new_len_theta)
+        if smoothing_factor > 1:
+            f_r = interp2d(theta, r, real(s_data), kind="cubic")
+            f_i = interp2d(theta, r, imag(s_data), kind="cubic")
+            new_len_r = (len(r)-1)*self._smoothing_factor+1
+            new_len_theta = (len(theta)-1)*self._smoothing_factor+1
+            r = linspace(r[0], r[-1], new_len_r)
+            theta = linspace(theta[0], theta[-1], new_len_theta)
 
         theta_step = (theta[1]-theta[0])
         theta = concatenate((theta - theta_step/2, [theta[-1]+theta_step/2]))
         r_step = (r[1]-r[0])
         r = concatenate((r, [r[-1]+r_step]))
         r_norm = r/self._pulse_sequence_parameters["prep_pulse_pi_amplitude"]
-        return theta, r_norm, f_r(theta, r)+1j*f_i(theta, r)
+        if smoothing_factor > 1:
+            s_data = f_r(theta, r)+1j*f_i(theta, r)
+
+        return theta, r_norm, s_data
 
     def _annotate_axes(self, axes):
         '''

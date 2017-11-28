@@ -30,11 +30,17 @@ class DispersiveRabiOscillationsResult(VNATimeResolvedDispersiveMeasurement1DRes
         if abs(max(imag(data)) - imag(data[0])) < abs(imag(data[0])-min(imag(data))):
             amp_i = -amp_i
         offset_r, offset_i = max(real(data))-abs(amp_r), max(imag(data))-abs(amp_i)
-        bounds =([-abs(amp_r)*1.5, -abs(amp_i)*1.5, 0.1, 1*2*pi, -10, -10],
-                    [abs(amp_r)*1.5, abs(amp_i)*1.5, 100, 50*2*pi, 10, 10])
 
-        frequency = 20#random.random(1)*49+1
+        time_step = x[1]-x[0]
+        max_frequency = 1/time_step/2/5
+        min_frequency = 1/(x[-1]-x[0])/2/10
+        frequency = random.random(1)*(max_frequency-.1)+.1
         p0 = [amp_r, amp_i, 1, frequency*2*pi, offset_r, offset_i]
+
+        bounds =([-abs(amp_r)*1.5, -abs(amp_i)*1.5, 0.1,
+                        min_frequency*2*pi, -10, -10],
+                    [abs(amp_r)*1.5, abs(amp_i)*1.5, 100,
+                            max_frequency*2*pi, 10, 10])
         return p0, bounds
 
     def _generate_annotation_string(self, opt_params, err):

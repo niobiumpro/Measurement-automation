@@ -42,8 +42,13 @@ class DispersivePiPulseAmplitudeCalibrationResult(VNATimeResolvedDispersiveMeasu
 
     def _generate_fit_arguments(self, x, data):
         bounds =([-10, -10, 0, -10, -10], [10, 10, 10, 10, 10])
-        amp_r, amp_i = -ptp(real(data))/2, -ptp(imag(data))/2
-        p0 = [amp_r, amp_i, 3, max(real(data))-amp_r, max(imag(data))-amp_i]
+        amp_r, amp_i = ptp(real(data))/2, ptp(imag(data))/2
+        if abs(max(real(data)) - real(data[0])) < abs(real(data[0])-min(real(data))):
+            amp_r = -amp_r
+        if abs(max(imag(data)) - imag(data[0])) < abs(imag(data[0])-min(imag(data))):
+            amp_i = -amp_i
+        offset_r, offset_i = max(real(data))-abs(amp_r), max(imag(data))-abs(amp_i)
+        p0 = [amp_r, amp_i, 3, offset_r, offset_i]
         return p0, bounds
 
     def _prepare_data_for_plot(self, data):

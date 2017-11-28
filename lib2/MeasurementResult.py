@@ -165,7 +165,7 @@ class MeasurementResult():
                 pickle.dump(self, f)
             with open(self.get_save_path()+self._name+'_raw_data.pkl', 'w+b') as f:
                 pickle.dump(self._data, f)
-            with open(self.get_save_path()+self._name+'context.txt', 'w+') as f:
+            with open(self.get_save_path()+self._name+'_context.txt', 'w+') as f:
                 f.write(self.get_context().to_string())
 
         self.visualize()
