@@ -90,8 +90,8 @@ class KeysightAWG(Instrument):
 			channel which will output the waveform
 		'''
 
-		self.load_arbitrary_waveform_to_volatile_memory(waveform[:-1]/2.5, channel)
-		self.prepare_waveform(WaveformType.arbitrary, repetition_rate, 5, 0, channel)
+		self.load_arbitrary_waveform_to_volatile_memory(waveform[:-1], channel)
+		self.prepare_waveform(WaveformType.arbitrary, repetition_rate, 2, 0, channel)
 		self.set_output(channel, 1)
 
 
