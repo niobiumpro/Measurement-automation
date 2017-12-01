@@ -149,7 +149,7 @@ class VNATimeResolvedDispersiveMeasurementResult(MeasurementResult):
         Fit theoretical function. Should be implemented in child classes
         '''
         return None
-    
+
     def _unwrapped_phase(self, sdata):
         try:
             unwrapped_phase = unwrap(angle(sdata))

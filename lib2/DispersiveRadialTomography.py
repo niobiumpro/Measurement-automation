@@ -2,6 +2,7 @@ from matplotlib import pyplot as plt, colorbar
 from lib2.VNATimeResolvedDispersiveMeasurement2D import *
 from scipy.interpolate import interp2d
 from lib2.QuantumState import *
+import numpy as np
 from qutip import qeye, sigmax, sigmay, sigmaz, fidelity, Qobj, expect
 from scipy.optimize import least_squares
 from IPython.display import clear_output
@@ -97,7 +98,10 @@ class DispersiveRadialTomographyResult(VNATimeResolvedDispersiveMeasurementResul
         expected_state = QuantumState('pulses', prep_pulse_seq)
         expected_state.change_represent('spherical')
         print(expected_state._coords)
-        fit_result = least_squares(self._cost_function, expected_state._coords+[1,0],
+
+        ig = [1, 0, pi] #expected_state._coords*(np.random.random(1)*(1.1-0.9)-0.9)
+        print(ig)
+        fit_result = least_squares(self._cost_function,ig+[1,0],
             args = (amplitudes_exp[::step_size], phases_exp[::step_size],
             converter(data_exp[::step_size, ::step_size])),
             ftol=1e-4, bounds=bounds)
@@ -140,7 +144,8 @@ class DispersiveRadialTomographyResult(VNATimeResolvedDispersiveMeasurementResul
         r = data[self._parameter_names[0]]
         theta = data[self._parameter_names[1]]
         s_data = data["data"]
-        if smoothing_factor > 1:
+
+        if self._smoothing_factor > 1:
             f_r = interp2d(theta, r, real(s_data), kind="cubic")
             f_i = interp2d(theta, r, imag(s_data), kind="cubic")
             new_len_r = (len(r)-1)*self._smoothing_factor+1
@@ -153,7 +158,7 @@ class DispersiveRadialTomographyResult(VNATimeResolvedDispersiveMeasurementResul
         r_step = (r[1]-r[0])
         r = concatenate((r, [r[-1]+r_step]))
         r_norm = r/self._pulse_sequence_parameters["prep_pulse_pi_amplitude"]
-        if smoothing_factor > 1:
+        if self._smoothing_factor > 1:
             s_data = f_r(theta, r)+1j*f_i(theta, r)
 
         return theta, r_norm, s_data
