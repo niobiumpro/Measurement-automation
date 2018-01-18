@@ -60,11 +60,6 @@ class VNATimeResolvedDispersiveMeasurement1DResult(\
     def _fit_complex_curve(self, X, data):
         p0, bounds = self._generate_fit_arguments(X, data)
 
-        if self._fit_params is not None:
-            if logical_and(array(bounds[1])>self._fit_params,
-                                array(bounds[0])<self._fit_params).all():
-                p0 = self._fit_params#+\
-                        #self._fit_params*0.1*(np.random.random(1)*2-1)
         try:
             #print(p0, end=" -> ")
             p0, err = curve_fit(lambda x, *params: real(self._model(x, *params))\
@@ -76,6 +71,16 @@ class VNATimeResolvedDispersiveMeasurement1DResult(\
                         bounds=bounds, x_scale="jac", max_nfev=10000, ftol=1e-5)
             #print(result.x)
             sigma = std(abs(self._model(X, *result.x)-data))
+
+            if self._fit_params is not None:
+                result_2 = least_squares(self._cost_function, self._fit_params,
+                        args=(X,data), bounds=bounds, x_scale="jac",
+                                                        max_nfev=1000, ftol=1e-5)
+                sigma_2 = std(abs(self._model(X, *result_2.x)-data))
+                if sigma_2<sigma:
+                    result = result_2
+                    sigma = sigma_2
+
             return result, sqrt(diag(sigma**2*inv(result.jac.T.dot(result.jac))))
 
     def fit(self, verbose=True):
@@ -93,8 +98,8 @@ class VNATimeResolvedDispersiveMeasurement1DResult(\
             if result.success:
                 self._fit_params = result.x
                 self._fit_errors = err
-        except:
-            pass
+        except Exception as e:
+            print("Fit failed unexpectedly:", e)
 
 
     def _prepare_figure(self):

@@ -41,14 +41,21 @@ class DispersivePiPulseAmplitudeCalibrationResult(VNATimeResolvedDispersiveMeasu
         return -(A_r+1j*A_i)*cos(pi*amplitude/pi_amplitude)+(offset_r+offset_i*1j)
 
     def _generate_fit_arguments(self, x, data):
-        bounds =([-10, -10, 0, -10, -10], [10, 10, 10, 10, 10])
         amp_r, amp_i = ptp(real(data))/2, ptp(imag(data))/2
         if abs(max(real(data)) - real(data[0])) < abs(real(data[0])-min(real(data))):
             amp_r = -amp_r
         if abs(max(imag(data)) - imag(data[0])) < abs(imag(data[0])-min(imag(data))):
             amp_i = -amp_i
         offset_r, offset_i = max(real(data))-abs(amp_r), max(imag(data))-abs(amp_i)
-        p0 = [amp_r, amp_i, 3, offset_r, offset_i]
+        amp_step = x[1]-x[0]
+        min_pi_pulse_amp = amp_step*2*5
+        max_pi_pulse_amp = (x[-1]-x[0])*2*10
+        pi_pulse_amp = random.random(1)*(max_pi_pulse_amp-min_pi_pulse_amp)+min_pi_pulse_amp
+        bounds =([-abs(amp_r)*1.5, -abs(amp_i)*1.5,
+                        min_pi_pulse_amp, -10, -10],
+                    [abs(amp_r)*1.5, abs(amp_i)*1.5,
+                            max_pi_pulse_amp, 10, 10])
+        p0 = [amp_r, amp_i, pi_pulse_amp, offset_r, offset_i]
         return p0, bounds
 
     def _prepare_data_for_plot(self, data):
