@@ -111,6 +111,7 @@ class SingleToneSpectroscopyResult(MeasurementResult):
                                                             position=(0.5,-0.1))
         ax_amps.grid()
         ax_phas.grid()
+        fig.canvas.set_window_title(self._name)
         return fig, axes, (cax_amps, cax_phas)
 
     def set_phase_units(self, units):
