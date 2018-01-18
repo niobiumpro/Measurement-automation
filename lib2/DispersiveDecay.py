@@ -11,7 +11,7 @@ class DispersiveDecay(VNATimeResolvedDispersiveMeasurement1D):
 
         self._measurement_result = DispersiveDecayResult(name,
                     sample_name)
-        self._sequence_generator = PulseBuilder.build_dispersive_decay_sequences
+        self._sequence_generator = IQPulseBuilder.build_dispersive_decay_sequences
         self._swept_parameter_name = "readout_delay"
 
     def set_swept_parameters(self, readout_delays):

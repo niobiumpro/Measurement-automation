@@ -212,7 +212,7 @@ class IQCalibrator():
 
         def iterate_minimization(prev_results, n=2):
 
-            options = {"maxiter":minimize_iterlimit, "xatol":.5e-3, "fatol":3}
+            options = {"maxiter":minimize_iterlimit, "xatol":.1e-3, "fatol":3}
             res_if_offs = minimize(loss_function_if_offsets, prev_results["if_offsets"],
                 args=[prev_results["if_amplitudes"], prev_results["if_phase"]],
                 method="Nelder-Mead", options=options)
@@ -238,8 +238,6 @@ class IQCalibrator():
             self._lo.set_power(lo_power)
             self._lo.set_frequency(lo_frequency)
             self._lo.set_output_state("ON")
-
-            self._awg.set_channel_coupling(True)
 
             results = None
             if initial_guess is None:
@@ -289,7 +287,7 @@ class IQCalibrator():
             return results
 
         finally:
-             self._sa.setup_swept_sa(lo_frequency, 10*if_frequency if if_frequency>0 else 1e9, nop=1001, rbw=1e4)
+             self._sa.setup_swept_sa(lo_frequency, 10*if_frequency if if_frequency>0 else 1e9, nop=1001, rbw=1e5)
              self._sa.set_continuous()
 
 def format_number_list(number_list):

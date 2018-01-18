@@ -32,6 +32,48 @@ class AWGChannel():
         self._host_awg.output_arbitrary_waveform(waveform, frequency,
                                 self._channel_number, blocking)
 
+
+class CalibratedAWG():
+
+    def __init__(self, channel):
+        self._channel = channel
+
+    def set_parameters(self, parameters):
+        '''
+        Sets various parameters from a dictionary
+
+        Parameters:
+        -----------
+        parameteres: dict {"param_name":param_value, ...}
+        '''
+        par_names = ["calibration"]
+        for par_name in par_names:
+            if par_name in parameters.keys():
+                setattr(self, "_"+par_name, parameters[par_name])
+
+
+    def get_calibration(self):
+        return self._calibration
+
+
+    def get_pulse_builder(self):
+        '''
+        Returns a PulseBuilder instance using the calibration loaded before
+        '''
+        return PulseBuilder(self._calibration)
+
+    def output_pulse_sequence(self, pulse_sequence, blocking=True):
+        '''
+        Load and output given PulseSequence.
+
+        Parameters:
+        -----------
+        pulse_sequence: PulseSequence instance
+        '''
+        frequency = 1/pulse_sequence.get_duration()*1e9
+        self._channel.output_arbitrary_waveform(pulse_sequence\
+                        .get_waveform(), frequency, blocking=blocking)
+
 class IQAWG():
 
     def __init__(self, channel_I, channel_Q):
@@ -53,18 +95,18 @@ class IQAWG():
     def get_calibration(self):
         return self._calibration
 
-    def set_channel_coupling(self, state):
-        '''
-        Assuming that user knows what he is doing here. Make sure your channels
-        are synchronized!
-        '''
-        pass
+    # def set_channel_coupling(self, state):
+    #     '''
+    #     Assuming that user knows what he is doing here. Make sure your channels
+    #     are synchronized!
+    #     '''
+    #     pass
 
     def get_pulse_builder(self):
         '''
-        Returns a PulseBuilder instance using the IQ calibration loaded before
+        Returns an IQPulseBuilder instance using the IQ calibration loaded before
         '''
-        return PulseBuilder(self._calibration)
+        return IQPulseBuilder(self._calibration)
 
     def output_continuous_IQ_waves(self, frequency, amplitudes, relative_phase,
         offsets, waveform_resolution):

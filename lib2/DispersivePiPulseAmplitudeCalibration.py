@@ -10,7 +10,7 @@ class DispersivePiPulseAmplitudeCalibration(VNATimeResolvedDispersiveMeasurement
                     q_lo_name, line_attenuation_db, **kwargs)
         self._measurement_result =\
             DispersivePiPulseAmplitudeCalibrationResult(name, sample_name)
-        self._sequence_generator = PulseBuilder.build_dispersive_rabi_sequences
+        self._sequence_generator = IQPulseBuilder.build_dispersive_rabi_sequences
         self._swept_parameter_name = "excitation_amplitude"
 
     def set_fixed_parameters(self, vna_parameters, ro_awg_params, q_awg_params,

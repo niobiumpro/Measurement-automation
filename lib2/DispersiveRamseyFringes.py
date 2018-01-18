@@ -10,7 +10,7 @@ class DispersiveRamseyFringes(VNATimeResolvedDispersiveMeasurement2D):
                                     ro_awg, q_awg, q_lo_name)
         self._measurement_result =\
                 DispersiveRamseyFringesResult(name, sample_name)
-        self._sequence_generator = PulseBuilder.build_dispersive_ramsey_sequences
+        self._sequence_generator = IQPulseBuilder.build_dispersive_ramsey_sequences
 
     def set_fixed_parameters(self, vna_parameters,
         ro_awg_parameters, q_awg_parameters, pulse_sequence_parameters):

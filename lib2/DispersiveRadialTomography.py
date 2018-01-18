@@ -14,7 +14,7 @@ class DispersiveRadialTomography(VNATimeResolvedDispersiveMeasurement2D):
                                     ro_awg, q_awg, q_lo_name)
         self._measurement_result =\
             DispersiveRadialTomographyResult(name, sample_name, smoothing_factor)
-        self._sequence_generator = PulseBuilder.build_radial_tomography_pulse_sequences
+        self._sequence_generator = IQPulseBuilder.build_radial_tomography_pulse_sequences
 
     def set_fixed_parameters(self, vna_parameters, ro_awg_parameters,
             q_awg_parameters, excitation_frequency, pulse_sequence_parameters):

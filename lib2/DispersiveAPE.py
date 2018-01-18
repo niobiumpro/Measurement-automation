@@ -10,7 +10,7 @@ class DispersiveAPE(VNATimeResolvedDispersiveMeasurement1D):
 
         self._measurement_result = DispersiveAPEResult(name,
                     sample_name)
-        self._sequence_generator = PulseBuilder.build_dispersive_APE_sequences
+        self._sequence_generator = IQPulseBuilder.build_dispersive_APE_sequences
         self._swept_parameter_name = "ramsey_angle"
 
     def set_swept_parameters(self, ramsey_angles):

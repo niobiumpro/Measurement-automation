@@ -11,7 +11,7 @@ class DispersivePiPulseAmplitudeFineCalibration(VNATimeResolvedDispersiveMeasure
         self._measurement_result =\
             DispersivePiPulseAmplitudeFineCalibrationResult(name, sample_name)
         self._sequence_generator =\
-                PulseBuilder.build_dispersive_pi_half_calibration_sequences
+                IQPulseBuilder.build_dispersive_pi_half_calibration_sequences
         self._swept_parameter_name = "twice_pi_half_pulses_count"
 
     def set_fixed_parameters(self, vna_parameters, ro_awg_params, q_awg_params,

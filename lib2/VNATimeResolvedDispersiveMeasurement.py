@@ -21,12 +21,13 @@ class VNATimeResolvedDispersiveMeasurementContext(ContextBase):
 class VNATimeResolvedDispersiveMeasurement(Measurement):
 
     def __init__(self, name, sample_name, vna_name, ro_awg, q_awg,
-        q_lo_name, line_attenuation_db = 60, plot_update_interval = 1):
+        q_lo_name, q_z_awg=None, line_attenuation_db = 60, plot_update_interval = 1):
         super().__init__(name, sample_name, devs_names=[vna_name, q_lo_name],
                     plot_update_interval=plot_update_interval)
 
         self._ro_awg = ro_awg
         self._q_awg = q_awg
+        self._q_z_awg = q_z_awg
         self._vna = self._actual_devices[vna_name]
         self._q_lo = self._actual_devices[q_lo_name]
         self._basis = None
@@ -36,7 +37,7 @@ class VNATimeResolvedDispersiveMeasurement(Measurement):
 
     def set_fixed_parameters(self, vna_parameters, q_lo_parameters,
         ro_awg_parameters, q_awg_parameters, pulse_sequence_parameters,
-        detect_resonator=True):
+        detect_resonator=True, q_z_awg_params = None):
 
         self._pulse_sequence_parameters.update(pulse_sequence_parameters)
         self._measurement_result.get_context()\
@@ -50,8 +51,14 @@ class VNATimeResolvedDispersiveMeasurement(Measurement):
                                     q_awg_parameters["calibration"])
             vna_parameters["freq_limits"] = (res_freq, res_freq)
 
-        super().set_fixed_parameters(vna=vna_parameters, q_lo=q_lo_parameters,
-                            ro_awg=ro_awg_parameters, q_awg=q_awg_parameters)
+        if self._q_z_awg is not None:
+            super().set_fixed_parameters(vna=vna_parameters, q_lo=q_lo_parameters,
+                                ro_awg=ro_awg_parameters, q_awg=q_awg_parameters,
+                                q_z_awg=q_z_awg_params)
+        else:
+            super().set_fixed_parameters(vna=vna_parameters, q_lo=q_lo_parameters,
+                                ro_awg=ro_awg_parameters, q_awg=q_awg_parameters)
+
 
     def set_basis(self, basis):
         self._basis = basis
@@ -93,8 +100,8 @@ class VNATimeResolvedDispersiveMeasurement(Measurement):
 
         rep_period = self._pulse_sequence_parameters["repetition_period"]
         ro_duration = self._pulse_sequence_parameters["readout_duration"]
-        ro_pb = PulseBuilder(ro_calibration)
-        q_pb = PulseBuilder(q_calibration)
+        ro_pb = IQPulseBuilder(ro_calibration)
+        q_pb = IQPulseBuilder(q_calibration)
         self._ro_awg.output_pulse_sequence(ro_pb\
                     .add_dc_pulse(ro_duration).add_zero_until(rep_period).build())
         self._q_awg.output_pulse_sequence(q_pb.add_zero_until(rep_period).build())
@@ -108,10 +115,19 @@ class VNATimeResolvedDispersiveMeasurement(Measurement):
     def _output_pulse_sequence(self):
         q_pb = self._q_awg.get_pulse_builder()
         ro_pb = self._ro_awg.get_pulse_builder()
-        q_seq, ro_seq = self._sequence_generator(q_pb, ro_pb,
+        if self._q_z_awg is not None:
+            q_z_pb = self._q_z_awg.get_pulse_builder()
+            q_seq, q_z_seq, ro_seq =\
+                self._sequence_generator(q_pb, q_z_pb, ro_pb,
                                         self._pulse_sequence_parameters)
-        self._ro_awg.output_pulse_sequence(ro_seq, blocking=False)
-        self._q_awg.output_pulse_sequence(q_seq)
+            self._q_z_awg.output_pulse_sequence(q_z_seq, blocking=False)
+            self._ro_awg.output_pulse_sequence(ro_seq, blocking=False)
+            self._q_awg.output_pulse_sequence(q_seq)
+        else:
+            q_seq, ro_seq = self._sequence_generator(q_pb, ro_pb,
+                                    self._pulse_sequence_parameters)
+            self._ro_awg.output_pulse_sequence(ro_seq, blocking=False)
+            self._q_awg.output_pulse_sequence(q_seq)
 
 
 class VNATimeResolvedDispersiveMeasurementResult(MeasurementResult):
@@ -149,7 +165,7 @@ class VNATimeResolvedDispersiveMeasurementResult(MeasurementResult):
         Fit theoretical function. Should be implemented in child classes
         '''
         return None
-    
+
     def _unwrapped_phase(self, sdata):
         try:
             unwrapped_phase = unwrap(angle(sdata))

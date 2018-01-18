@@ -116,7 +116,7 @@ class KeysightAWG(Instrument):
 		'''
 
 		N_points = 1/frequency/waveform_resolution*1e9+1 if frequency !=0 else 3
-		waveform =amplitude*sin(2*pi*linspace(0,1,N_points)+phase) + offset
+		waveform = amplitude*sin(2*pi*linspace(0,1,N_points)+phase) + offset
 		self.output_arbitrary_waveform(waveform, frequency, channel)
 
 	# Basic low-level functions

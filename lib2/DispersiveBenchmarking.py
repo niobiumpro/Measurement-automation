@@ -13,7 +13,7 @@ class DispersiveRandomizedInterleavedBenchmarking(VNATimeResolvedDispersiveMeasu
         DispersiveRandomizedInterleavedBenchmarkingResult(name, sample_name)
 
         self._sequence_generator = \
-                PulseBuilder.build_interleaved_benchmarking_sequence
+                IQPulseBuilder.build_interleaved_benchmarking_sequence
 
     def set_fixed_parameters(self, vna_parameters,
         ro_awg_parameters, q_awg_parameters, pulse_sequence_parameters,

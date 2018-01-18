@@ -5,8 +5,9 @@ from scipy.signal import *
 
 
 class PulseSequence():
-    def __init__(self):
+    def __init__(self, waveform_resolution):
         self._waveform = ndarray(1)
+        self._waveform_resolution = waveform_resolution
         self._pulses = []
 
     def append_pulse(self, points):
@@ -24,11 +25,15 @@ class PulseSequence():
     def total_points(self):
         return len(self._waveform)
 
+    def get_duration(self):
+        return self._waveform_resolution*(self.total_points()-1)
+
     def get_waveform(self):
         return self._waveform
 
-    def plot(self, sequence_duration, **kwargs):
-        times = linspace(0, sequence_duration, len(self._waveform))
+    def plot(self, **kwargs):
+
+        times = linspace(0, self.get_duration(), len(self._waveform))
         plt.plot(times, self._waveform, **kwargs)
 
 
@@ -37,10 +42,9 @@ class IQPulseSequence():
     Class whose instances can be loaded directly to the AWG via AWG's
     ouptut_iq_pulse_sequence() method
     """
-    def __init__(self, pulse_sequence_I, pulse_sequence_Q, sequence_duration):
+    def __init__(self, pulse_sequence_I, pulse_sequence_Q):
         self._i = pulse_sequence_I
         self._q = pulse_sequence_Q
-        self._duration = sequence_duration
 
     def __add__(self, other):
         I, Q = other.get_IQ_sequences()
@@ -57,19 +61,95 @@ class IQPulseSequence():
         return self._q.get_waveform()
 
     def get_duration(self):
-        return self._duration
+        return self._i.get_duration()
 
     def plot(self, **kwargs):
-        self._i.plot(self._duration, label="I", **kwargs)
-        self._q.plot(self._duration, label="Q", **kwargs)
+        self._i.plot(label="I", **kwargs)
+        self._q.plot(label="Q", **kwargs)
         plt.legend()
 
 
 class PulseBuilder():
+    '''
+    Build a PulseBuilder instance for single-channel pulse sequences
+
+    Parameters:
+    -----------
+    calibration: CalibrationData
+        Calibration data for the pulses that will be used to
+        send out the pulse sequence.
+    '''
+
+    def __init__(self, calibration):
+        self._calibration = calibration
+        self._waveform_resolution = \
+            calibration["waveform_resolution"]
+        self._pulse_seq = PulseSequence(self._waveform_resolution)
+
+    def add_zero_pulse(self, duration):
+        '''
+        Adds a pulse with zero (calibrated) amplitude to the sequence
+
+        Parameters:
+        -----------
+        duration: float, ns
+            Duration of the pulse in nanoseconds
+        '''
+        offset = self._calibration["zero_offset"]
+        N_time_steps = int(round(duration/self._waveform_resolution))
+        self._pulse_seq.append_pulse(zeros(N_time_steps+1)+offset)
+        return self
+
+    def add_rect_pulse(self, duration, offset_voltage):
+        '''
+        Adds a pulse with offset_voltage with respect
+        to the zero-calibrated voltage:
+        absolute_voltage = zero_offset + offset_voltage
+
+        Parameters:
+        -----------
+        duration: float, ns
+            Duration of the pulse in nanoseconds
+        offset_voltage: float, V
+            Offset voltage that will be added to the zero_offset voltage
+        '''
+        offset = self._calibration["zero_offset"]+offset_voltage
+        N_time_steps = int(round(duration/self._waveform_resolution))
+        self._pulse_seq.append_pulse(zeros(N_time_steps+1)+offset)
+        return self
+
+    def add_zero_until(self, total_duration):
+        '''
+        Adds a pulse with zero amplitude to the sequence of such length that the
+        whole pulse sequence is of specified duration
+
+        Should be used to end the sequence as the last call before build(...)
+
+        Parameters:
+        -----------
+        total_duration: float, ns
+            Duration of the whole sequence
+        '''
+        total_time_steps = round(total_duration/self._waveform_resolution)
+        current_time_steps = self._pulse_seq.total_points()-1
+        residual_time_steps = total_time_steps-current_time_steps
+        self.add_zero_pulse(residual_time_steps*self._waveform_resolution)
+        return self
+
+    def build(self):
+        '''
+
+        '''
+        to_return = self._pulse_seq
+        self._pulse_seq = PulseSequence(self._waveform_resolution)
+        return to_return
+
+
+class IQPulseBuilder():
 
     def __init__(self, iqmx_calibration):
         '''
-        Build a PulseBuilder instance for a previously calibrated IQ mixer.
+        Build a IQPulseBuilder instance for a previously calibrated IQ mixer.
 
         Parameters:
         -----------
@@ -81,8 +161,8 @@ class PulseBuilder():
         self._iqmx_calibration = iqmx_calibration
         self._waveform_resolution = \
             iqmx_calibration.get_radiation_parameters()["waveform_resolution"]
-        self._pulse_seq_I = PulseSequence()
-        self._pulse_seq_Q = PulseSequence()
+        self._pulse_seq_I = PulseSequence(self._waveform_resolution)
+        self._pulse_seq_Q = PulseSequence(self._waveform_resolution)
 
     def add_dc_pulse(self, duration, dc_voltage=None):
         '''
@@ -259,10 +339,9 @@ class PulseBuilder():
         Returns the IQ sequence containing I and Q pulse sequences and the total
         duration of the pulse sequence in ns
         '''
-        to_return = IQPulseSequence(self._pulse_seq_I, self._pulse_seq_Q,
-                self._waveform_resolution*(self._pulse_seq_I.total_points()-1))
-        self._pulse_seq_I = PulseSequence()
-        self._pulse_seq_Q = PulseSequence()
+        to_return = IQPulseSequence(self._pulse_seq_I, self._pulse_seq_Q)
+        self._pulse_seq_I = PulseSequence(self._waveform_resolution)
+        self._pulse_seq_Q = PulseSequence(self._waveform_resolution)
         return to_return
 
 
@@ -581,3 +660,49 @@ class PulseBuilder():
                     .add_zero_until(repetition_period)
 
         return exc_pb.build(), ro_pb.build()
+
+
+    @staticmethod
+    def build_z_pulse_profile_scan_sequence(exc_pb, z_pb, ro_pb,
+                                                    pulse_sequence_parameters):
+        '''
+        Returns synchronized excitation and readout IQPulseSequences assuming that
+        readout AWG is triggered by the excitation AWG
+        '''
+        awg_trigger_reaction_delay = \
+                pulse_sequence_parameters["awg_trigger_reaction_delay"]
+        readout_duration = \
+                pulse_sequence_parameters["readout_duration"]
+        repetition_period = \
+                pulse_sequence_parameters["repetition_period"]
+        pi_pulse_duration = \
+                pulse_sequence_parameters["pi_pulse_duration"]
+        window = \
+                pulse_sequence_parameters["modulating_window"]
+        z_pulse_offset_voltage = \
+                pulse_sequence_parameters["z_pulse_offset_voltage"]
+        z_pulse_duration =\
+                pulse_sequence_parameters["z_pulse_duration"]
+        pi_pulse_delay = \
+                pulse_sequence_parameters["pi_pulse_delay"]
+        amplitude =\
+            pulse_sequence_parameters["excitation_amplitude"]
+
+        z_wait = abs(pi_pulse_delay) if pi_pulse_delay < 0 else 0
+        exc_wait = abs(pi_pulse_delay) if pi_pulse_delay > 0 else 0
+
+        exc_pb.add_zero_pulse(awg_trigger_reaction_delay+exc_wait)\
+            .add_sine_pulse(pi_pulse_duration, 0,
+                                    amplitude=amplitude, window=window)\
+            .add_zero_pulse(readout_duration)\
+            .add_zero_until(repetition_period)
+
+        z_pb.add_zero_pulse(z_wait)\
+            .add_rect_pulse(z_pulse_duration, z_pulse_offset_voltage)\
+            .add_zero_until(repetition_period)
+
+        ro_pb.add_zero_pulse(max(pi_pulse_duration, z_pulse_duration)+abs(pi_pulse_delay)+10)\
+             .add_dc_pulse(readout_duration)\
+             .add_zero_until(repetition_period)
+
+        return exc_pb.build(), z_pb.build(), ro_pb.build()

@@ -12,7 +12,7 @@ class DispersiveHahnEcho(VNATimeResolvedDispersiveMeasurement1D):
 
         self._measurement_result = DispersiveHahnEchoResult(name,
                     sample_name)
-        self._sequence_generator = PulseBuilder.build_dispersive_hahn_echo_sequences
+        self._sequence_generator = IQPulseBuilder.build_dispersive_hahn_echo_sequences
         self._swept_parameter_name = "echo_delay"
 
     def set_swept_parameters(self, echo_delays):

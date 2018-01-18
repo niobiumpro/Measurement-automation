@@ -11,7 +11,8 @@ class VNATimeResolvedDispersiveMeasurement1D(VNATimeResolvedDispersiveMeasuremen
     def __init__(self,  name, sample_name, vna_name, ro_awg, q_awg,
         q_lo_name, line_attenuation_db = 60, plot_update_interval = 1):
         super().__init__(name, sample_name, vna_name, ro_awg, q_awg,
-            q_lo_name, line_attenuation_db, plot_update_interval)
+            q_lo_name, line_attenuation_db = line_attenuation_db,
+            plot_update_interval = plot_update_interval)
 
     def set_fixed_parameters(self, vna_parameters, ro_awg_parameters,
             q_awg_parameters, qubit_frequency, pulse_sequence_parameters):

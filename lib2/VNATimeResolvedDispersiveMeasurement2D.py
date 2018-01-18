@@ -5,13 +5,14 @@ from lib2.VNATimeResolvedDispersiveMeasurement import *
 class VNATimeResolvedDispersiveMeasurement2D(VNATimeResolvedDispersiveMeasurement):
 
     def __init__(self, name, sample_name, vna_name, ro_awg, q_awg,
-        q_lo_name):
+        q_lo_name, q_z_awg=None):
         super().__init__(name, sample_name, vna_name,
-                ro_awg, q_awg, q_lo_name, plot_update_interval=5)
+                ro_awg, q_awg, q_lo_name, plot_update_interval=5,
+                q_z_awg = q_z_awg)
 
     def set_fixed_parameters(self, vna_parameters, q_lo_parameters,
         ro_awg_parameters, q_awg_parameters, pulse_sequence_parameters,
-        detect_resonator=True):
+        detect_resonator=True, q_z_awg_params = None):
 
         vna_parameters["power"] = ro_awg_parameters["calibration"]\
             .get_radiation_parameters()["lo_power"]
@@ -21,7 +22,7 @@ class VNATimeResolvedDispersiveMeasurement2D(VNATimeResolvedDispersiveMeasuremen
 
         super().set_fixed_parameters(vna_parameters, q_lo_parameters,
             ro_awg_parameters, q_awg_parameters, pulse_sequence_parameters,
-            detect_resonator)
+            detect_resonator, q_z_awg_params = q_z_awg_params)
 
 
 class VNATimeResolvedDispersiveMeasurement2DResult(
@@ -29,7 +30,7 @@ class VNATimeResolvedDispersiveMeasurement2DResult(
 
     def _prepare_figure(self):
         fig, axes, caxes = super()._prepare_figure()
-        plt.tight_layout(pad=4)
+        plt.tight_layout(pad=2, h_pad=5, w_pad=0)
         caxes = []
         for ax in axes:
             caxes.append(colorbar.make_axes(ax)[0])

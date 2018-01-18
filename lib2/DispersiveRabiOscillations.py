@@ -10,7 +10,7 @@ class DispersiveRabiOscillations(VNATimeResolvedDispersiveMeasurement1D):
                     q_lo_name, line_attenuation_db, plot_update_interval)
         self._measurement_result = DispersiveRabiOscillationsResult(name,
                     sample_name)
-        self._sequence_generator = PulseBuilder.build_dispersive_rabi_sequences
+        self._sequence_generator = IQPulseBuilder.build_dispersive_rabi_sequences
         self._swept_parameter_name = "excitation_duration"
 
     def set_swept_parameters(self, excitation_durations):

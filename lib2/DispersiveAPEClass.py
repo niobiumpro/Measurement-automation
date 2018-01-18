@@ -15,7 +15,7 @@ class DispersiveAPE(VNATimeResolvedDispersiveMeasurement):
 
         self._measurement_result = DispersiveAPEResult(name,
                     sample_name)
-        self._sequence_generator = PulseBuilder.build_dispersive_APE_sequences
+        self._sequence_generator = IQPulseBuilder.build_dispersive_APE_sequences
 
     def set_fixed_parameters(self, vna_parameters, ro_awg_parameters,
         q_awg_parameters, excitation_frequency, pulse_sequence_parameters,
