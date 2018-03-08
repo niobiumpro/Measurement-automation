@@ -23,7 +23,8 @@ class SingleToneSpectroscopy(Measurement):
 
     ---------------
     Methods:
-         -- __init__(self, name, sample_name, parameter_name,parameter_setter, line_attenuation_db = 60, vna_name="vna2")
+         -- __init__(self, name, sample_name, parameter_name,parameter_setter,
+            line_attenuation_db = 60, vna_name="vna2")
          -- setup_control_parameters(self, vna_parameters,parameter_values)
          -- _record_data(self)
          Class SingleToneSpectroscopyResult(MeasurementResult):
@@ -41,12 +42,8 @@ class SingleToneSpectroscopy(Measurement):
 
     def __init__(self, name, sample_name, line_attenuation_db = 60,
         plot_update_interval=5, **devs_aliases_map):
-        super().__init__(name, sample_name, list(devs_aliases_map.values()),
-                                                            plot_update_interval)
-
-        self._devs_aliases = list(devs_aliases_map.keys())
-        for alias, dev_name in devs_aliases_map.items():
-            self.__setattr__("_"+alias, self._actual_devices[dev_name])
+        super().__init__(name, sample_name, devs_aliases_map,
+            plot_update_interval)
 
         self._measurement_result = SingleToneSpectroscopyResult(name,
                     sample_name)

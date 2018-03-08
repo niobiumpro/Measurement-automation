@@ -699,10 +699,10 @@ class IQPulseBuilder():
 
         z_pb.add_zero_pulse(z_wait)\
             .add_rect_pulse(z_pulse_duration, z_pulse_offset_voltage)\
-            .add_zero_until(repetition_period)
+            .add_zero_until(repetition_period-10)
 
         ro_pb.add_zero_pulse(max(pi_pulse_duration, z_pulse_duration)+abs(pi_pulse_delay)+10)\
              .add_dc_pulse(readout_duration)\
-             .add_zero_until(repetition_period)
+             .add_zero_until(repetition_period-10)
 
         return exc_pb.build(), z_pb.build(), ro_pb.build()

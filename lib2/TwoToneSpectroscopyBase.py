@@ -15,27 +15,44 @@ from scipy.optimize import curve_fit
 class TwoToneSpectroscopyBase(Measurement):
 
     def __init__(self, name, sample_name, line_attenuation_db,
-                    vna_name, mw_src_name, current_src_name):
-        devs_names = [vna_name, mw_src_name, current_src_name]
-        super().__init__(name, sample_name, devs_names)
-        self._vna = self._actual_devices[vna_name]
-        self._mw_src = self._actual_devices[mw_src_name]
-        self._current_src = self._actual_devices[current_src_name]
+        devs_aliases_map, plot_update_interval=5):
+
+        super().__init__(name, sample_name, devs_aliases_map,
+        plot_update_interval)
+
+        # devs_names = [vna_name, mw_src_name, current_src_name]
+        # super().__init__(name, sample_name, devs_names)
+        # self._vna = self._actual_devices[vna_name]
+        # self._mw_src = self._actual_devices[mw_src_name]
+        # self._current_src = self._actual_devices[current_src_name]
 
         self._measurement_result = TwoToneSpectroscopyResult(name,
                     sample_name)
         self._interrupted = False
+        self._base_parameter_setter = None
+        self._base_parameter_name = None
 
-    def set_fixed_parameters(self, vna_parameters, mw_src_parameters, current,
-        detect_resonator=True):
+    def set_fixed_parameters(self, vna_parameters, mw_src_parameters, current=None,
+        voltage=None, detect_resonator=True):
 
-        self._current_src.set_current(current)
+        if voltage is None:
+            self._base_parameter_setter = self._current_src.set_current
+            base_parameter_value = current
+            self._base_parameter_name = "Current [A]"
+            msg1 = "at %.2f mA"%(current*1e3)
+        else:
+            self._base_parameter_setter = self._voltage_src.set_voltage
+            base_parameter_value = voltage
+            self._base_parameter_name = "Voltage [V]"
+            msg1 = "at %.1f V"%(voltage)
+
+        self._base_parameter_setter(base_parameter_value)
 
         if detect_resonator:
             self._mw_src.set_output_state("OFF")
-            print("Detecting a resonator within provided frequency range of the VNA %s \
-                        at %.2f mA"%(str(vna_parameters["freq_limits"]),
-                            current*1e3), flush=True)
+            msg = "Detecting a resonator within provided frequency range of the VNA %s \
+                            "%(str(vna_parameters["freq_limits"]))
+            print(msg+msg1, flush = True)
             res_freq, res_amp, res_phase = self._detect_resonator(vna_parameters)
             print("Detected frequency is %.5f GHz, at %.2f mU and %.2f degrees"%(res_freq/1e9, res_amp*1e3, res_phase/pi*180))
             vna_parameters["freq_limits"] = (res_freq, res_freq)
@@ -70,8 +87,8 @@ class TwoToneSpectroscopyResult(SingleToneSpectroscopyResult):
         self._annotation_bbox_props = dict(boxstyle="round", fc="white",
                 ec="black", lw=1, alpha=0.5)
 
-    def _tr_spectrum(self, current, sweet_spot_current, frequency, period):
-        return frequency*sqrt(cos((current-sweet_spot_current)/period))
+    def _tr_spectrum(self, parameter_value, parameter_value_at_sweet_spot, frequency, period):
+        return frequency*sqrt(cos((parameter_value-parameter_value_at_sweet_spot)/period))
 
     def _lorentzian_peak(self, frequency, amplitude, offset, res_frequency, width):
         return amplitude*(0.5*width)**2/((frequency - res_frequency)**2+(0.5*width)**2)+offset
@@ -88,20 +105,22 @@ class TwoToneSpectroscopyResult(SingleToneSpectroscopyResult):
         return array(peaks)
 
 
-    def find_transmon_spectrum(self, axes, current_limits=(0,-1)):
+    def find_transmon_spectrum(self, axes, parameter_limits=(0,-1)):
+
+        parameter_name = self._parameter_names[0]
         data = self.get_data()
-        # max_idcs = argmax(abs(data["data"]), 1)
-        # y = data["Frequency [Hz]"][max_idcs]
-        x = data[self._parameter_names[0]][current_limits[0]:current_limits[1]]
+        x = data[parameter_name][parameter_limits[0]:parameter_limits[1]]
         freqs = data[self._parameter_names[1]]
-        y = self._find_peaks(freqs, abs(data["data"][current_limits[0]:current_limits[1]]))
+        y = self._find_peaks(freqs,
+            abs(data["data"][parameter_limits[0]:parameter_limits[1]]))
         try:
             popt = curve_fit(self._tr_spectrum, x, y, p0=(mean(x), max(y), ptp(x)))[0]
-            annotation_string = "Sweet spot at: %.3f $\mu$A"%(popt[0]*1e6)
+            annotation_string = parameter_name+" sweet spot at: "+self._latex_float(popt[0])
+
             for ax in axes:
                 h_pos = mean(ax.get_xlim())
                 v_pos = .1*ax.get_ylim()[0]+.9*ax.get_ylim()[1]
-                ax.plot(x, y/1e9, ".")
+                ax.plot(x, y/1e9, ".", color="C2")
                 ax.plot(x, self._tr_spectrum(x, *popt)/1e9)
                 ax.plot([popt[0]], [popt[1]/1e9], "+")
                 ax.annotate(annotation_string, (h_pos, v_pos),

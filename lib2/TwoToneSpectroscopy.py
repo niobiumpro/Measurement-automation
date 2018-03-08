@@ -13,28 +13,36 @@ from time import sleep
 
 class FluxTwoToneSpectroscopy(TwoToneSpectroscopyBase):
 
-    def __init__(self, name, sample_name, line_attenuation_db = 60,
-        vna_name = "vna2", mw_src_name = "mxg", current_src_name = "yok3"):
+    def __init__(self, name, sample_name, line_attenuation_db = 60, **devs_aliases_map):
         super().__init__(name, sample_name,
-                line_attenuation_db, vna_name, mw_src_name, current_src_name)
+                line_attenuation_db, devs_aliases_map)
 
     def set_fixed_parameters(self, vna_parameters, mw_src_parameters,
-        sweet_spot_current, adaptive = False):
+        sweet_spot_current = None, sweet_spot_voltage = None, adaptive = False):
         self._resonator_area = vna_parameters["freq_limits"]
         self._adaptive = adaptive
         super().set_fixed_parameters(vna_parameters, mw_src_parameters,
-                    sweet_spot_current, not adaptive)
+            current = sweet_spot_current, voltage = sweet_spot_voltage,
+            detect_resonator = not adaptive)
 
-    def set_swept_parameters(self, mw_src_frequencies, current_values):
-        current_setter =\
-            self._current_setter if self._adaptive else self._current_src.set_current
-        swept_pars = {"Current [A]":(current_setter, current_values),
-                "Frequency [Hz]":(self._mw_src.set_frequency, mw_src_frequencies)}
+    def set_swept_parameters(self, mw_src_frequencies, current_values = None,
+        voltage_values = None):
+
+        base_parameter_values =\
+            current_values if voltage_values is None else voltage_values
+        base_parameter_setter =\
+            self._adaptive_setter if self._adaptive else self._base_parameter_setter
+
+        swept_pars =\
+            {self._base_parameter_name:\
+                (base_parameter_setter, base_parameter_values),
+            "Frequency [Hz]":\
+                (self._mw_src.set_frequency, mw_src_frequencies)}
         super().set_swept_parameters(**swept_pars)
 
-    def _current_setter(self, current):
+    def _adaptive_setter(self, value):
 
-        self._current_src.set_current(current)
+        self._base_parameter_setter(value)
 
         vna_parameters = self._fixed_pars["vna"]
         vna_parameters["freq_limits"] = self._resonator_area
@@ -52,10 +60,8 @@ class FluxTwoToneSpectroscopy(TwoToneSpectroscopyBase):
 
 class PowerTwoToneSpectroscopy(TwoToneSpectroscopyBase):
 
-    def __init__(self, name, sample_name, line_attenuation_db = 60,
-                vna_name = "vna2", mw_src_name = "mxg", current_src_name = "yok3"):
-        super().__init__(name, sample_name, line_attenuation_db, vna_name,
-                                            mw_src_name, current_src_name)
+    def __init__(self, name, sample_name, line_attenuation_db = 60, **devs_aliases_map):
+        super().__init__(name, sample_name, line_attenuation_db, devs_aliases_map)
 
     def set_swept_parameters(self, mw_src_frequencies, power_values):
         swept_pars = {"Power [dBm]":(self._mw_src.set_power, power_values),
@@ -64,16 +70,15 @@ class PowerTwoToneSpectroscopy(TwoToneSpectroscopyBase):
 
 class AcStarkTwoToneSpectroscopy(TwoToneSpectroscopyBase):
 
-    def __init__(self, name, sample_name, line_attenuation_db = 60,
-            vna_name = "vna2", mw_src_name = "mxg", current_src_name = "yok3"):
+    def __init__(self, name, sample_name, line_attenuation_db = 60, **devs_aliases_map):
 
-        super().__init__(name, sample_name, line_attenuation_db, vna_name,
-                                        mw_src_name, current_src_name)
+        super().__init__(name, sample_name, line_attenuation_db, devs_aliases_map)
 
-    def set_fixed_parameters(self, vna_parameters, mw_src_parameters, current):
+    def set_fixed_parameters(self, vna_parameters, mw_src_parameters, current = None,
+        voltage = None):
         self._resonator_area = vna_parameters["freq_limits"]
         super().set_fixed_parameters(vna_parameters, mw_src_parameters,
-                                                                current, False)
+            voltage = voltage, current = current, detect_resonator = False)
 
     def set_swept_parameters(self, mw_src_frequencies, power_values):
         swept_pars =\

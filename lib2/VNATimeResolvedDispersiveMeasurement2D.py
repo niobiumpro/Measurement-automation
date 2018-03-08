@@ -4,11 +4,9 @@ from lib2.VNATimeResolvedDispersiveMeasurement import *
 
 class VNATimeResolvedDispersiveMeasurement2D(VNATimeResolvedDispersiveMeasurement):
 
-    def __init__(self, name, sample_name, vna_name, ro_awg, q_awg,
-        q_lo_name, q_z_awg=None):
-        super().__init__(name, sample_name, vna_name,
-                ro_awg, q_awg, q_lo_name, plot_update_interval=5,
-                q_z_awg = q_z_awg)
+    def __init__(self, name, sample_name, devs_aliases_map):
+        super().__init__(name, sample_name, devs_aliases_map,
+            plot_update_interval=5)
 
     def set_fixed_parameters(self, vna_parameters, q_lo_parameters,
         ro_awg_parameters, q_awg_parameters, pulse_sequence_parameters,

@@ -267,6 +267,13 @@ class MeasurementResult():
         with self._data_lock:
             self._data = copy.deepcopy(data)
 
+    def _latex_float(self, f):
+        float_str = "{0:.2e}".format(f)
+        base, exponent = float_str.split("e")
+        if int(exponent)!=0:
+            return r"${0} \times 10^{{{1}}}$".format(base, int(exponent))
+        else:
+            return base
 
     def copy(self):
         with self._data_lock:

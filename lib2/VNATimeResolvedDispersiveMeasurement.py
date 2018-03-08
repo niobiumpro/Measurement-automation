@@ -20,16 +20,10 @@ class VNATimeResolvedDispersiveMeasurementContext(ContextBase):
 
 class VNATimeResolvedDispersiveMeasurement(Measurement):
 
-    def __init__(self, name, sample_name, vna_name, ro_awg, q_awg,
-        q_lo_name, q_z_awg=None, line_attenuation_db = 60, plot_update_interval = 1):
-        super().__init__(name, sample_name, devs_names=[vna_name, q_lo_name],
+    def __init__(self, name, sample_name, devs_aliases_map, line_attenuation_db = 60, plot_update_interval = 1):
+        super().__init__(name, sample_name, devs_aliases_map,
                     plot_update_interval=plot_update_interval)
 
-        self._ro_awg = ro_awg
-        self._q_awg = q_awg
-        self._q_z_awg = q_z_awg
-        self._vna = self._actual_devices[vna_name]
-        self._q_lo = self._actual_devices[q_lo_name]
         self._basis = None
         self._ult_calib = False
         self._pulse_sequence_parameters =\
@@ -176,5 +170,6 @@ class VNATimeResolvedDispersiveMeasurementResult(MeasurementResult):
 
     def _prepare_figure(self):
         fig, axes = plt.subplots(2, 2, figsize=(15,7), sharex=True)
+        fig.canvas.set_window_title(self._name)
         axes = ravel(axes)
         return fig, axes, (None, None)

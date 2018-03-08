@@ -86,7 +86,7 @@ class Measurement():
 		 }
 
 
-    def __init__(self, name, sample_name, devs_names, plot_update_interval=5):
+    def __init__(self, name, sample_name, devs_aliases_map, plot_update_interval=5):
         '''
         Parameters:
         --------------------
@@ -94,8 +94,9 @@ class Measurement():
             name of the measurement
         sample_name: string
             the name of the sample that is measured
-        devs_names: array-like
-            with devices' standard names.
+        devs_aliases_map: dictionary
+            with devices' standard names(if it`s not virtual device) or
+             object from a device class. A key is a string that will be an object field
         --------------------
 
         Constructor creates variables for devices passed to it and initialises all devices.
@@ -114,7 +115,7 @@ class Measurement():
         self._sample_name = sample_name
         self._plot_update_interval = plot_update_interval
 
-        self._devs_names = devs_names
+        self._devs_aliases_map = devs_aliases_map
         self._list = ""
         rm = pyvisa.ResourceManager()
         temp_list = list(rm.list_resources_info().values())
@@ -123,18 +124,26 @@ class Measurement():
                 # returns list of tuples: (IP Address string, alias) for all
                 # devices present in VISA
         self._write_to_log()
-        for name in self._devs_names:
-            if name in Measurement._actual_devices.keys():
-                print(name + ' is already initialized')
-                continue
-            for device_alias in self._devs_info:
-                if (name in Measurement._devs_dict.keys()) \
-                        and (device_alias in Measurement._devs_dict[name][0]):
-                    device_object = getattr(*Measurement._devs_dict[name][1])(device_alias)
-                    Measurement._actual_devices[name]=device_object
-                    print("The device %s is detected as %s"%(name, device_alias))
-                    #getattr(self,"_"+name)._visainstrument.query("*IDN?")
-                    break
+        for field_name, value in self._devs_aliases_map.items():
+            if isinstance(value, str):
+                name = value
+                if name in Measurement._actual_devices.keys():
+                    print(name + ' is already initialized')
+                    device_object = Measurement._actual_devices[name]
+                    self.__setattr__("_"+field_name, device_object)
+                    continue
+
+                for device_address in self._devs_info:
+                    if (name in Measurement._devs_dict.keys()) \
+                            and (device_address in Measurement._devs_dict[name][0]):
+                        device_object = getattr(*Measurement._devs_dict[name][1])(device_address)
+                        Measurement._actual_devices[name]=device_object
+                        print("The device %s is detected as %s"%(name, device_address))
+                        self.__setattr__("_"+field_name, device_object)
+                        break
+            else:
+                self.__setattr__("_"+field_name, value)
+
 
     @staticmethod
     def close_devs(devs_to_close):
@@ -352,3 +361,5 @@ class Measurement():
         hours, remainder = divmod(delta, 3600)
         minutes, seconds = divmod(remainder, 60)
         return '%s h %s m %s s' % (int(hours), int(minutes), round(seconds, 2))
+
+    

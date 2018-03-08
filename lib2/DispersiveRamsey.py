@@ -3,10 +3,11 @@ from lib2.VNATimeResolvedDispersiveMeasurement1D import *
 
 class DispersiveRamsey(VNATimeResolvedDispersiveMeasurement1D):
 
-    def __init__(self, name, sample_name, vna_name, ro_awg, q_awg,
-                q_lo_name, line_attenuation_db = 60, plot_update_interval=1):
-        super().__init__(name, sample_name, vna_name, ro_awg, q_awg,
-                    q_lo_name, line_attenuation_db, plot_update_interval)
+    def __init__(self, name, sample_name,line_attenuation_db = 60, plot_update_interval=1,
+     **devs_aliases_map):
+        devs_aliases_map["q_z_awg"] = None
+        super().__init__(name, sample_name, devs_aliases_map, line_attenuation_db,
+         plot_update_interval)
         self._measurement_result = DispersiveRamseyResult(name,
                     sample_name)
         self._sequence_generator = IQPulseBuilder.build_dispersive_ramsey_sequences
@@ -24,7 +25,7 @@ class DispersiveRamseyResult(VNATimeResolvedDispersiveMeasurement1DResult):
                                                     +offset_r+1j*offset_i
 
     def _generate_fit_arguments(self, x, data):
-        bounds =([-10, -10, 0.1, 1*2*pi, -10, -10, -pi],
+        bounds =([-10, -10, 0.1, 0*2*pi, -10, -10, -pi],
                         [10, 10, 100, 20*2*pi, 10, 10, pi])
         amp_r, amp_i = ptp(real(data))/2, ptp(imag(data))/2
         p0 = (amp_r, amp_i, 3, 5*2*pi, max(real(data))-amp_r,

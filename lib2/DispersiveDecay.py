@@ -4,10 +4,9 @@ from lib2.VNATimeResolvedDispersiveMeasurement1D import *
 
 class DispersiveDecay(VNATimeResolvedDispersiveMeasurement1D):
 
-    def __init__(self, name, sample_name, vna_name, ro_awg, q_awg,
-                q_lo_name, line_attenuation_db = 60):
-        super().__init__(name, sample_name, vna_name, ro_awg, q_awg,
-                    q_lo_name, line_attenuation_db)
+    def __init__(self, name, sample_name, line_attenuation_db = 60, **devs_aliases_map):
+        devs_aliases_map["q_z_awg"] = None
+        super().__init__(name, sample_name, devs_aliases_map, line_attenuation_db)
 
         self._measurement_result = DispersiveDecayResult(name,
                     sample_name)
