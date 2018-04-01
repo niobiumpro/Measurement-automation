@@ -55,6 +55,22 @@ class VNATimeResolvedDispersiveMeasurement(Measurement):
 
 
     def set_basis(self, basis):
+        d_real = abs(real(basis[0]-basis[1]))
+        d_imag = abs(imag(basis[0]-basis[1]))
+        relation = d_real/d_imag
+        if relation > 5:
+            # Imag quadrature is not oscillating, ignore it by making imag
+            # distance equal to ten real distances so that new normalized values
+            # obtained via that component will be small
+            ground_state = real(basis[0])-1j*5*d_real
+            excited_state = real(basis[1])+1j*5*d_real
+            basis = (ground_state, excited_state)
+        elif relation < 0.2:
+            # Real quadrature is not oscillating, ignore it
+            ground_state = -5*d_imag+imag(basis[0])
+            excited_state = 5*d_imag+imag(basis[1])
+            basis = (ground_state, excited_state)
+
         self._basis = basis
 
     def set_ult_calib(self, value=False):
@@ -114,14 +130,14 @@ class VNATimeResolvedDispersiveMeasurement(Measurement):
             q_seq, q_z_seq, ro_seq =\
                 self._sequence_generator(q_pb, q_z_pb, ro_pb,
                                         self._pulse_sequence_parameters)
-            self._q_z_awg.output_pulse_sequence(q_z_seq, blocking=False)
-            self._ro_awg.output_pulse_sequence(ro_seq, blocking=False)
-            self._q_awg.output_pulse_sequence(q_seq)
+            self._q_z_awg.output_pulse_sequence(q_z_seq)
+            self._ro_awg.output_pulse_sequence(ro_seq)
+            self._q_awg.output_pulse_sequence(q_seq, async = False)
         else:
             q_seq, ro_seq = self._sequence_generator(q_pb, ro_pb,
                                     self._pulse_sequence_parameters)
-            self._ro_awg.output_pulse_sequence(ro_seq, blocking=False)
-            self._q_awg.output_pulse_sequence(q_seq)
+            self._ro_awg.output_pulse_sequence(ro_seq)
+            self._q_awg.output_pulse_sequence(q_seq, async = False)
 
 
 class VNATimeResolvedDispersiveMeasurementResult(MeasurementResult):

@@ -66,21 +66,26 @@ class VNATimeResolvedDispersiveMeasurement1DResult(\
                                                         p0=p0, bounds=bounds)
             #print(p0)
         finally:
-            result = least_squares(self._cost_function, p0, args=(X,data),
-                        bounds=bounds, x_scale="jac", max_nfev=10000, ftol=1e-5)
-            #print(result.x)
-            sigma = std(abs(self._model(X, *result.x)-data))
+            try:
+                result = least_squares(self._cost_function, p0, args=(X,data),
+                            bounds=bounds, x_scale="jac", max_nfev=10000, ftol=1e-5)
+                #print(result.x)
+                sigma = std(abs(self._model(X, *result.x)-data))
 
-            if self._fit_params is not None:
-                result_2 = least_squares(self._cost_function, self._fit_params,
-                        args=(X,data), bounds=bounds, x_scale="jac",
-                                                        max_nfev=1000, ftol=1e-5)
-                sigma_2 = std(abs(self._model(X, *result_2.x)-data))
-                if sigma_2<sigma:
-                    result = result_2
-                    sigma = sigma_2
+                if self._fit_params is not None:
+                    result_2 = least_squares(self._cost_function, self._fit_params,
+                            args=(X,data), bounds=bounds, x_scale="jac",
+                                                            max_nfev=1000, ftol=1e-5)
+                    sigma_2 = std(abs(self._model(X, *result_2.x)-data))
+                    if sigma_2<sigma:
+                        result = result_2
+                        sigma = sigma_2
 
-            return result, sqrt(diag(sigma**2*inv(result.jac.T.dot(result.jac))))
+                return result, sqrt(diag(sigma**2*inv(result.jac.T.dot(result.jac))))
+            except Exception as e:
+                print("Fit failed unexpectedly:", e)
+                print(p0, bounds)
+                raise e
 
     def fit(self, verbose=True):
 
