@@ -23,6 +23,8 @@ import types
 import logging
 import numpy as np
 import struct
+from itertools import chain
+
 
 class Tektronix_AWG5014(Instrument):
     '''
@@ -43,7 +45,7 @@ class Tektronix_AWG5014(Instrument):
     4) Add 4-channel compatibility
     '''
 
-    def __init__(self, address, reset=False, clock=1e9, nop=1000):
+    def __init__(self, address, reset=False, clock=1e9, nop=1000, marker_enob=10):
         '''
         Initializes the AWG520.
 
@@ -69,9 +71,15 @@ class Tektronix_AWG5014(Instrument):
         self._clock = clock
         self._nop = nop
         self._waveforms = [None]*4
+        self._amplitudes = [None]*4
         self._markers = [None]*8
         self._clear_all_waveforms()
-
+        self._marker_enob = marker_enob
+        self._marker_voltages = [{} for _ in range(8)]
+        for i in range(1, 9):
+            self.get_marker_voltages(i)
+        for i in range(1,5):
+            self.get_amplitude(i)
 
     def output_arbitrary_waveform(self, waveform, repetition_rate,
         channel, async=True):
@@ -85,11 +93,11 @@ class Tektronix_AWG5014(Instrument):
         repetition_rate: foat, Hz
             frequency at which the waveform will be repeated
         channel: int
-            1-4 for DACs or 5-12 for corresponding marker outputs, two for one
+            1..4 for DACs or -1..-8 for corresponding marker outputs, two for one
             DAC
         '''
 
-        def clear_unmatched_waveforms():
+        def clear_unmatched_waveforms(channel):
             # Checks if other channels' waveforms have matching length,
             # otherwise clear them
             for idx, existing_waveform in enumerate(self._waveforms):
@@ -101,11 +109,14 @@ class Tektronix_AWG5014(Instrument):
                             self._markers[idx*2+1] = None
                             self._clear_waveform(idx+1)
 
+        waveform = np.array(waveform)
+
         if channel in [1,2,3,4]:
-            clear_unmatched_waveforms()
+            clear_unmatched_waveforms(channel)
             self._waveforms[channel-1] = waveform
 
-            self.set_waveform(waveform/1.5*2, repetition_rate, channel)
+            norm = self._amplitudes[channel-1]/2
+            self.set_waveform(waveform/norm, repetition_rate, channel)
             self.set_output(1, channel)
             self.run()
             if not async:
@@ -113,22 +124,38 @@ class Tektronix_AWG5014(Instrument):
 
         else: # we have a waveform for a marker
             marker_waveform = waveform
-            marker_id = channel - 4
+            marker_id = -channel
             host_channel = marker_id // 2 + marker_id % 2
 
             marker_low = np.min(marker_waveform)
             marker_high = np.max(marker_waveform)
-            marker_mid = (marker_low+marker_high)/2
-            marker_waveform[marker_waveform>marker_mid] = 1
-            marker_waveform[marker_waveform<marker_mid] = 0
-            self.set_marker_voltages(marker_id, marker_low, marker_high)
+            if marker_low == marker_high:
+                if marker_low <= 0:
+                    marker_waveform[:] = 0
+                    self.set_marker_voltages(marker_id, marker_low, 1)
+                else:
+                    marker_waveform[:] = 1
+                    self.set_marker_voltages(marker_id, 0, marker_high)
+            else:
+                # marker_mid = (marker_low+marker_high)/2
+                # marker_copy = marker_waveform.copy()
+                # marker_copy[marker_waveform>marker_mid] = 1
+                # marker_copy[marker_waveform<=marker_mid] = 0
+                # marker_waveform = marker_copy
+                ptp = marker_high-marker_low
+                marker_waveform = (marker_waveform-marker_low)/ptp
+                marker_waveform =\
+                    self._pwm_signal(marker_waveform, self._marker_enob)
+
+                self.set_marker_voltages(marker_id, marker_low, marker_high)
+
             self._markers[marker_id-1] = marker_waveform
 
             if not async:
                 # Use existing or create a zero waveform for the host channel
                 # and output both host channel and it's marker
 
-                clear_unmatched_waveforms()
+                clear_unmatched_waveforms(host_channel)
 
                 host_channel_waveform = self._waveforms[host_channel-1]
                 if host_channel_waveform is not None\
@@ -139,7 +166,7 @@ class Tektronix_AWG5014(Instrument):
 
                 self.set_waveform(host_channel_waveform/1.5*2, \
                                             repetition_rate, host_channel)
-                self.set_output(1, channel)
+                self.set_output(1, host_channel)
                 self.run()
                 self._visainstrument.query("*OPC?")
 
@@ -153,52 +180,46 @@ class Tektronix_AWG5014(Instrument):
     def run(self):
         self._visainstrument.write('AWGC:RUN:IMM')
 
-
-    def set_output(self, state, channel):
-        if (state == 1):
-            self._visainstrument.write('OUTP%s:STAT ON' % channel)
-        if (state == 0):
-            self._visainstrument.write('OUTP%s:STAT OFF' % channel)
-
-    def get_output(self, channel):
-        return self._visainstrument.ask('OUTP%s:STAT?' % channel)
-
     def load_waveform(self, channel, filename, drive='C:', path='\\'):
         self._visainstrument.write('SOUR%s:FUNC:USER "%s/%s","%s"' %\
-                                     (channel, path, filename, drive))
-
-    def set_repetition_period(self, repetition_period):
-        self.repetition_period = repetition_period
-        self.set_nop(int(repetition_period*self.get_clock()))
-
-    def get_repetition_period(self, repetition_period):
-        return self.get_numpoint()/self.get_clock()
-
-    def get_clock(self):
-        return self._clock
-
-    def set_clock(self, clock):
-        self._clock = clock
-        self._visainstrument.write('SOUR:FREQ %f' % clock)
+                                 (channel, path, filename, drive))
 
     def set_waveform(self, waveform, repetition_rate, channel):
 
-        w = np.array(waveform[:-1], dtype=np.float)
+        w = np.array(waveform, dtype=np.float)
         m1 = self._markers[(channel-1)*2]
         m2 = self._markers[(channel-1)*2+1]
 
-        if m1 is None or len(m1)-1 != len(w):
-            m1 = np.zeros(len(w)+1, dtype=np.int)
+        if m1 is None:
+            m1 = np.zeros(len(w), dtype=np.int)
+            self.set_marker_voltages((channel-1)*2+1, 0, 1)
+        elif len(m1) != len(w):
+            if len(np.unique(m1)) == 1:
+                # match marker length and value and do not change its high/low
+                m1 = np.ones(len(w), dtype=np.int)*m1[0]
+            else:
+                m1 = np.zeros(len(w), dtype=np.int)
+                self.set_marker_voltages((channel-1)*2+1, 0, 1)
 
-        if m2 is None or len(m2)-1 != len(w):
-            m2 = np.zeros(len(w)+1, dtype=np.int)
+        if m2 is None:
+            m2 = np.zeros(len(w), dtype=np.int)
+            self.set_marker_voltages((channel-1)*2+2, 0, 1)
+        elif len(m2) != len(w):
+            if len(np.unique(m2)) == 1:
+                # match marker length and value and do not change its high/low
+                m2 = np.ones(len(w), dtype=np.int)*m2[0]
+            else:
+                m2 = np.zeros(len(w), dtype=np.int)
+                self.set_marker_voltages((channel-1)*2+2, 0, 1)
 
-        m1 = np.array(m1[:-1], dtype=np.int)
-        m2 = np.array(m2[:-1], dtype=np.int)
+
+        m1 = np.array(m1, dtype=np.int)
+        m2 = np.array(m2, dtype=np.int)
 
         filename = 'test_ch{0}.wfm'.format(channel)
 
-        self.send_waveform(w,m1,m2, filename, repetition_rate*len(w))
+        self.send_waveform(w[:-1], m1[:-1], m2[:-1], filename,
+                                                repetition_rate*len(w[:-1]))
         self.load_waveform(channel, filename)
         # self.do_set_filename(filename, channel=channel)
 
@@ -255,45 +276,6 @@ class Tektronix_AWG5014(Instrument):
     def do_get_waveform(self, channel):
         return self._waveforms[channel-1]
 
-    def do_set_digital(self, marker, channel):
-        import numpy as np
-        num_points = self.get_nop()
-        # pad waveform with zeros
-        # or maybe something better?
-        w = np.zeros((num_points,),dtype=np.float)
-        m1 = np.zeros((num_points,),dtype=np.int)
-        m2 = np.zeros((num_points,),dtype=np.int)
-        # add markers
-
-        if len(marker)<len(m1):
-            m1[:len(marker)] = marker
-        else:
-            m1[:] = marker[:len(m1)]
-
-        if not (self._markers[(channel-1+4)%8] is None):
-            if len(self._markers[(channel-1+4)%8])<len(m2):
-                m2[:len(self._markers[(channel-1+4)%8])] = self._markers[(channel-1+4)%8]
-            else:
-                m2[:] = self._markers[(channel-1+4)%8][:len(m2)]
-
-        if not (self._waveforms[(channel-1)%4] is None):
-            if len(self._waveforms[(channel-1)%4])<len(w):
-                w[:len(self._waveforms[(channel-1)%4])] = self._waveforms[(channel-1)%4]
-            else:
-                w[:] = self._waveforms[(channel-1)%4][:len(w)]
-
-        filename = 'test_ch{0}.wfm'.format(channel)
-
-        self._markers[channel-1] = m1
-        if (channel-1+4)<8:
-            self.send_waveform(w,m1,m2,filename,self.get_clock())
-        else:
-            self.send_waveform(w,m2,m1,filename,self.get_clock())
-        self.do_set_filename(filename, channel=(channel-1)%4+1)
-        self.do_set_output (1, channel=(channel-1)%4+1)
-
-    def do_get_digital(self, channel):
-        return self._markers[channel-1]
 
     def do_set_filename(self, name, channel):
         '''
@@ -340,11 +322,37 @@ class Tektronix_AWG5014(Instrument):
         else:
             logging.error(__name__  + ' : Invalid filename specified %s' % name)
 
+    def set_output(self, state, channel):
+        if (state == 1):
+            self._visainstrument.write('OUTP%s:STAT ON' % channel)
+        if (state == 0):
+            self._visainstrument.write('OUTP%s:STAT OFF' % channel)
+
+    def get_output(self, channel):
+        return self._visainstrument.ask('OUTP%s:STAT?' % channel)
+
+    def set_repetition_period(self, repetition_period):
+        self.repetition_period = repetition_period
+        self.set_nop(int(repetition_period*self.get_clock()))
+
+    def get_repetition_period(self, repetition_period):
+        return self.get_numpoint()/self.get_clock()
+
+    def get_clock(self):
+        return self._clock
+
+    def set_clock(self, clock):
+        self._clock = clock
+        self._visainstrument.write('SOUR:FREQ %f' % clock)
+
     def get_amplitude(self, channel):
-        return float(self._visainstrument.ask('SOUR%s:VOLT:LEV:IMM:AMPL?' % channel))
+        self._amplitudes[channel-1] =\
+            float(self._visainstrument.ask('SOUR%s:VOLT:AMPL?' % channel))
+        return self._amplitudes[channel-1]
 
     def set_amplitude(self, amp, channel):
-        self._visainstrument.write('SOUR%s:VOLT:LEV:IMM:AMPL %.6f' % (channel, amp))
+        self._amplitudes[channel-1] = amp
+        self._visainstrument.write('SOUR%s:VOLT:AMPL %.6f' % (channel, amp))
 
     def get_offset(self, channel):
         return float(self._visainstrument.ask('SOUR%s:VOLT:LEV:IMM:OFFS?' % channel))
@@ -354,15 +362,19 @@ class Tektronix_AWG5014(Instrument):
 
     def get_marker_voltages(self, marker_id):
         channel_id = marker_id // 2 + marker_id % 2
-        marker_sub_id = marker_id % 2 + 1
+        marker_sub_id = (marker_id-1) % 2 + 1
 
-        command = 'SOUR%s:MARK%s:VOLT:LEV:IMM:'\
+        command = 'SOUR%s:MARK%s:VOLT:'\
                     %(channel_id, marker_sub_id)
-        low, high = self._visainstrument.query(command+"LOW?"),\
-                          self._visainstrument.query(command+"HIGH?")
-        return float(low), float(high)
+        low, high = float(self._visainstrument.query(command+"LOW?")),\
+                    float(self._visainstrument.query(command+"HIGH?"))
+
+        self._marker_voltages[marker_id-1]["low"] = low
+        self._marker_voltages[marker_id-1]["high"] = high
+        return low, high
 
     def set_marker_voltages(self, marker_id, low = 0, high=1):
+
         channel_id = marker_id // 2 + marker_id % 2
         marker_sub_id = (marker_id-1) % 2 + 1
 
@@ -370,13 +382,46 @@ class Tektronix_AWG5014(Instrument):
                  % (channel_id, marker_sub_id, low)
         command_high = 'SOUR%s:MARK%s:VOLT:HIGH %.3f'\
                  % (channel_id, marker_sub_id, high)
-        self._visainstrument.write(command_low)
-        self._visainstrument.write(command_high)
+
+        if self._marker_voltages[marker_id-1]["low"] != low:
+            self._marker_voltages[marker_id-1]["low"] = low
+            self._visainstrument.write(command_low)
+
+        if self._marker_voltages[marker_id-1]["high"] != high:
+            self._marker_voltages[marker_id-1]["high"] = high
+            self._visainstrument.write(command_high)
+
+    def set_marker_enob(self, enob):
+        self._marker_enob = enob
 
     #  Ask for string with filenames
     def get_filenames(self):
         logging.debug(__name__ + ' : Read filenames from instrument')
         return self._visainstrument.ask('MMEM:CAT? "MAIN"')
+
+
+    def _pwm_signal(self, X, enob):
+
+        def find_bit_num(signal_level, enob):
+            for bit_num in range(0, enob+1):
+                if bit_num/enob <= signal_level < (bit_num+1)/enob:
+                    if avg_signal_level > (2*bit_num+1)/enob/2:
+                        bit_num += 1
+                    pixel = [0]*(enob-bit_num)+[1]*(bit_num)
+                    return pixel
+
+        Y = []
+
+        for i in range(0, len(X) - enob - 1, enob):
+            avg_signal_level = np.mean(X[i:i + enob])
+            Y.append(find_bit_num(avg_signal_level, enob))
+
+        residual_enob = len(X)-len(Y)*enob
+        if residual_enob > 0:
+            avg_signal_level = np.mean(X[len(Y)*enob:len(Y)*enob+residual_enob-1])
+            Y.append(find_bit_num(avg_signal_level, residual_enob))
+
+        return np.array(list(chain(*Y)))
 
 
     def resend_waveform(self, channel, w=[], m1=[], m2=[], clock=[]):

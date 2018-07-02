@@ -39,7 +39,7 @@ class Znb(instr.Instr):
     def set_parameters(self, parameters_dict):
         '''
         Method allowing to set all or some of the VNA parameters at once
-        (bandwidth, nop, power, averages and freq_limits)
+        (bandwidth, nop, power, averages, freq_limits and sweep type)
         '''
         if "bandwidth" in parameters_dict.keys():
             self.set_bandwidth(parameters_dict["bandwidth"])
@@ -51,6 +51,8 @@ class Znb(instr.Instr):
             self.set_nop(parameters_dict["nop"])
         if "freq_limits" in parameters_dict.keys():
             self.set_freq_limits(*parameters_dict["freq_limits"])
+        if "trigger_type" in parameters_dict.keys():
+            self.set_trigger_type(parameters_dict["trigger_type"])
 
     def select_S_param(self, S_param, channel=1):
         '''
@@ -241,6 +243,13 @@ class Znb(instr.Instr):
         # self.write("SENSe{0}:SWEep:MODE HOLD".format(self.current_channel))
         self.write("INITiate{0}:CONTinuous ON".format(self.current_channel))
 
+    def set_trigger_type(self, trigger_type):
+        if trigger_type == "single":
+            self.sweep_single()
+        elif trigger_type == "continuous":
+            self.sweep_continuous()
+        else:
+            raise ValueError("Sweep type %s not supported"%sweep_type)
 
     def set_trigger_manual(self):
         self.write("TRIGger{0}:SOURce MANual".format(self.current_channel))

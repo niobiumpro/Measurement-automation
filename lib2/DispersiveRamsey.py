@@ -28,6 +28,7 @@ class DispersiveRamseyResult(VNATimeResolvedDispersiveMeasurement1DResult):
         time_step = x[1]-x[0]
         max_frequency = 1/time_step/2/5
         frequency = random.random(1)*max_frequency
+        phase = random.random(1)*2*pi-pi
 
         bounds =([-10, -10, 0.1, 0*2*pi, -10, -10, -pi],
                         [10, 10, 100, max_frequency*2*pi, 10, 10, pi])

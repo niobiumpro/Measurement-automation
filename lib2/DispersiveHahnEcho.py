@@ -24,7 +24,7 @@ class DispersiveHahnEchoResult(VNATimeResolvedDispersiveMeasurement1DResult):
 
     def _generate_fit_arguments(self, x, data):
         p0=[-ptp(real(data)), -ptp(imag(data)), 1, max(real(data)), max(imag(data))]
-        bounds =([-1, -1, 0.1, -1, -1], [1, 1, 20, 1, 1])
+        bounds =([-5, -5, 0.1, -5, -5], [5, 5, 20, 5, 5])
         return p0, bounds
 
     def _generate_annotation_string(self, opt_params, err):

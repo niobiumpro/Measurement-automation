@@ -137,7 +137,7 @@ class Measurement():
                 if name in Measurement._devs_dict.keys():
                     for device_address in self._devs_info:
                         if device_address in Measurement._devs_dict[name][0]:
-                            print(name, device_address)
+                            # print(name, device_address)
                             device_object = getattr(*Measurement._devs_dict[name][1])(device_address)
                             Measurement._actual_devices[name]=device_object
                             print("The device %s is detected as %s"%(name, device_address))
@@ -264,7 +264,7 @@ class Measurement():
                         '['+"".join(["%s: %.2e, "%(par_names[idx], value)\
                          for idx, value in enumerate(values_group)])[:-2]+']'
 
-            print("\rTime left: "+time_left+", %s: "%formatted_values_group+\
+            print("\rTime left: "+time_left+", %s"%formatted_values_group+\
                     ", average cycle time: "+str(round(avg_time, 2))+" s       ",
                     end="", flush=True)
 

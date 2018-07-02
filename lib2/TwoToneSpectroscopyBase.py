@@ -98,7 +98,8 @@ class TwoToneSpectroscopyResult(SingleToneSpectroscopyResult):
         for row in data:
             try:
                 popt = curve_fit(self._lorentzian_peak,
-                    freqs, row, p0=(ptp(row), median(row), freqs[argmax(row)], 10e6))[0]
+                    freqs, row, p0=(ptp(row), median(row),
+                    freqs[argmax(row)], 10e6))[0]
                 peaks.append(popt[2])
             except:
                 peaks.append(freqs[argmax(row)])

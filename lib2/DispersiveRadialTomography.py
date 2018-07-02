@@ -9,16 +9,15 @@ from IPython.display import clear_output
 
 class DispersiveRadialTomography(VNATimeResolvedDispersiveMeasurement2D):
 
-    def __init__(self, name, sample_name, vna_name, ro_awg,
-        q_awg, q_lo_name, smoothing_factor=1):
-        super().__init__(name, sample_name, vna_name,
-                                    ro_awg, q_awg, q_lo_name)
+    def __init__(self, name, sample_name, smoothing_factor=1, **devs_aliases_map):
+        super().__init__(name, sample_name, devs_aliases_map)
         self._measurement_result =\
             DispersiveRadialTomographyResult(name, sample_name, smoothing_factor)
         self._sequence_generator = IQPulseBuilder.build_radial_tomography_pulse_sequences
 
     def set_fixed_parameters(self, vna_parameters, ro_awg_parameters,
-            q_awg_parameters, excitation_frequency, pulse_sequence_parameters):
+            q_awg_parameters, excitation_frequency, pulse_sequence_parameters,
+            q_z_awg_params = None):
 
         q_if_frequency = q_awg_parameters["calibration"]\
                     .get_radiation_parameters()["if_frequency"]
@@ -28,23 +27,25 @@ class DispersiveRadialTomography(VNATimeResolvedDispersiveMeasurement2D):
                     "frequency": excitation_frequency+q_if_frequency}
 
         super().set_fixed_parameters(vna_parameters, q_lo_parameters,
-            ro_awg_parameters, q_awg_parameters, pulse_sequence_parameters)
+            ro_awg_parameters, q_awg_parameters, pulse_sequence_parameters,
+            q_z_awg_params = q_z_awg_params)
 
     def set_swept_parameters(self, tomo_phases, tomo_pulse_amplitudes):
         q_if_frequency = self._q_awg.get_calibration() \
             .get_radiation_parameters()["if_frequency"]
         swept_pars = {"tomo_pulse_amplitude":
-                            (self._set_exc_ampl_and_call_outp_puls_seq,
+                            (self._set_exc_ampl,
                             tomo_pulse_amplitudes),
                       "tomo_phase":
-                            (self._set_phase_of_drive, tomo_phases)}
+                            (self._set_phase_of_drive_and_call_outp_puls_seq,
+                                                                    tomo_phases)}
         super().set_swept_parameters(**swept_pars)
 
-    def _set_phase_of_drive(self, tomo_phase):
+    def _set_phase_of_drive_and_call_outp_puls_seq(self, tomo_phase):
         self._pulse_sequence_parameters["tomo_phase"] = tomo_phase
         super()._output_pulse_sequence()
 
-    def _set_exc_ampl_and_call_outp_puls_seq(self, tomo_pulse_amplitude):
+    def _set_exc_ampl(self, tomo_pulse_amplitude):
         self._pulse_sequence_parameters["tomo_pulse_amplitude"] = \
                             tomo_pulse_amplitude
 
@@ -76,7 +77,7 @@ class DispersiveRadialTomographyResult(VNATimeResolvedDispersiveMeasurementResul
 
     def _cost_function(self, params, amps, phis, data):
         loss = (self._model(amps, phis, *params) - data).ravel()
-        clear_output(wait=True)
+        # clear_output(wait=True)
         print("\rLoss:", sum(loss**2), " params:", params, end="")
         return loss
 
@@ -99,7 +100,7 @@ class DispersiveRadialTomographyResult(VNATimeResolvedDispersiveMeasurementResul
         expected_state.change_represent('spherical')
         print(expected_state._coords)
 
-        ig = [1, 0, pi] #expected_state._coords*(np.random.random(1)*(1.1-0.9)-0.9)
+        ig = list(expected_state._coords*(np.random.random(1)*(1.1-0.9)+0.9))
         print(ig)
         fit_result = least_squares(self._cost_function,ig+[1,0],
             args = (amplitudes_exp[::step_size], phases_exp[::step_size],
