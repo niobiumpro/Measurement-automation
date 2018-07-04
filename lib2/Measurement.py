@@ -361,5 +361,3 @@ class Measurement():
         hours, remainder = divmod(delta, 3600)
         minutes, seconds = divmod(remainder, 60)
         return '%s h %s m %s s' % (int(hours), int(minutes), round(seconds, 2))
-
-    

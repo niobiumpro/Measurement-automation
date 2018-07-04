@@ -115,18 +115,32 @@ class DispersiveRadialTomographyResult(VNATimeResolvedDispersiveMeasurementResul
         y_step = (amplitudes_exp[1]-amplitudes_exp[0])
         Y = concatenate((amplitudes_exp, [amplitudes_exp[-1]+y_step]))
 
-        plt.figure()
-        plt.subplot(121,projection="polar")
-        plt.pcolormesh(X, Y, z, cmap="RdBu_r",)
-        plt.colorbar(shrink=0.5)
-        plt.grid(True)
-        plt.subplot(122,projection="polar")
-        plt.pcolormesh(X, Y, converter(data_exp), cmap="RdBu_r",)
-        plt.colorbar(shrink=0.5)
-        plt.gcf().set_size_inches(7,7)
-        plt.grid(True)
-        plt.suptitle('Fidelity is: ' + str(fidelya)[:5])
-        return fit_result, self._dm_from_sph_coords(*fit_result.x[:3])
+        fig, axes = plt.subplots(1,2,subplot_kw=dict(projection='polar'),figsize=(12,7))
+        plt.tight_layout(pad=4, w_pad=0)
+        caxes = []
+        Z_data = [z, converter(data_exp)]
+        subscripts = ["модель", "эксперимент"]
+        for idx, ax in enumerate(axes):
+            caxes.append(colorbar.make_axes(ax,
+                    locaion="bottom", orientation="horizontal",
+                    pad=0.1,shrink=0.7, aspect=40)[0])
+            ax.text(radians(ax.get_rlabel_position()+10),\
+                0.13*abs(ax.get_rmax()-ax.get_rmin())+ax.get_rmax(),\
+                r"$\Omega$ [$\pi$ рад]",
+                        rotation = 0, ha='left',va='center')
+            ax.set_ylabel(r'$\varphi$ [град]', labelpad=30)
+            Z_map = ax.pcolormesh(X, Y, Z_data[idx], cmap="RdBu_r", rasterized=True)
+            cb = plt.gcf().colorbar(Z_map, cax = caxes[idx], orientation='horizontal')
+            cb.set_label(r"$P_{%s}\left(\left.|e\right>\right)$"%subscripts[idx])
+            cb.formatter.set_scientific(False)
+            cb.formatter.set_powerlimits((-1,4))
+            cb.update_ticks()
+            ax.grid(True)
+
+        plt.gcf().set_size_inches(10,4)
+        #plt.suptitle("Preparation sequence: "+\
+    #            str(self._pulse_sequence_parameters["prep_pulse"])+'\n$\mathcal{F}=%.2f\%%$'%(fidelya*100))
+        return fit_result, self._dm_from_sph_coords(*fit_result.x[:3]), (fig, axes, caxes)
 
 
     def _prepare_figure(self):

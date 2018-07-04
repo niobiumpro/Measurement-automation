@@ -394,6 +394,10 @@ class Agilent_PNA_L(Instrument):
                 self.do_set_CWfreq(numpy.mean(parameters_dict["freq_limits"]))
             else:
                 self.set_freq_limits(*parameters_dict["freq_limits"])
+        if "span" in parameters_dict.keys():
+            self.set_span(parameters_dict["span"])
+        if "centerfreq" in parameters_dict.keys():
+            self.set_centerfreq(parameters_dict["centerfreq"])
         if "sweep_type" in parameters_dict.keys():
             self.set_sweep_type(parameters_dict["sweep_type"])
 
@@ -501,14 +505,14 @@ class Agilent_PNA_L(Instrument):
             None
         '''
         self._visainstrument.write('SENS%i:AVER:COUN %i' % (self._ci,av))
-        self._visainstrument.write('SENS:AVER:MODE POIN')
-        self.do_set_average(True)
-        '''if av > 1:
+        # self._visainstrument.write('SENS:AVER:MODE POIN')
+        # self.do_set_average(True)
+        if av > 1:
             self.do_set_average(True)
             self._visainstrument.write('SENS:SWE:GRO:COUN %i'%av)
         else:
             self.do_set_average(False)
-            self._visainstrument.write('SENS:SWE:GRO:COUN 1')'''
+            self._visainstrument.write('SENS:SWE:GRO:COUN 1')
 
     def do_get_averages(self):
         '''
@@ -843,7 +847,14 @@ class Agilent_PNA_L(Instrument):
                 done = (2**5 == (2**5 & stb_value))
                 sleep(0.02)
 
-
+    def set_output_state(self, state):
+        '''
+        new function, must be checked
+        '''
+        available_states = {'ON', 'OFF'}
+        if state not in available_states:
+            raise ValueError("state must be 'ON' or 'OFF'")
+        self._visainstrument.write("OUTP {}".format(state))
 
     def read(self):
         return self._visainstrument.read()
