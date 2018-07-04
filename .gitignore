@@ -4,3 +4,4 @@
 *.bak
 data*
 *.ipynb
+qubit-measurements*

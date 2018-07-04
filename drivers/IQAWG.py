@@ -27,10 +27,10 @@ class AWGChannel():
         self._host_awg = host_awg
         self._channel_number = channel_number
 
-    def output_arbitrary_waveform(self, waveform, frequency, blocking):
+    def output_arbitrary_waveform(self, waveform, frequency, async):
 
         self._host_awg.output_arbitrary_waveform(waveform, frequency,
-                                self._channel_number, blocking)
+                                self._channel_number, async = async)
 
 
 class CalibratedAWG():
@@ -62,7 +62,7 @@ class CalibratedAWG():
         '''
         return PulseBuilder(self._calibration)
 
-    def output_pulse_sequence(self, pulse_sequence, blocking=True):
+    def output_pulse_sequence(self, pulse_sequence, async=False):
         '''
         Load and output given PulseSequence.
 
@@ -72,7 +72,7 @@ class CalibratedAWG():
         '''
         frequency = 1/pulse_sequence.get_duration()*1e9
         self._channel.output_arbitrary_waveform(pulse_sequence\
-                        .get_waveform(), frequency, blocking=blocking)
+                        .get_waveform(), frequency, async=async)
 
 class IQAWG():
 
@@ -109,7 +109,7 @@ class IQAWG():
         return IQPulseBuilder(self._calibration)
 
     def output_continuous_IQ_waves(self, frequency, amplitudes, relative_phase,
-        offsets, waveform_resolution):
+        offsets, waveform_resolution, optimized = True):
         '''
         Prepare and output a sine wave of the form: y = A*sin(2*pi*frequency + phase) + offset
         on both of the I and Q channels
@@ -128,14 +128,16 @@ class IQAWG():
             of the wave
         channel: 1 or 2
             channel which will output the wave
+        optimized: boolean
+            first channel will be called with async = True if optimized is True
         '''
         self._output_continuous_wave(frequency, amplitudes[0], relative_phase,
-            offsets[0], waveform_resolution, 1, blocking = False)
+            offsets[0], waveform_resolution, 1, async = optimized)
         self._output_continuous_wave(frequency, amplitudes[1], 0,
-            offsets[1], waveform_resolution, 2, blocking = True)
+            offsets[1], waveform_resolution, 2, async = False)
 
     def _output_continuous_wave(self, frequency, amplitude, phase, offset,
-            waveform_resolution, channel, blocking):
+            waveform_resolution, channel, async):
         '''
         Prepare and output a sine wave of the form: y = A*sin(2*pi*frequency + phase) + offset
 
@@ -159,9 +161,9 @@ class IQAWG():
         N_points = 1/frequency/waveform_resolution*1e9+1 if frequency !=0 else 3
         waveform = amplitude*sin(2*pi*linspace(0,1,N_points)+phase) + offset
         self._channels[channel-1].output_arbitrary_waveform(waveform, frequency,
-                                                            blocking=blocking)
+                                                            async=async)
 
-    def output_pulse_sequence(self, pulse_sequence, blocking=True):
+    def output_pulse_sequence(self, pulse_sequence, async=False):
         '''
         Load and output given IQPulseSequence.
 
@@ -173,7 +175,7 @@ class IQAWG():
 
         self._channels[0].output_arbitrary_waveform(pulse_sequence\
                                             .get_I_waveform(), frequency,
-                                            blocking=False)
+                                            async=True)
         self._channels[1].output_arbitrary_waveform(pulse_sequence
                                             .get_Q_waveform(), frequency,
-                                            blocking=True if blocking else False)
+                                            async=async)

@@ -63,7 +63,7 @@ class TwoToneSpectroscopyBase(Measurement):
         super().set_fixed_parameters(vna=vna_parameters, mw_src=mw_src_parameters)
 
     def _detect_resonator(self, vna_parameters, plot=True, bandwidth_factor = 10):
-        self._vna.set_nop(400)
+        self._vna.set_nop(800)
         self._vna.set_freq_limits(*vna_parameters["freq_limits"])
         self._vna.set_power(vna_parameters["power"])
         self._vna.set_bandwidth(vna_parameters["bandwidth"]*bandwidth_factor)
@@ -98,21 +98,31 @@ class TwoToneSpectroscopyResult(SingleToneSpectroscopyResult):
         for row in data:
             try:
                 popt = curve_fit(self._lorentzian_peak,
-                    freqs, row, p0=(ptp(row), median(row), freqs[argmax(row)], 10e6))[0]
+                    freqs, row, p0=(ptp(row), median(row),
+                    freqs[argmax(row)], 10e6))[0]
                 peaks.append(popt[2])
             except:
                 peaks.append(freqs[argmax(row)])
         return array(peaks)
 
 
-    def find_transmon_spectrum(self, axes, parameter_limits=(0,-1)):
-
+    def find_transmon_spectrum(self, axes, parameter_limits=(0,-1),
+        format="abs"):
         parameter_name = self._parameter_names[0]
         data = self.get_data()
         x = data[parameter_name][parameter_limits[0]:parameter_limits[1]]
         freqs = data[self._parameter_names[1]]
-        y = self._find_peaks(freqs,
-            abs(data["data"][parameter_limits[0]:parameter_limits[1]]))
+        Z = data["data"][parameter_limits[0]:parameter_limits[1]]
+
+        if format == "abs":
+            Z = abs(Z)
+            annotation_ax_idx = 0
+        elif format == "angle":
+            Z = angle(Z)
+            annotation_ax_idx = 1
+
+        y = self._find_peaks(freqs, Z)
+
         try:
             popt = curve_fit(self._tr_spectrum, x, y, p0=(mean(x), max(y), ptp(x)))[0]
             annotation_string = parameter_name+" sweet spot at: "+self._latex_float(popt[0])
@@ -123,8 +133,9 @@ class TwoToneSpectroscopyResult(SingleToneSpectroscopyResult):
                 ax.plot(x, y/1e9, ".", color="C2")
                 ax.plot(x, self._tr_spectrum(x, *popt)/1e9)
                 ax.plot([popt[0]], [popt[1]/1e9], "+")
-                ax.annotate(annotation_string, (h_pos, v_pos),
-                            bbox=self._annotation_bbox_props, ha="center")
+
+            axes[annotation_ax_idx].annotate(annotation_string, (h_pos, v_pos),
+                        bbox=self._annotation_bbox_props, ha="center")
             return popt[0], popt[1]
         except Exception as e:
             print("Could not find transmon spectral line"+str(e))

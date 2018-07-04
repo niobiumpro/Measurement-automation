@@ -20,14 +20,17 @@ class VNATimeResolvedDispersiveMeasurementContext(ContextBase):
 
 class VNATimeResolvedDispersiveMeasurement(Measurement):
 
-    def __init__(self, name, sample_name, devs_aliases_map, line_attenuation_db = 60, plot_update_interval = 1):
+    def __init__(self, name, sample_name, devs_aliases_map,
+        line_attenuation_db = 60, plot_update_interval = 1):
+
         super().__init__(name, sample_name, devs_aliases_map,
                     plot_update_interval=plot_update_interval)
 
         self._basis = None
         self._ult_calib = False
         self._pulse_sequence_parameters =\
-            {"modulating_window":"rectangular", "excitation_amplitude":1}
+            {"modulating_window":"rectangular", "excitation_amplitude":1,
+             "z_smoothing_coefficient":0}
 
     def set_fixed_parameters(self, vna_parameters, q_lo_parameters,
         ro_awg_parameters, q_awg_parameters, pulse_sequence_parameters,
@@ -37,12 +40,16 @@ class VNATimeResolvedDispersiveMeasurement(Measurement):
         self._measurement_result.get_context()\
                 .get_pulse_sequence_parameters()\
                 .update(pulse_sequence_parameters)
+        vna_parameters["trigger_type"] = "single"
 
         freq_limits = vna_parameters["freq_limits"]
         if detect_resonator and freq_limits[0]!=freq_limits[1]:
+            q_z_cal = q_z_awg_params["calibration"] if \
+                                q_z_awg_params is not None else None
             res_freq = self._detect_resonator(vna_parameters,
                                     ro_awg_parameters["calibration"],
-                                    q_awg_parameters["calibration"])
+                                    q_awg_parameters["calibration"],
+                                    q_z_cal)
             vna_parameters["freq_limits"] = (res_freq, res_freq)
 
         if self._q_z_awg is not None:
@@ -55,6 +62,22 @@ class VNATimeResolvedDispersiveMeasurement(Measurement):
 
 
     def set_basis(self, basis):
+        d_real = abs(real(basis[0]-basis[1]))
+        d_imag = abs(imag(basis[0]-basis[1]))
+        relation = d_real/d_imag
+        if relation > 5:
+            # Imag quadrature is not oscillating, ignore it by making imag
+            # distance equal to ten real distances so that new normalized values
+            # obtained via that component will be small
+            ground_state = real(basis[0])-1j*5*d_real
+            excited_state = real(basis[1])+1j*5*d_real
+            basis = (ground_state, excited_state)
+        elif relation < 0.2:
+            # Real quadrature is not oscillating, ignore it
+            ground_state = -5*d_imag+1j*imag(basis[0])
+            excited_state = 5*d_imag+1j*imag(basis[1])
+            basis = (ground_state, excited_state)
+
         self._basis = basis
 
     def set_ult_calib(self, value=False):
@@ -82,7 +105,9 @@ class VNATimeResolvedDispersiveMeasurement(Measurement):
         p_i = (imag(mean_data) - imag(basis[0]))/(imag(basis[1]) - imag(basis[0]))
         return p_r+1j*p_i
 
-    def _detect_resonator(self, vna_parameters, ro_calibration, q_calibration):
+    def _detect_resonator(self, vna_parameters, ro_calibration, q_calibration,
+        q_z_calibration = None):
+
         self._q_lo.set_output_state("OFF")
         print("Detecting a resonator within provided frequency range of the VNA %s\
                     "%(str(vna_parameters["freq_limits"])))
@@ -94,11 +119,15 @@ class VNATimeResolvedDispersiveMeasurement(Measurement):
 
         rep_period = self._pulse_sequence_parameters["repetition_period"]
         ro_duration = self._pulse_sequence_parameters["readout_duration"]
+
         ro_pb = IQPulseBuilder(ro_calibration)
         q_pb = IQPulseBuilder(q_calibration)
         self._ro_awg.output_pulse_sequence(ro_pb\
                     .add_dc_pulse(ro_duration).add_zero_until(rep_period).build())
         self._q_awg.output_pulse_sequence(q_pb.add_zero_until(rep_period).build())
+        if self._q_z_awg is not None:
+            q_z_pb = PulseBuilder(q_z_calibration)
+            self._q_z_awg.output_pulse_sequence(q_z_pb.add_zero_until(rep_period).build())
 
         res_freq, res_amp, res_phase = super()._detect_resonator()
         print("Detected frequency is %.5f GHz, at %.2f mU and %.2f degrees"%\
@@ -114,14 +143,14 @@ class VNATimeResolvedDispersiveMeasurement(Measurement):
             q_seq, q_z_seq, ro_seq =\
                 self._sequence_generator(q_pb, q_z_pb, ro_pb,
                                         self._pulse_sequence_parameters)
-            self._q_z_awg.output_pulse_sequence(q_z_seq, blocking=False)
-            self._ro_awg.output_pulse_sequence(ro_seq, blocking=False)
+            self._q_z_awg.output_pulse_sequence(q_z_seq, async = True)
+            self._ro_awg.output_pulse_sequence(ro_seq, async = True)
             self._q_awg.output_pulse_sequence(q_seq)
         else:
             q_seq, ro_seq = self._sequence_generator(q_pb, ro_pb,
                                     self._pulse_sequence_parameters)
-            self._ro_awg.output_pulse_sequence(ro_seq, blocking=False)
-            self._q_awg.output_pulse_sequence(q_seq)
+            self._ro_awg.output_pulse_sequence(ro_seq, async = True)
+            self._q_awg.output_pulse_sequence(q_seq, async = False)
 
 
 class VNATimeResolvedDispersiveMeasurementResult(MeasurementResult):

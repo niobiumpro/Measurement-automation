@@ -168,9 +168,10 @@ class MeasurementResult():
             with open(self.get_save_path()+self._name+'_context.txt', 'w+') as f:
                 f.write(self.get_context().to_string())
 
-        self.visualize()
+        fig, axes, caxes = self.visualize()
         plt.savefig(self.get_save_path()+self._name+".png", bbox_inches='tight')
-        plt.close("all")
+        plt.savefig(self.get_save_path()+self._name+".pdf", bbox_inches='tight')
+        plt.close(fig)
 
     def visualize(self):
         '''
@@ -179,6 +180,11 @@ class MeasurementResult():
         '''
         fig, axes, caxes = self._prepare_figure()
         self._plot(axes, caxes)
+        figManager = plt.get_current_fig_manager()
+        try:
+            figManager.window.showMaximized()
+        except:
+            figManager.window.state('zoomed')
         return fig, axes, caxes
 
     def _visualize_dynamic(self):
@@ -191,6 +197,12 @@ class MeasurementResult():
             self._dynamic_figure = fig
             self._dynamic_axes = axes
             self._dynamic_caxes = caxes
+            figManager = plt.get_current_fig_manager()
+            try:
+                figManager.window.showMaximized()
+            except:
+                figManager.window.state('zoomed')
+            # figManager.window.showMaximized()
 
         self._plot(self._dynamic_axes, self._dynamic_caxes)
 

@@ -1,27 +1,26 @@
-
 from lib2.IQPulseSequence import *
 from lib2.VNATimeResolvedDispersiveMeasurement1D import *
 
-class DispersiveRabiOscillations(VNATimeResolvedDispersiveMeasurement1D):
+class VacuumRabiOscillations(VNATimeResolvedDispersiveMeasurement1D):
 
-    def __init__(self, name, sample_name, line_attenuation_db = 60, plot_update_interval=1,
-     **devs_aliases_map):
-        devs_aliases_map["q_z_awg"] = None
-        super().__init__(name, sample_name, devs_aliases_map, line_attenuation_db, plot_update_interval)
-        self._measurement_result = DispersiveRabiOscillationsResult(name,
+    def __init__(self, name, sample_name, line_attenuation_db = 60,
+        plot_update_interval=1, **devs_aliases_map):
+        super().__init__(name, sample_name, devs_aliases_map, line_attenuation_db,
+            plot_update_interval)
+        self._measurement_result = VacuumRabiOscillationsResult(name,
                     sample_name)
-        self._sequence_generator = IQPulseBuilder.build_dispersive_rabi_sequences
-        self._swept_parameter_name = "excitation_duration"
+        self._sequence_generator =\
+                        IQPulseBuilder.build_vacuum_rabi_oscillations_sequences
+        self._swept_parameter_name = "interaction_duration"
 
-    def set_swept_parameters(self, excitation_durations):
-        super().set_swept_parameters(self._swept_parameter_name, excitation_durations)
+    def set_swept_parameters(self, interaction_durations):
+        super().set_swept_parameters(self._swept_parameter_name, interaction_durations)
 
-
-class DispersiveRabiOscillationsResult(VNATimeResolvedDispersiveMeasurement1DResult):
+class VacuumRabiOscillationsResult(VNATimeResolvedDispersiveMeasurement1DResult):
 
 
     def _model(self, t, A_r, A_i, T_R, Omega_R, offset_r, offset_i):
-        return -(A_r+1j*A_i)*exp(-1/T_R*t)*cos(Omega_R*t)+offset_r+offset_i*1j
+        return -(A_r+1j*A_i)*exp(-1/T_R*t)*(cos(Omega_R*t)+1)+offset_r+offset_i*1j
 
     def _generate_fit_arguments(self, x, data):
         amp_r, amp_i = ptp(real(data))/2, ptp(imag(data))/2
@@ -33,8 +32,8 @@ class DispersiveRabiOscillationsResult(VNATimeResolvedDispersiveMeasurement1DRes
 
         time_step = x[1]-x[0]
         max_frequency = 1/time_step/2/5
-        min_frequency = 0.1
-        frequency = random.random(1)*(max_frequency-.1)+.1
+        min_frequency = 0
+        frequency = random.random(1)*max_frequency
         p0 = [amp_r, amp_i, 1, frequency*2*pi, offset_r, offset_i]
 
         bounds =([-abs(amp_r)*1.5, -abs(amp_i)*1.5, 0.1,

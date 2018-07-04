@@ -25,10 +25,15 @@ class DispersiveRamseyResult(VNATimeResolvedDispersiveMeasurement1DResult):
                                                     +offset_r+1j*offset_i
 
     def _generate_fit_arguments(self, x, data):
+        time_step = x[1]-x[0]
+        max_frequency = 1/time_step/2/5
+        frequency = random.random(1)*max_frequency
+        phase = random.random(1)*2*pi-pi
+
         bounds =([-10, -10, 0.1, 0*2*pi, -10, -10, -pi],
-                        [10, 10, 100, 20*2*pi, 10, 10, pi])
+                        [10, 10, 100, max_frequency*2*pi, 10, 10, pi])
         amp_r, amp_i = ptp(real(data))/2, ptp(imag(data))/2
-        p0 = (amp_r, amp_i, 3, 5*2*pi, max(real(data))-amp_r,
+        p0 = (amp_r, amp_i, 3, frequency, max(real(data))-amp_r,
                                 max(imag(data))-amp_i, 0)
         return p0, bounds
 

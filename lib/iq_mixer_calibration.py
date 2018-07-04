@@ -7,8 +7,11 @@ from IPython.display import clear_output
 
 class IQCalibrationData():
 
-    def __init__(self, mixer_id, iq_attenuation, lo_frequency, lo_power, if_frequency, ssb_power, waveform_resolution, dc_offsets,
-                        dc_offsets_open, if_offsets, if_amplitudes, if_phase, spectral_values, optimization_time, end_date):
+    def __init__(self, mixer_id, iq_attenuation, lo_frequency, lo_power,
+        if_frequency, ssb_power, waveform_resolution, dc_offsets,
+        dc_offsets_open, if_offsets, if_amplitudes, if_phase, spectral_values,
+        optimization_time, end_date):
+
         self._mixer_id = mixer_id
         self._iq_attenuation = iq_attenuation
         self._lo_frequency = lo_frequency
@@ -58,7 +61,8 @@ class IQCalibrationData():
 class IQCalibrator():
 
     def __init__(self, awg, sa, lo, mixer_id, iq_attenuation,
-                 sideband_to_maintain="left", sidebands_to_suppress=6):
+                 sideband_to_maintain="left", sidebands_to_suppress=6,
+                 optimized_awg_calls = True):
         '''
         IQCalibrator is a class that allows you to calibrate automatically an IQ mixer to obtain a Single Sideband (SSB)
         with desired parameters.
@@ -71,6 +75,7 @@ class IQCalibrator():
         self.side = sideband_to_maintain
         self._N_sup = sidebands_to_suppress
         self._iterations = 0
+        self._optimized_awg_calls = optimized_awg_calls
 
     def calibrate(self, lo_frequency, if_frequency, lo_power, ssb_power, waveform_resolution=1, initial_guess=None,
                 sa_res_bandwidth=500, iterations=5, minimize_iterlimit=20):
@@ -111,7 +116,8 @@ class IQCalibrator():
         def loss_function_dc_offsets(dc_offsets):
             self._awg.output_continuous_IQ_waves(frequency=0,
                 amplitudes=(0,0), relative_phase=0, offsets=dc_offsets,
-                waveform_resolution=waveform_resolution)
+                waveform_resolution=waveform_resolution,
+                optimized = self._optimized_awg_calls)
             self._sa.prepare_for_stb();self._sa.sweep_single();self._sa.wait_for_stb()
             data = self._sa.get_tracedata()
             self._iterations += 1
@@ -126,7 +132,8 @@ class IQCalibrator():
 
             self._awg.output_continuous_IQ_waves(frequency=0,
                 amplitudes=(0,0), relative_phase=0, offsets=(dc_offset_open,)*2,
-                waveform_resolution=waveform_resolution)
+                waveform_resolution=waveform_resolution,
+                optimized = self._optimized_awg_calls)
 
             self._sa.prepare_for_stb();self._sa.sweep_single();self._sa.wait_for_stb()
             data = self._sa.get_tracedata()
@@ -146,7 +153,8 @@ class IQCalibrator():
             phase = args[1]
             self._awg.output_continuous_IQ_waves(frequency=if_frequency,
                 amplitudes=if_amplitudes, relative_phase=phase, offsets=if_offsets,
-                waveform_resolution=waveform_resolution)
+                waveform_resolution=waveform_resolution,
+                optimized = self._optimized_awg_calls)
             self._sa.prepare_for_stb();self._sa.sweep_single();self._sa.wait_for_stb()
             data = self._sa.get_tracedata()
 
@@ -166,7 +174,8 @@ class IQCalibrator():
             phase = args[1]
             self._awg.output_continuous_IQ_waves(frequency=if_frequency,
                 amplitudes=if_amplitudes, relative_phase=phase, offsets=if_offsets,
-                waveform_resolution=waveform_resolution)
+                waveform_resolution=waveform_resolution,
+                optimized = self._optimized_awg_calls)
             self._sa.prepare_for_stb();self._sa.sweep_single();self._sa.wait_for_stb()
             data = self._sa.get_tracedata()
 
@@ -196,7 +205,8 @@ class IQCalibrator():
             if_amplitudes = args[1]
             self._awg.output_continuous_IQ_waves(frequency=if_frequency,
                 amplitudes=if_amplitudes, relative_phase=phase, offsets=if_offsets,
-                waveform_resolution=waveform_resolution)
+                waveform_resolution=waveform_resolution,
+                optimized = self._optimized_awg_calls)
             self._sa.prepare_for_stb();self._sa.sweep_single();self._sa.wait_for_stb()
             data = self._sa.get_tracedata()
 

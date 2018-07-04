@@ -83,6 +83,7 @@ class Measurement():
          'yok4': [ ["gs210"], [Yokogawa_GS200,"Yokogawa_GS210"] ], \
          'yok5': [ ["gs210_1"], [Yokogawa_GS200,"Yokogawa_GS210"] ], \
          'yok6': [ ["YOK1"], [Yokogawa_GS200,"Yokogawa_GS210"] ], \
+         'k6220':[["k6220"], [k6220,"K6220"] ], \
 		 }
 
 
@@ -133,14 +134,17 @@ class Measurement():
                     self.__setattr__("_"+field_name, device_object)
                     continue
 
-                for device_address in self._devs_info:
-                    if (name in Measurement._devs_dict.keys()) \
-                            and (device_address in Measurement._devs_dict[name][0]):
-                        device_object = getattr(*Measurement._devs_dict[name][1])(device_address)
-                        Measurement._actual_devices[name]=device_object
-                        print("The device %s is detected as %s"%(name, device_address))
-                        self.__setattr__("_"+field_name, device_object)
-                        break
+                if name in Measurement._devs_dict.keys():
+                    for device_address in self._devs_info:
+                        if device_address in Measurement._devs_dict[name][0]:
+                            # print(name, device_address)
+                            device_object = getattr(*Measurement._devs_dict[name][1])(device_address)
+                            Measurement._actual_devices[name]=device_object
+                            print("The device %s is detected as %s"%(name, device_address))
+                            self.__setattr__("_"+field_name, device_object)
+                            break
+                else:
+                    print("Device", name, "is unknown!")
             else:
                 self.__setattr__("_"+field_name, value)
 
@@ -204,7 +208,9 @@ class Measurement():
         try:
             while not self._measurement_result.is_finished():
                 self._measurement_result._visualize_dynamic()
-                plt.pause(self._plot_update_interval)
+                for i in range(0,10):
+                    plt.pause(self._plot_update_interval/10)
+                # plt.gcf().canvas.start_event_loop(self._plot_update_interval)
         except KeyboardInterrupt:
             self._interrupted = True
         except Exception as e:
@@ -258,7 +264,7 @@ class Measurement():
                         '['+"".join(["%s: %.2e, "%(par_names[idx], value)\
                          for idx, value in enumerate(values_group)])[:-2]+']'
 
-            print("\rTime left: "+time_left+", %s: "%formatted_values_group+\
+            print("\rTime left: "+time_left+", %s"%formatted_values_group+\
                     ", average cycle time: "+str(round(avg_time, 2))+" s       ",
                     end="", flush=True)
 
@@ -300,14 +306,34 @@ class Measurement():
         Finds frequency of the resonator visible on the VNA screen
         """
         vna = self._vna
-        vna.avg_clear(); vna.prepare_for_stb(); vna.sweep_single(); vna.wait_for_stb()
-        port = circuit.notch_port(vna.get_frequencies(), vna.get_sdata())
-        port.autofit()
+        tries_number = 3
+        for i in range(0, tries_number):
+            vna.avg_clear(); vna.prepare_for_stb(); vna.sweep_single(); vna.wait_for_stb()
+            frequencies, sdata = vna.get_frequencies(), vna.get_sdata()
+            scan_range = frequencies[-1]-frequencies[0]
+
+            port = circuit.notch_port(frequencies, sdata)
+            port.autofit()
+            fit_min_idx = argmin(abs(port.z_data_sim))
+
+            estimated_frequency = frequencies[argmin(abs(sdata))]
+            estimated_amplitude = min(abs(sdata))
+
+            fit_frequency = frequencies[fit_min_idx]
+            fit_amplitude = min(abs(port.z_data_sim))
+
+            if abs(fit_frequency-estimated_frequency)<0.1*scan_range and \
+                abs(fit_amplitude-estimated_amplitude)<5*estimated_amplitude:
+                # Success!
+                break
+            else:
+                # print(estimated_amplitude, fit_amplitude, estimated_frequency, fit_frequency)
+                print("\rFit was inaccurate, retrying", end = "")
+
         if plot:
             port.plotall()
-        min_idx = argmin(abs(port.z_data_sim))
-        return (vna.get_frequencies()[min_idx],
-                    min(abs(port.z_data_sim)), angle(port.z_data_sim)[min_idx])
+
+        return fit_frequency, fit_amplitude, angle(port.z_data_sim)[fit_min_idx]
 
     def _detect_qubit(self):
         '''

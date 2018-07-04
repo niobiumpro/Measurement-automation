@@ -10,15 +10,15 @@ class VNATimeResolvedDispersiveMeasurement1D(VNATimeResolvedDispersiveMeasuremen
 
     def __init__(self,  name, sample_name, devs_aliases_map, line_attenuation_db = 60,
      plot_update_interval = 1):
-        super().__init__(name, sample_name, devs_aliases_map, line_attenuation_db = line_attenuation_db,
-            plot_update_interval = plot_update_interval)
+        super().__init__(name, sample_name, devs_aliases_map, line_attenuation_db\
+            = line_attenuation_db, plot_update_interval = plot_update_interval)
 
     def set_fixed_parameters(self, vna_parameters, ro_awg_parameters,
-            q_awg_parameters, qubit_frequency, pulse_sequence_parameters):
+            q_awg_parameters, qubit_frequency, pulse_sequence_parameters,
+            q_z_awg_params = None):
 
         vna_parameters["power"] = ro_awg_parameters["calibration"]\
             .get_radiation_parameters()["lo_power"]
-
         q_if_frequency = q_awg_parameters["calibration"] \
             .get_radiation_parameters()["if_frequency"]
 
@@ -27,7 +27,8 @@ class VNATimeResolvedDispersiveMeasurement1D(VNATimeResolvedDispersiveMeasuremen
             "frequency":qubit_frequency+q_if_frequency}
 
         super().set_fixed_parameters(vna_parameters, q_lo_parameters,
-            ro_awg_parameters, q_awg_parameters, pulse_sequence_parameters)
+            ro_awg_parameters, q_awg_parameters, pulse_sequence_parameters,
+            q_z_awg_params = q_z_awg_params)
 
     def set_swept_parameters(self, par_name, par_values):
         swept_pars = {par_name:(self._output_pulse_sequence, par_values)}
@@ -66,21 +67,26 @@ class VNATimeResolvedDispersiveMeasurement1DResult(\
                                                         p0=p0, bounds=bounds)
             #print(p0)
         finally:
-            result = least_squares(self._cost_function, p0, args=(X,data),
-                        bounds=bounds, x_scale="jac", max_nfev=10000, ftol=1e-5)
-            #print(result.x)
-            sigma = std(abs(self._model(X, *result.x)-data))
+            try:
+                result = least_squares(self._cost_function, p0, args=(X,data),
+                            bounds=bounds, x_scale="jac", max_nfev=10000, ftol=1e-5)
+                #print(result.x)
+                sigma = std(abs(self._model(X, *result.x)-data))
 
-            if self._fit_params is not None:
-                result_2 = least_squares(self._cost_function, self._fit_params,
-                        args=(X,data), bounds=bounds, x_scale="jac",
-                                                        max_nfev=1000, ftol=1e-5)
-                sigma_2 = std(abs(self._model(X, *result_2.x)-data))
-                if sigma_2<sigma:
-                    result = result_2
-                    sigma = sigma_2
+                if self._fit_params is not None:
+                    result_2 = least_squares(self._cost_function, self._fit_params,
+                            args=(X,data), bounds=bounds, x_scale="jac",
+                                                            max_nfev=1000, ftol=1e-5)
+                    sigma_2 = std(abs(self._model(X, *result_2.x)-data))
+                    if sigma_2<sigma:
+                        result = result_2
+                        sigma = sigma_2
 
-            return result, sqrt(diag(sigma**2*inv(result.jac.T.dot(result.jac))))
+                return result, sqrt(diag(sigma**2*inv(result.jac.T.dot(result.jac))))
+            except Exception as e:
+                print("Fit failed unexpectedly:", e)
+                print(p0, bounds)
+                raise e
 
     def fit(self, verbose=True):
 

@@ -4,10 +4,10 @@ from time import sleep
 class K6220(instr.Instr):
     def __init__(self, visa_name):
         super(K6220, self).__init__(visa_name)
-        self.visa_instr.read_termination = '\n'
-        self.visa_instr.write_termination = '\n'
-        self.visa_instr.baud_rate = 9600
-        self.visa_instr.chunk_size = 2048*8
+        self._visainstrument.read_termination = '\n'
+        self._visainstrument.write_termination = '\n'
+        self._visainstrument.baud_rate = 9600
+        self._visainstrument.chunk_size = 2048*8
 
         self.current_range = 0   # TO READ FROM DEVICE AT INIT
 
