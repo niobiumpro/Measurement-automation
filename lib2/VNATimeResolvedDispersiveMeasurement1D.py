@@ -52,7 +52,7 @@ class VNATimeResolvedDispersiveMeasurement1DResult(\
                 ec="black", lw=1, alpha=0.5)
         self._annotation_v_pos = "bottom"
         self._data_formats_used = ["real", "imag"]
-
+        self._data_points_marker_size = 12
 
     def _cost_function(self, params, x, data):
         return abs(self._model(x, *params)-data)
@@ -133,7 +133,8 @@ class VNATimeResolvedDispersiveMeasurement1DResult(\
             ax.grid()
             ax.ticklabel_format(axis='y', style='sci', scilimits=(-2,2))
             ax.plot(X[:len(Y)], Y, "C%d"%idx, ls=":", marker="o",
-                                                        markerfacecolor='none')
+                                    markerfacecolor='none',
+                                    markersize=self._data_points_marker_size)
             ax.set_xlim(X[0], X[-1])
             ax.set_ylabel(self._data_formats[name][1])
 

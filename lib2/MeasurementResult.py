@@ -173,7 +173,7 @@ class MeasurementResult():
         plt.savefig(self.get_save_path()+self._name+".pdf", bbox_inches='tight')
         plt.close(fig)
 
-    def visualize(self):
+    def visualize(self, maximized = True):
         '''
         Generates the required plots to visualize the measurement result. Should
         be implemented for each subclass.
@@ -181,10 +181,11 @@ class MeasurementResult():
         fig, axes, caxes = self._prepare_figure()
         self._plot(axes, caxes)
         figManager = plt.get_current_fig_manager()
-        try:
-            figManager.window.showMaximized()
-        except:
-            figManager.window.state('zoomed')
+        if maximized:
+            try:
+                figManager.window.showMaximized()
+            except:
+                figManager.window.state('zoomed')
         return fig, axes, caxes
 
     def _visualize_dynamic(self):
