@@ -12,7 +12,8 @@ Features:
 - Image fitting modules to extract parameters of flux-tunable qubits from single-tone and two-tone heatmap spectra
 - Real-time robust simultaneous real-imag curve fitting in time-resolved experiments
 - Human-friendly storage and loading of raw data and measurement result objects (with pickle, high-res .png and .pdf plots)
-- No GUI
+- No GUI <img src=https://user-images.githubusercontent.com/3819012/42594391-bddafb04-8557-11e8-8565-1504d9e0f3de.png width=20>
+
 
 The key goal of this project is to develop measurement protocols and fully automate processes to reduce overall human participation in experiments
 
