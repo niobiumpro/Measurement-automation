@@ -13,7 +13,7 @@ from datetime import datetime as dt
 from matplotlib import pyplot as plt, colorbar
 from resonator_tools import circuit
 from lib2.Measurement import *
-
+from time import sleep
 
 
 class SingleToneSpectroscopy(Measurement):
@@ -65,6 +65,9 @@ class SingleToneSpectroscopy(Measurement):
         '''
         super().set_swept_parameters(**swept_parameter)
         par_name = list(swept_parameter.keys())[0]
+        par_setter, par_values = swept_parameter[par_name]
+        par_setter(par_values[0])
+        sleep(1)
 
     def _recording_iteration(self):
         vna = self._vna
@@ -147,6 +150,7 @@ class SingleToneSpectroscopyResult(MeasurementResult):
 
         X, Y, Z = self._prepare_data_for_plot(data)
         phases = angle(Z).T if not self._unwrap_phase else unwrap(unwrap(angle(Z)).T)
+        phases[Z.T==0] = 0
         phases = phases if self._phase_units == "rad" else phases*180/pi
 
         if self._plot_limits_fixed is False:

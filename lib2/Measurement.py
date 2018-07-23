@@ -47,6 +47,7 @@ from matplotlib import pyplot as plt
 from datetime import datetime as dt
 from threading import Thread
 from resonator_tools import circuit
+from lib2.ResonatorDetector import *
 from itertools import product
 from functools import reduce
 from operator import mul
@@ -147,7 +148,6 @@ class Measurement():
                     print("Device", name, "is unknown!")
             else:
                 self.__setattr__("_"+field_name, value)
-
 
     @staticmethod
     def close_devs(devs_to_close):
@@ -306,34 +306,20 @@ class Measurement():
         Finds frequency of the resonator visible on the VNA screen
         """
         vna = self._vna
-        tries_number = 3
+        tries_number = 10
         for i in range(0, tries_number):
             vna.avg_clear(); vna.prepare_for_stb(); vna.sweep_single(); vna.wait_for_stb()
             frequencies, sdata = vna.get_frequencies(), vna.get_sdata()
-            scan_range = frequencies[-1]-frequencies[0]
+            RD = ResonatorDetector(frequencies, sdata, plot=False)
 
-            port = circuit.notch_port(frequencies, sdata)
-            port.autofit()
-            fit_min_idx = argmin(abs(port.z_data_sim))
-
-            estimated_frequency = frequencies[argmin(abs(sdata))]
-            estimated_amplitude = min(abs(sdata))
-
-            fit_frequency = frequencies[fit_min_idx]
-            fit_amplitude = min(abs(port.z_data_sim))
-
-            if abs(fit_frequency-estimated_frequency)<0.1*scan_range and \
-                abs(fit_amplitude-estimated_amplitude)<5*estimated_amplitude:
-                # Success!
+            result = RD.detect()
+            if result is not None:
                 break
             else:
-                # print(estimated_amplitude, fit_amplitude, estimated_frequency, fit_frequency)
-                print("\rFit was inaccurate, retrying", end = "")
-
-        if plot:
-            port.plotall()
-
-        return fit_frequency, fit_amplitude, angle(port.z_data_sim)[fit_min_idx]
+                print("\rFit was inaccurate (try #%d), retrying"%i, end = "")
+        if result is None:
+            print(frequencies, sdata)
+        return result
 
     def _detect_qubit(self):
         '''

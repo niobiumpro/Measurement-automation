@@ -31,6 +31,7 @@ import os, fnmatch
 import pickle
 from threading import Lock
 from matplotlib import pyplot as plt
+from datetime import datetime
 
 
 def find(pattern, path):
@@ -95,9 +96,16 @@ class MeasurementResult():
         If the user hits EOF (*nix: Ctrl-D, Windows: Ctrl-Z+Return), raise EOFError.
         On *nix systems, readline is used if available.
         '''
-        paths = find(name+'.pkl', 'data/'+sample_name+'/'+date)
+        paths = find(name+'.pkl', 'data\\'+sample_name+'\\'+date)
+
         path = None
         if len(paths)>1:
+            dates = [datetime.strptime(path.split("\\")[2], "%b %d %Y")\
+                                                            for path in paths]
+            z = zip(dates, paths)
+            sorted_dates, sorted_paths = zip(*sorted(z))
+            paths = sorted_paths
+
             if return_all:
                 dict_of_res=[]
                 for idx, path in enumerate(paths):
@@ -117,8 +125,11 @@ class MeasurementResult():
             return
 
         with open(path, "rb") as f:
-            return pickle.load(f)
-
+            if not return_all:
+                return pickle.load(f)
+            else:
+                return [pickle.load(f)]
+                
     def get_save_path(self):
 
         sample_directory = 'data\\'+self._sample_name
