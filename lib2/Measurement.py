@@ -81,7 +81,7 @@ class Measurement():
          'yok2': [ ["GS210_2"], [Yokogawa_GS200,"Yokogawa_GS210"] ], \
          'yok3': [ ["GS210_3"], [Yokogawa_GS200,"Yokogawa_GS210"] ],    \
          'yok4': [ ["gs210"], [Yokogawa_GS200,"Yokogawa_GS210"] ], \
-         'yok5': [ ["gs210_1"], [Yokogawa_GS200,"Yokogawa_GS210"] ], \
+         'yok5': [ ["GS_210_3"], [Yokogawa_GS200,"Yokogawa_GS210"] ], \
          'yok6': [ ["YOK1"], [Yokogawa_GS200,"Yokogawa_GS210"] ], \
          'k6220':[["k6220"], [k6220,"K6220"] ], \
 		 }

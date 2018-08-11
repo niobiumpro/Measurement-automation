@@ -96,12 +96,16 @@ class AcStarkTwoToneSpectroscopy(TwoToneSpectroscopyBase):
         vna_parameters["freq_limits"] = self._resonator_area
 
         self._mw_src.set_output_state("OFF")
-        print("\rDetecting a resonator within provided frequency range of the VNA %s\
+        if vna_parameters["freq_limits"][0]!=vna_parameters["freq_limits"][1]:
+            print("\rDetecting a resonator within provided frequency range of the VNA %s\
                     "%(str(vna_parameters["freq_limits"])), flush=True, end="")
-        res_freq, res_amp, res_phase = self._detect_resonator(vna_parameters, plot=False,
+
+            res_freq, res_amp, res_phase = self._detect_resonator(vna_parameters, plot=False,
                                                             bandwidth_factor=2)
-        print("\rDetected frequency is %.5f GHz, at %.2f mU and %.2f \
+            print("\rDetected frequency is %.5f GHz, at %.2f mU and %.2f \
                     degrees"%(res_freq/1e9, res_amp*1e3, res_phase/pi*180), end="")
+        else:
+            res_freq = vna_parameters["freq_limits"][0]
 
         self._mw_src.set_output_state("ON")
         vna_parameters["freq_limits"] = (res_freq, res_freq)

@@ -181,7 +181,7 @@ class SingleToneSpectroscopyResult(MeasurementResult):
         if parameter_list[0]>parameter_list[-1]:
             parameter_list = parameter_list[::-1]
             s_data = s_data[::-1, :]
-        #s_data = self.remove_background('avg_cur')
+        s_data = self.remove_background('avg_cur')
         return parameter_list, data["frequency"]/1e9, s_data
 
     def remove_delay(self):
