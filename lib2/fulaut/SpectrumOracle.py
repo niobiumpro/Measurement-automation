@@ -51,14 +51,41 @@ class SpectrumOracle():
 
         self._extract_data(plot=plot)
 
-        self._counter = 0
         self._iterations = self._grids[2][2]*self._grids[3][2]
 
         freq_slice = self._slices[2]
         d_slice = self._slices[3]
-        opt_params_coarse = brute(self._cost_function_coarse, (freq_slice, d_slice),
-                                args = (self._y_scan_area_size*2, self._points),
-                                                                full_output=False)
+        scan_area_sizes =\
+            linspace(self._y_scan_area_size/2, self._y_scan_area_size*2, 10)
+
+        candidate_coarse_params = []
+        candidate_losses = []
+        for y_scan_area_size in scan_area_sizes:
+            self._counter = 0
+            candidate_params = brute(self._cost_function_coarse,
+                                      (freq_slice, d_slice),
+                                      args =\
+                                        (y_scan_area_size,
+                                         self._points),
+                                      full_output=False)
+            candidate_loss =\
+                    self._cost_function_coarse(candidate_params,
+                                               y_scan_area_size,
+                                               self._points)
+            candidate_coarse_params.append(candidate_params)
+            candidate_losses.append(candidate_loss)
+        candidate_coarse_params = array(candidate_coarse_params)
+
+        opt_params_coarse = None
+        min_loss_idx = argmin(candidate_losses)
+        min_loss = candidate_losses[min_loss_idx]
+        max_frequency_idx = argmax(candidate_coarse_params[:,0])
+        max_frequency_params_loss = candidate_losses[max_frequency_idx]
+        if max_frequency_params_loss<10*min_loss:
+            opt_params_coarse = candidate_coarse_params[max_frequency_idx]
+        else:
+            opt_params_coarse = candidate_coarse_params[min_loss_idx]
+
         opt_params_coarse = self._p0[:2]+list(opt_params_coarse)
         if plot:
             plt.figure()

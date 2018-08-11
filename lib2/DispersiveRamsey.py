@@ -26,7 +26,7 @@ class DispersiveRamseyResult(VNATimeResolvedDispersiveMeasurement1DResult):
 
     def _generate_fit_arguments(self, x, data):
         time_step = x[1]-x[0]
-        max_frequency = 1/time_step/2/5
+        max_frequency = 1/time_step/2/3
         frequency = random.random(1)*max_frequency
         phase = random.random(1)*2*pi-pi
 
@@ -36,6 +36,9 @@ class DispersiveRamseyResult(VNATimeResolvedDispersiveMeasurement1DResult):
         p0 = (amp_r, amp_i, 3, frequency, max(real(data))-amp_r,
                                 max(imag(data))-amp_i, 0)
         return p0, bounds
+
+    def get_ramsey_frequency(self):
+        return self._fit_params[3]/2/pi*1e6
 
     def _generate_annotation_string(self, opt_params, err):
         return "$T_2^*=%.2f \pm %.2f \mu$s\n$|\Delta\omega/2\pi| = %.3f \pm %.3f$ MHz"%\

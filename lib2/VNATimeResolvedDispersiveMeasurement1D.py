@@ -52,7 +52,7 @@ class VNATimeResolvedDispersiveMeasurement1DResult(\
                 ec="black", lw=1, alpha=0.5)
         self._annotation_v_pos = "bottom"
         self._data_formats_used = ["real", "imag"]
-        self._data_points_marker_size = 12
+        self._data_points_marker_size = 7
 
     def _cost_function(self, params, x, data):
         return abs(self._model(x, *params)-data)

@@ -164,10 +164,11 @@ class VNATimeResolvedDispersiveMeasurementResult(MeasurementResult):
         self._fit_errors = None
         self._phase_units = "rad"
         self._data_formats = {
-            "abs":(abs, "$\mathfrak{Im}[S_{21}]$ [a.u.]"),
+            "imag":(imag, "$\mathfrak{Im}[S_{21}]$ [a.u.]"),
             "real":(real,"$\mathfrak{Re}[S_{21}]$ [a.u.]"),
-            "phase":(self._unwrapped_phase, r"$\angle S_{21}$ [%s]"%self._phase_units),
-            "imag":(imag, "$\left.|S_{21}|\right.$ [a.u.]")}
+            "phase":(self._unwrapped_phase,\
+                        r"$\angle S_{21}$ [%s]"%self._phase_units),
+            "abs":(abs, r"$\left.|S_{21}|\right.$ [a.u.]")}
 
     def _generate_fit_arguments(self):
         '''
