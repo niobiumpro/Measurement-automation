@@ -31,7 +31,10 @@ class ResonatorDetector():
     def _fit(self, port, frequencies, sdata):
         scan_range = frequencies[-1]-frequencies[0]
 
-        port.autofit()
+        try:
+            port.autofit()
+        except:
+            return mean(frequencies), -1, -1
         fit_min_idx = argmin(abs(port.z_data_sim))
 
         estimated_frequency = frequencies[argmin(abs(sdata))]
