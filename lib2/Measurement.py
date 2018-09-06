@@ -19,7 +19,7 @@ Should perform following actions:
     это тоже в классы данных по идее лучше пойдет
  --  a logging of launched measurements from ALL certain classes (chronologically, in a single file, like laboratory notebook, with comments)
     может быть, может быть полезно, если 100500 человек чето мерют одними и теми же приборами и что-то сломалось/нагнулось
-some other bullshit?adoes this class necessary at all?
+some other bullshit?is this class necessary at all?
 
 some other bullshit:
  -- должен нести описания методов, которые должны быть обязательено реализованы в дочерних классах:
@@ -53,6 +53,7 @@ from functools import reduce
 from operator import mul
 import traceback
 
+from lib2.LoggingServer import LoggingServer
 
 class Measurement():
 
@@ -61,6 +62,7 @@ class Measurement():
     The class contains methods to help with the implementation of measurement classes.
 
     '''
+    _logger = LoggingServer.getInstance()
     _actual_devices = {}
     _log = []
     _devs_dict = \
@@ -121,7 +123,8 @@ class Measurement():
         self._list = ""
         rm = pyvisa.ResourceManager()
         temp_list = list(rm.list_resources_info().values())
-
+        Measurement._logger.debug("Measurement "+ name + " init")
+        Measurement._logger.debug("Measurement "+ name+" devs:" + str(devs_aliases_map))
         self._devs_info = [item[4] for item in list(temp_list)]
                 # returns list of tuples: (IP Address string, alias) for all
                 # devices present in VISA
@@ -169,12 +172,11 @@ class Measurement():
     def set_fixed_parameters(self, **fixed_pars):
         '''
         fixed_pars: {'dev1': {'par1': value1, 'par2': value2},
-                     'dev2': {par1: value1, par2: ...}...}
+                     'dev2': {par1: value1, par2: ...},...}
         '''
         self._fixed_pars = fixed_pars
         for dev_name in self._fixed_pars.keys():
-            self._measurement_result.get_context() \
-            .get_equipment()[dev_name] = fixed_pars[dev_name]
+            self._measurement_result.get_context().get_equipment()[dev_name] = fixed_pars[dev_name]
         self._load_fixed_parameters_into_devices()
 
 
@@ -301,7 +303,7 @@ class Measurement():
         measurement_data["data"] = self._raw_data
         return measurement_data
 
-    def _detect_resonator(self, plot=True):
+    def _detect_resonator(self, plot=False):
         """
         Finds frequency of the resonator visible on the VNA screen
         """
@@ -310,7 +312,7 @@ class Measurement():
         for i in range(0, tries_number):
             vna.avg_clear(); vna.prepare_for_stb(); vna.sweep_single(); vna.wait_for_stb()
             frequencies, sdata = vna.get_frequencies(), vna.get_sdata()
-            RD = ResonatorDetector(frequencies, sdata, plot=False)
+            RD = ResonatorDetector(frequencies, sdata, plot=plot)
 
             result = RD.detect()
             if result is not None:
