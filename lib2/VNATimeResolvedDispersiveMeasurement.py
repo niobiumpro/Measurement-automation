@@ -34,7 +34,7 @@ class VNATimeResolvedDispersiveMeasurement(Measurement):
 
     def set_fixed_parameters(self, vna_parameters, q_lo_parameters,
         ro_awg_parameters, q_awg_parameters, pulse_sequence_parameters,
-        detect_resonator=True, q_z_awg_params = None):
+        detect_resonator=True, q_z_awg_params = None, plot_resonator_fit = True):
 
         self._pulse_sequence_parameters.update(pulse_sequence_parameters)
         self._measurement_result.get_context()\
@@ -49,7 +49,7 @@ class VNATimeResolvedDispersiveMeasurement(Measurement):
             res_freq = self._detect_resonator(vna_parameters,
                                     ro_awg_parameters["calibration"],
                                     q_awg_parameters["calibration"],
-                                    q_z_cal)
+                                    q_z_cal, plot=plot_resonator_fit)
             vna_parameters["freq_limits"] = (res_freq, res_freq)
 
         if self._q_z_awg is not None:

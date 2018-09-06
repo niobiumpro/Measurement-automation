@@ -310,7 +310,7 @@ class Measurement():
         for i in range(0, tries_number):
             vna.avg_clear(); vna.prepare_for_stb(); vna.sweep_single(); vna.wait_for_stb()
             frequencies, sdata = vna.get_frequencies(), vna.get_sdata()
-            RD = ResonatorDetector(frequencies, sdata, plot=False)
+            RD = ResonatorDetector(frequencies, sdata, plot=plot)
 
             result = RD.detect()
             if result is not None:
