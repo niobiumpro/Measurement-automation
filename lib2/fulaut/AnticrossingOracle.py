@@ -6,6 +6,7 @@ from scipy.optimize import *
 from IPython.display import clear_output
 from lib2.fulaut.qubit_spectra import *
 from lib2.ResonatorDetector import *
+from lib2.LoggingServer import *
 
 class AnticrossingOracle():
 
@@ -17,11 +18,16 @@ class AnticrossingOracle():
 
     qubit_spectra = {"transmon":transmon_spectrum}
 
-    def __init__(self, qubit_type, sts_result, plot=False):
+    def __init__(self, qubit_type, sts_result, plot=False, fast = False):
         self._qubit_spectrum = AnticrossingOracle.qubit_spectra[qubit_type]
         self._sts_result = sts_result
         self._plot = plot
         self._minimum_points_between_zeroes = 5
+        self._minimum_points_around_zero = 5
+        self._distance_from_intersection = 2
+        self._logger = LoggingServer.getInstance()
+        self._fast = fast
+
         self._extract_data()
 
     def launch(self):
@@ -44,20 +50,22 @@ class AnticrossingOracle():
             period = self._res_points[intersections[2],0]-\
                                         self._res_points[intersections[0],0]
 
-        d_range = slice(0.,0.9,0.2)
-        res_freq_range = slice(res_freq_1, res_freq_2, (res_freq_2-res_freq_1)/10)
-        q_freq_range = slice(4,10, 0.2)
+        d_range = slice(0.,0.9,0.1)
+        mean_freq = mean((res_freq_1, res_freq_2))
+        res_freq_range = slice(mean_freq-2e-3, mean_freq+2e-3, 4e-3/10)
+        q_freq_range = slice(4,12, 0.1)
         g_range = slice(0.02, 0.04, 0.01)
         Ns = 3
         args = (self._res_points[:,0], self._res_points[:,1])
-
+        # self._logger.debug(str(res_freq)
 
         best_fit_loss = 1e10
         fitresult = None
+        # We are not sure where the sweet spot is, so let's choose the best
+        # fit among two possibilities:
         for sweet_spot_cur in [self._res_points[idx_1,0],\
                                self._res_points[idx_2,0]]:
-            # We are not sure where the sweet spot is, so let's choose the best
-            # fit among two possibilities
+
             def brute_cost_function(params, curs, res_freqs):
                 f_res, g, q_max_freq, d = list(params)
                 full_params = [f_res, g, period, sweet_spot_cur, q_max_freq, d]
@@ -144,6 +152,10 @@ class AnticrossingOracle():
             plt.gcf().set_size_inches(15,5)
 
     def find_resonator_intersections(self):
+        plt.plot(self._res_points[:,0],
+                    ones_like(self._res_points[:,1])\
+                        *mean(self._res_points[:,1]), 'C2',
+                    label="Mean")
         data = (mean(self._res_points[:,1])-self._res_points[:,1])
 
         raw_intersections = where((data[:-1]*data[1:])<0)[0]+1
@@ -158,13 +170,55 @@ class AnticrossingOracle():
                 current_intersection = raw_intersection
                 refined_intersections.append(current_intersection)
 
-        return refined_intersections
+        fine_intersections = []
+
+        points_around_zero = self._minimum_points_around_zero
+        distance_from_intersection = self._distance_from_intersection
+        for intersection in refined_intersections:
+            if intersection<=distance_from_intersection\
+                        or  intersection>=(len(data)-distance_from_intersection):
+                continue
+
+            if points_around_zero-1>=intersection:
+                left_edge = 0
+                right_edge = intersection+points_around_zero
+
+            elif points_around_zero-1<\
+                    intersection<\
+                        (len(data)-points_around_zero):
+                left_edge = intersection-points_around_zero
+                right_edge = intersection+points_around_zero
+            else:
+                right_edge = len(data)
+                left_edge = intersection-points_around_zero
+
+            left_points = data[left_edge:intersection-distance_from_intersection]
+            right_points = data[intersection+distance_from_intersection:right_edge]
+
+            self._logger.debug("Intersection: "+str(intersection)\
+                                +", points: "+str((left_points, right_points)))
+
+            if len(set(left_points<0))==1\
+                and len(set(right_points<0))==1\
+                and left_points[0]*right_points[0]<0:
+                fine_intersections.append(intersection)
+
+        self._logger.debug("Fine intersections: "+str(fine_intersections))
+        return fine_intersections
 
     @staticmethod
     def _transmission(f_q, f_probe, f_r, g):
         κ = 1e-4
         γ = 1e-4
         return abs(1/(κ+1j*(f_r-f_probe)+(g**2)/(γ+1j*(f_q-f_probe))))**2
+
+    @staticmethod
+    def _eigenlevels(f_q, f_r, g):
+        E0 = (f_r - f_q)/2
+        E1 = f_r-1/2*sqrt(4*g**2+(f_q-f_r)**2)
+        E2 = f_r+1/2*sqrt(4*g**2+(f_q-f_r)**2)
+        return array([E0-E0, E1-E0, E2-E0])
+
 
     def _model(self, curs, params, plot_colours = False, freqs_fine_number=5e3):
 
@@ -190,12 +244,41 @@ class AnticrossingOracle():
             res_freqs_model.append(freqs_fine[argmax(abs(row))])
         return array(res_freqs_model)
 
+    def _model_fast(self, curs, params, plot = False):
+        f_r, g = params[:2]
+        qubit_params = params[2:]
+    #     phis_fine = linspace(phis[0],phis[-1], 1000)
+        f_qs = self._qubit_spectrum(curs, *qubit_params)
+
+        span = ptp(self._freqs)
+        levels = self._eigenlevels(f_qs, f_r, g)
+
+        if plot:
+            plt.plot(curs, levels[0,:])
+            plt.plot(curs, levels[1,:])
+            plt.plot(curs, levels[2,:])
+            plt.ylim(self._freqs[0], self._freqs[-1])
+
+        res_freqs_model = zeros_like(curs)+mean(self._freqs)
+        idcs1 = where(logical_and(self._freqs[0]<levels[1,:],
+                        levels[1,:]<self._freqs[-1]))
+        idcs2 = where(logical_and(self._freqs[0]<levels[2,:],
+                        levels[2,:]<self._freqs[-1]))
+        res_freqs_model[idcs1] = levels[1,:][idcs1]
+        res_freqs_model[idcs2] = levels[2,:][idcs2]
+
+        return array(res_freqs_model)
+
     def _cost_function(self, params, curs, res_freqs, freqs_fine_number = 5e3):
-        cost = (abs(self._model(curs, params,
-                        freqs_fine_number=freqs_fine_number) - res_freqs))
-        clear_output(wait=True)
-        print((("{:.3e}, "*len(params))[:-2]).format(*params), "loss:",
-                "%.2f"%(sum(cost)/len(curs)*1000), "MHz")
+
+        if self._fast:
+            cost = abs(self._model_fast(curs, params) - res_freqs)
+        else:
+            cost = abs(self._model(curs, params,
+                        freqs_fine_number=freqs_fine_number) - res_freqs)
+        # clear_output(wait=True)
+        # print((("{:.4e}, "*len(params))[:-2]).format(*params), "loss:",
+        #         "%.2f"%(sum(cost)/len(curs)*1000), "MHz")
         return sum(cost)
 
     def get_res_points(self):
