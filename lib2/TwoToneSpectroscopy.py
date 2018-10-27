@@ -56,6 +56,7 @@ class FluxTwoToneSpectroscopy(TwoToneSpectroscopyBase):
                     degrees"%(res_freq/1e9, res_amp*1e3, res_phase/pi*180), end="")
         self._mw_src.set_output_state("ON")
         vna_parameters["freq_limits"] = (res_freq, res_freq)
+        self._resonator_area = (res_freq-2.5e6, res_freq+2.5e6)
         self._vna.set_parameters(vna_parameters)
 
 class PowerTwoToneSpectroscopy(TwoToneSpectroscopyBase):

@@ -149,7 +149,7 @@ class SingleToneSpectroscopyResult(MeasurementResult):
             return
 
         X, Y, Z = self._prepare_data_for_plot(data)
-        phases = angle(Z).T if not self._unwrap_phase else unwrap(unwrap(angle(Z)).T)
+        phases = abs(angle(Z).T) if not self._unwrap_phase else unwrap(angle(Z)).T
         phases[Z.T==0] = 0
         phases = phases if self._phase_units == "rad" else phases*180/pi
 
@@ -185,7 +185,7 @@ class SingleToneSpectroscopyResult(MeasurementResult):
         if parameter_list[0]>parameter_list[-1]:
             parameter_list = parameter_list[::-1]
             s_data = s_data[::-1, :]
-        s_data = self.remove_background('avg_cur')
+        #s_data = self.remove_background('avg_cur')
         return parameter_list, data["frequency"]/1e9, s_data
 
     def remove_delay(self):

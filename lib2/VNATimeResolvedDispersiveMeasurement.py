@@ -49,7 +49,7 @@ class VNATimeResolvedDispersiveMeasurement(Measurement):
             res_freq = self._detect_resonator(vna_parameters,
                                     ro_awg_parameters["calibration"],
                                     q_awg_parameters["calibration"],
-                                    q_z_cal, plot=plot_resonator_fit)
+                                    q_z_cal, plot_resonator_fit=plot_resonator_fit)
             vna_parameters["freq_limits"] = (res_freq, res_freq)
 
         if self._q_z_awg is not None:
@@ -106,7 +106,7 @@ class VNATimeResolvedDispersiveMeasurement(Measurement):
         return p_r+1j*p_i
 
     def _detect_resonator(self, vna_parameters, ro_calibration, q_calibration,
-        q_z_calibration = None):
+        q_z_calibration = None, plot_resonator_fit = True):
 
         self._q_lo.set_output_state("OFF")
         print("Detecting a resonator within provided frequency range of the VNA %s\
@@ -129,7 +129,7 @@ class VNATimeResolvedDispersiveMeasurement(Measurement):
             q_z_pb = PulseBuilder(q_z_calibration)
             self._q_z_awg.output_pulse_sequence(q_z_pb.add_zero_until(rep_period).build())
 
-        res_freq, res_amp, res_phase = super()._detect_resonator()
+        res_freq, res_amp, res_phase = super()._detect_resonator(plot_resonator_fit)
         print("Detected frequency is %.5f GHz, at %.2f mU and %.2f degrees"%\
                     (res_freq/1e9, res_amp*1e3, res_phase/pi*180))
         self._q_lo.set_output_state("ON")
