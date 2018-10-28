@@ -1,12 +1,14 @@
 
 from matplotlib import pyplot as plt
-from scipy import *
-from scipy.signal import *
-from scipy.optimize import *
 from IPython.display import clear_output
 from lib2.fulaut.qubit_spectra import *
 from lib2.ResonatorDetector import *
 from lib2.LoggingServer import *
+
+import scipy
+from scipy import *
+from scipy.optimize import *
+from scipy.signal import *
 
 class AnticrossingOracle():
 
@@ -32,26 +34,11 @@ class AnticrossingOracle():
 
     def launch(self):
 
-        intersections = self.find_resonator_intersections()
-
-        if intersections is None or len(intersections) <= 2:
-            idx_1 = argmin(self._res_points[:,1])
-            idx_2 = argmax(self._res_points[:,1])
-            res_freq_1 = self._res_points[idx_1,1]
-            res_freq_2 = self._res_points[idx_2,1]
-            period = 2*abs(self._res_points[idx_2, 0]-self._res_points[idx_1, 0])
-
-        elif len(intersections) > 2:
-            idx_1 = (intersections[0]+intersections[1])//2
-            idx_2 = (intersections[1]+intersections[2])//2
-            res_freq_1 = self._freqs[argmin(abs(self._data)[idx_1, :])]
-            res_freq_2 = self._freqs[argmin(abs(self._data)[idx_2, :])]
-            res_freq_1, res_freq_2 = sorted((res_freq_1, res_freq_2))
-            period = self._res_points[intersections[2],0]-\
-                                        self._res_points[intersections[0],0]
+        self._period = self._find_period()
+        potential_sweet_spots = self._find_potential_sweet_spots()
 
         d_range = slice(0.,0.9,0.1)
-        mean_freq = mean((res_freq_1, res_freq_2))
+        mean_freq = mean(self._res_points[:,1])
         res_freq_range = slice(mean_freq-2e6, mean_freq+2e6, 4e6/10)
         q_freq_range = slice(4e9,12e9, 100e6)
         g_range = slice(20e6, 40e6, 10e6)
@@ -63,25 +50,25 @@ class AnticrossingOracle():
         fitresult = None
         # We are not sure where the sweet spot is, so let's choose the best
         # fit among two possibilities:
-        for sweet_spot_cur in [self._res_points[idx_1,0],\
-                               self._res_points[idx_2,0]]:
+        for sweet_spot_cur in potential_sweet_spots:
 
             def brute_cost_function(params, curs, res_freqs):
                 f_res, g, q_max_freq, d = list(params)
-                full_params = [f_res, g, period, sweet_spot_cur, q_max_freq, d]
+                full_params =\
+                    [f_res, g, self._period, sweet_spot_cur, q_max_freq, d]
                 return self._cost_function(full_params, curs, res_freqs,
                                                         freqs_fine_number = 100)
-
+            self._iteration_counter = 0
             result = brute(brute_cost_function,
                     (res_freq_range, g_range, q_freq_range, d_range), Ns=Ns,
                         args = args, finish=None)
 
             f_res, g, q_max_freq, d = list(result)
-            full_params = [f_res, g, period, sweet_spot_cur, q_max_freq, d]
+            full_params = [f_res, g, self._period, sweet_spot_cur, q_max_freq, d]
 
+            self._iteration_counter = 0
             result = minimize(self._cost_function, full_params,
                                         args=args, method="Nelder-Mead")
-
             loss =\
                 self._cost_function(result.x, *args)/len(self._res_points)*1000
             if loss<best_fit_loss:
@@ -96,8 +83,8 @@ class AnticrossingOracle():
                         label="Data")
             plt.plot([sweet_spot_cur], [mean(self._res_points[:,1])], '+')
 
-            p0 = [mean((res_freq_2, res_freq_2)), 30e6, period,
-                                                    sweet_spot_cur, 10e9, 0.6]
+            # p0 = [mean((res_freq_2, res_freq_2)), 0.03, period,
+            #                                         sweet_spot_cur, 10, 0.6]
             # plt.plot(self._curs, self._model(self._curs, p0), "o")
             plt.plot(self._res_points[:,0],
                     self._model(self._res_points[:,0], best_fitresult.x, False),
@@ -125,6 +112,7 @@ class AnticrossingOracle():
         threshold = abs(data).min()+0.5*(median(abs(data))-abs(data).min())
 
         res_points = []
+        self._extracted_indices = []
         for idx, row in enumerate(data):
             row = abs(row)
             extrema = argrelextrema(row, less, order=10)[0]
@@ -138,6 +126,7 @@ class AnticrossingOracle():
                 else:
                     smallest_extremum = extrema[argmin(row[extrema])]
                     res_points.append((curs[idx], freqs[smallest_extremum]))
+                self._extracted_indices.append(idx)
 
         self._res_points = array(res_points)
         self._freqs = freqs
@@ -150,6 +139,39 @@ class AnticrossingOracle():
             plt.pcolormesh(curs, freqs, abs(data).T)
             plt.legend()
             plt.gcf().set_size_inches(15,5)
+
+    def _find_period(self):
+        extracted_no_mean = self._res_points[:,1]-mean(self._res_points[:,1])
+        extracted_zero_padded = scipy.zeros(len(self._curs))
+        extracted_zero_padded[self._extracted_indices] = extracted_no_mean
+        data = extracted_zero_padded
+
+        corr = correlate(data, data, "full")[data.size-1:]
+        peaks = argrelextrema(corr, greater, order=10)[0]
+        period = peaks[argmax(corr[peaks])]
+        print(peaks, period)
+        return self._curs[period]-self._curs[0]
+
+
+    def _model_square(self, duty, phase, x):
+        return square(2*pi*x/self._period-phase, duty)
+
+    def _cost_function_sweet_spots(self, p, x, y):
+        duty, phase = p
+        fit_data = self._model_square(duty, phase, x)
+        return -sum(fit_data*y)
+
+    def _find_potential_sweet_spots(self):
+        data = self._res_points[:,1]-mean(self._res_points[:,1])
+        duty, phase = brute(self._cost_function_sweet_spots,
+                            ((0, 1), (-pi, pi)),
+                            Ns = 100,
+                            args=(self._res_points[:,0], data),
+                            full_output=0)
+        sws1 = phase/2/pi*self._period + self._period*duty/2
+        sws2 = phase/2/pi*self._period - self._period*(1-duty)/2
+        return sws1, sws2
+
 
     def find_resonator_intersections(self):
         plt.plot(self._res_points[:,0],
@@ -276,9 +298,11 @@ class AnticrossingOracle():
         else:
             cost = abs(self._model(curs, params,
                         freqs_fine_number=freqs_fine_number) - res_freqs)
-        # clear_output(wait=True)
-        # print((("{:.4e}, "*len(params))[:-2]).format(*params), "loss:",
-        #         "%.2f"%(sum(cost)/len(curs)*1000), "MHz")
+        if self._iteration_counter%50 == 0:
+            clear_output(wait=True)
+            print((("{:.4e}, "*len(params))[:-2]).format(*params), "loss:",
+                     "%.2f"%(sum(cost)/len(curs)/1e6), "MHz")
+        self._iteration_counter += 1
         return sum(cost)
 
     def get_res_points(self):
