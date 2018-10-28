@@ -96,11 +96,11 @@ class MeasurementResult():
         If the user hits EOF (*nix: Ctrl-D, Windows: Ctrl-Z+Return), raise EOFError.
         On *nix systems, readline is used if available.
         '''
-        paths = find(name+'.pkl', 'data\\'+sample_name+'\\'+date)
+        paths = find(name+'.pkl', 'data/'+sample_name+'/'+date)
 
         path = None
         if len(paths)>1:
-            dates = [datetime.strptime(path.split("\\")[2], "%b %d %Y")\
+            dates = [datetime.strptime(path.split("/")[2], "%b %d %Y")\
                                                             for path in paths]
             z = zip(dates, paths)
             sorted_dates, sorted_paths = zip(*sorted(z))
