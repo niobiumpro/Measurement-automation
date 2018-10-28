@@ -52,9 +52,9 @@ class AnticrossingOracle():
 
         d_range = slice(0.,0.9,0.1)
         mean_freq = mean((res_freq_1, res_freq_2))
-        res_freq_range = slice(mean_freq-2e-3, mean_freq+2e-3, 4e-3/10)
-        q_freq_range = slice(4,12, 0.1)
-        g_range = slice(0.02, 0.04, 0.01)
+        res_freq_range = slice(mean_freq-2e6, mean_freq+2e6, 4e6/10)
+        q_freq_range = slice(4e9,12e9, 100e6)
+        g_range = slice(20e6, 40e6, 10e6)
         Ns = 3
         args = (self._res_points[:,0], self._res_points[:,1])
         # self._logger.debug(str(res_freq)
@@ -96,8 +96,8 @@ class AnticrossingOracle():
                         label="Data")
             plt.plot([sweet_spot_cur], [mean(self._res_points[:,1])], '+')
 
-            p0 = [mean((res_freq_2, res_freq_2)), 0.03, period,
-                                                    sweet_spot_cur, 10, 0.6]
+            p0 = [mean((res_freq_2, res_freq_2)), 30e6, period,
+                                                    sweet_spot_cur, 10e9, 0.6]
             # plt.plot(self._curs, self._model(self._curs, p0), "o")
             plt.plot(self._res_points[:,0],
                     self._model(self._res_points[:,0], best_fitresult.x, False),
@@ -105,18 +105,18 @@ class AnticrossingOracle():
             plt.legend()
             plt.gcf().set_size_inches(15,5)
 
-        best_fitresult.x[0] = best_fitresult.x[0]*1e9
-        best_fitresult.x[4] = best_fitresult.x[4]*1e9
+        best_fitresult.x[0] = best_fitresult.x[0]
+        best_fitresult.x[4] = best_fitresult.x[4]
         return best_fitresult.x, best_fit_loss
 
     def _extract_data(self, plot=False):
         data = self._sts_result.get_data()
         try:
             curs, freqs, self._data =\
-                data["Current [A]"], data["frequency"]/1e9, data["data"]
+                data["Current [A]"], data["frequency"], data["data"]
         except:
             curs, freqs, self._data =\
-                data["current"], data["frequency"]/1e9, data["data"]
+                data["current"], data["frequency"], data["data"]
         data = self._data
         res_freqs = []
 
@@ -208,8 +208,8 @@ class AnticrossingOracle():
 
     @staticmethod
     def _transmission(f_q, f_probe, f_r, g):
-        κ = 1e-4
-        γ = 1e-4
+        κ = 1e6
+        γ = 1e6
         return abs(1/(κ+1j*(f_r-f_probe)+(g**2)/(γ+1j*(f_q-f_probe))))**2
 
     @staticmethod
