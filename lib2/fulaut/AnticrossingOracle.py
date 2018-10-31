@@ -37,10 +37,10 @@ class AnticrossingOracle():
         self._period = self._find_period()
         potential_sweet_spots = self._find_potential_sweet_spots()
 
-        d_range = slice(0.,0.9,0.9/3)
+        d_range = slice(0.,0.9,0.9/9)
         mean_freq = mean(self._res_points[:,1])
-        q_freq_range = slice(4e9,12e9, 1000e6)
-        g_range = slice(20e6, 40e6, 10e6)
+        q_freq_range = slice(4e9,12e9, 100e6)
+        g_range = slice(20e6, 40e6, 20e6/5)
         Ns = 3
         args = (self._res_points[:,0], self._res_points[:,1])
         # self._logger.debug(str(res_freq)
@@ -148,7 +148,7 @@ class AnticrossingOracle():
         extracted_zero_padded[self._extracted_indices] = extracted_no_mean
         data = extracted_zero_padded
 
-        corr = correlate(data, data, "full")[data.size-1:]
+        self._corr = corr = correlate(data, data, "full")[data.size-1:]
         peaks = argrelextrema(corr, greater, order=10)[0]
         period = peaks[argmax(corr[peaks])]
         print(peaks, period)
