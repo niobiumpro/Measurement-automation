@@ -37,42 +37,43 @@ class AnticrossingOracle():
         self._period = self._find_period()
         potential_sweet_spots = self._find_potential_sweet_spots()
 
-        d_range = slice(0., 1, 0.2)
+        d_range = slice(0.,0.9,0.9/3)
         mean_freq = mean(self._res_points[:,1])
-        res_freq_range = slice(mean_freq-.0e6, mean_freq+0.1e6, 3e6/3)
-        q_freq_range = slice(4e9,12e9, 500e6)
+        q_freq_range = slice(4e9,12e9, 1000e6)
         g_range = slice(20e6, 40e6, 10e6)
         Ns = 3
         args = (self._res_points[:,0], self._res_points[:,1])
         # self._logger.debug(str(res_freq)
 
-        best_fit_loss = 1e10
-        fitresult = None
+        best_fit_loss = 1e100
+        best_fitresult = None
         # We are not sure where the sweet spot is, so let's choose the best
         # fit among two possibilities:
         for sweet_spot_cur in potential_sweet_spots:
 
-            def brute_cost_function(params, curs, res_freqs):
-                f_res, g, q_max_freq, d = list(params)
-                full_params =\
-                    [f_res, g, self._period, sweet_spot_cur, q_max_freq, d]
-                return self._cost_function(full_params, curs, res_freqs,
-                                                        freqs_fine_number = 100)
             self._iteration_counter = 0
-            result = brute(brute_cost_function,
-                    (res_freq_range, g_range, q_freq_range, d_range), Ns=Ns,
-                        args = args, finish=None)
+            result = brute(self._brute_cost_function,
+                           (g_range, q_freq_range, d_range), Ns=Ns,
+                           args=args+(mean_freq, self._period, sweet_spot_cur), finish=None)
 
-            f_res, g, q_max_freq, d = list(result)
-            full_params = [f_res, g, self._period, sweet_spot_cur, q_max_freq, d]
+            g, q_max_freq, d = list(result)
+            full_params = [mean_freq, g, self._period, sweet_spot_cur, q_max_freq, d]
 
             self._iteration_counter = 0
             result = minimize(self._cost_function, full_params,
                                         args=args, method="Nelder-Mead")
-            # result.x = full_params
+
             loss =\
-                self._cost_function(result.x, *args)/len(self._res_points)*1000
+                sqrt(self._cost_function(result.x, *args)/len(self._res_points))/1e6
+
+            brute_loss =\
+                sqrt(self._cost_function(full_params, *args)/len(self._res_points))/1e6
+
             if loss<best_fit_loss:
+                self._brute_opt_params = full_params
+                self._brute_loss = brute_loss
+                self._opt_params = result.x
+                self._loss = loss
                 best_fit_loss = loss
                 best_fitresult = result
 
@@ -298,18 +299,24 @@ class AnticrossingOracle():
 
         return res_freqs_model
 
+    def _brute_cost_function(self, params, curs, res_freqs, f_res, period, sws_cur):
+        g, q_max_freq, d = list(params)
+        full_params =\
+            [f_res, g, period, sws_cur, q_max_freq, d]
+        return self._cost_function(full_params, curs, res_freqs,
+                                                freqs_fine_number = 100)
+
     def _cost_function(self, params, curs, res_freqs, freqs_fine_number = 5e3):
 
         if self._fast:
-            cost = abs(self._model_fast(curs, params) - res_freqs)
+            cost = (self._model_fast(curs, params) - res_freqs)**2
         else:
             cost = abs(self._model(curs, params,
                         freqs_fine_number=freqs_fine_number) - res_freqs)
         if self._iteration_counter%100 == 0:
             clear_output(wait=True)
-            print((("Done :%.2f%%"%self._iteration_counter/self._total_iterations*100,
-                    " Params: {:.4e}, "*len(params))[:-2]).format(*params), "loss:",
-                     "%.2f"%(sum(cost)/len(curs)/1e6), "MHz")
+            print((("{:.4e}, "*len(params))[:-2]).format(*params), "loss:",
+                     "%.2f"%(sqrt(sum(cost)/len(curs))/1e6), "MHz")
         self._iteration_counter += 1
         return sum(cost)
 
