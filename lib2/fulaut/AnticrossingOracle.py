@@ -37,10 +37,10 @@ class AnticrossingOracle():
         self._period = self._find_period()
         potential_sweet_spots = self._find_potential_sweet_spots()
 
-        d_range = slice(0.,0.9,0.1)
+        d_range = slice(0., 1, 0.2)
         mean_freq = mean(self._res_points[:,1])
-        res_freq_range = slice(mean_freq-2e6, mean_freq+2e6, 4e6/10)
-        q_freq_range = slice(4e9,12e9, 100e6)
+        res_freq_range = slice(mean_freq-.0e6, mean_freq+0.1e6, 3e6/3)
+        q_freq_range = slice(4e9,12e9, 500e6)
         g_range = slice(20e6, 40e6, 10e6)
         Ns = 3
         args = (self._res_points[:,0], self._res_points[:,1])
@@ -69,6 +69,7 @@ class AnticrossingOracle():
             self._iteration_counter = 0
             result = minimize(self._cost_function, full_params,
                                         args=args, method="Nelder-Mead")
+            # result.x = full_params
             loss =\
                 self._cost_function(result.x, *args)/len(self._res_points)*1000
             if loss<best_fit_loss:
@@ -87,7 +88,7 @@ class AnticrossingOracle():
             #                                         sweet_spot_cur, 10, 0.6]
             # plt.plot(self._curs, self._model(self._curs, p0), "o")
             plt.plot(self._res_points[:,0],
-                    self._model(self._res_points[:,0], best_fitresult.x, False),
+                    self._model_fast(self._res_points[:,0], best_fitresult.x, False),
                                 "orange", ls="", marker=".", label="Model")
             plt.legend()
             plt.gcf().set_size_inches(15,5)
@@ -165,9 +166,10 @@ class AnticrossingOracle():
         data = self._res_points[:,1]-mean(self._res_points[:,1])
         duty, phase = brute(self._cost_function_sweet_spots,
                             ((0, 1), (-pi, pi)),
-                            Ns = 100,
+                            Ns = 20,
                             args=(self._res_points[:,0], data),
                             full_output=0)
+        self._duty, self._phase = duty, phase
         sws1 = phase/2/pi*self._period + self._period*duty/2
         sws2 = phase/2/pi*self._period - self._period*(1-duty)/2
         return sws1, sws2
@@ -281,15 +283,20 @@ class AnticrossingOracle():
             plt.plot(curs, levels[2,:])
             plt.ylim(self._freqs[0], self._freqs[-1])
 
+        freq_span = ptp(self._freqs)
+        upper_limit = f_r+freq_span
+        lower_limit = f_r-freq_span
+
         res_freqs_model = zeros_like(curs)+mean(self._freqs)
-        idcs1 = where(logical_and(self._freqs[0]<levels[1,:],
-                        levels[1,:]<self._freqs[-1]))
-        idcs2 = where(logical_and(self._freqs[0]<levels[2,:],
-                        levels[2,:]<self._freqs[-1]))
+        idcs1 = where(logical_and(lower_limit<levels[1,:],
+                        levels[1,:]<upper_limit))
+        idcs2 = where(logical_and(lower_limit<levels[2,:],
+                        levels[2,:]<upper_limit))
+
         res_freqs_model[idcs1] = levels[1,:][idcs1]
         res_freqs_model[idcs2] = levels[2,:][idcs2]
 
-        return array(res_freqs_model)
+        return res_freqs_model
 
     def _cost_function(self, params, curs, res_freqs, freqs_fine_number = 5e3):
 
@@ -298,9 +305,10 @@ class AnticrossingOracle():
         else:
             cost = abs(self._model(curs, params,
                         freqs_fine_number=freqs_fine_number) - res_freqs)
-        if self._iteration_counter%50 == 0:
+        if self._iteration_counter%100 == 0:
             clear_output(wait=True)
-            print((("{:.4e}, "*len(params))[:-2]).format(*params), "loss:",
+            print((("Done :%.2f%%"%self._iteration_counter/self._total_iterations*100,
+                    " Params: {:.4e}, "*len(params))[:-2]).format(*params), "loss:",
                      "%.2f"%(sum(cost)/len(curs)/1e6), "MHz")
         self._iteration_counter += 1
         return sum(cost)
