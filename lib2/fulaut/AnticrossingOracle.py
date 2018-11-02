@@ -31,6 +31,7 @@ class AnticrossingOracle():
         self._logger = LoggingServer.getInstance()
         self._fast = True
         self._fast_res_detect = fast_res_detect
+        self._noisy_data = False
         self._extract_data()
 
     def launch(self):
@@ -38,10 +39,10 @@ class AnticrossingOracle():
         self._period = self._find_period()
         potential_sweet_spots = self._find_potential_sweet_spots()
 
-        d_range = slice(0.,0.9,0.9/9)
+        d_range = slice(0.1, 0.9,0.9/9)
         mean_freq = mean(self._res_points[:,1])
-        f_range = slice(mean_freq-1e6, mean_freq+1e6, 1e6)
-        q_freq_range = slice(4e9,12e9, 100e6)
+        f_range = slice(mean_freq-1e6, mean_freq+1.1e6, 1e6)
+        q_freq_range = slice(4e9,12.01e9, 100e6)
         g_range = slice(20e6, 40e6, 20e6/5)
         Ns = 3
         args = (self._res_points[:,0], self._res_points[:,1])
@@ -94,8 +95,13 @@ class AnticrossingOracle():
             #                                         sweet_spot_cur, 10, 0.6]
             # plt.plot(self._curs, self._model(self._curs, p0), "o")
             plt.plot(self._res_points[:,0],
-                    self._model_fast(self._res_points[:,0], best_fitresult.x, False),
-                                "orange", ls="", marker=".", label="Model")
+                    self._model_fast(self._res_points[:,0],
+                    self._brute_opt_params, False),
+                    "yellow", ls=":", label="Brute")
+            plt.plot(self._res_points[:,0],
+                     self._model_fast(self._res_points[:,0],
+                     best_fitresult.x, False),
+                     "orange", ls="-", marker=".", label="Final")
             plt.legend()
             plt.gcf().set_size_inches(15,5)
 
@@ -114,18 +120,35 @@ class AnticrossingOracle():
         data = self._data
         res_freqs = []
 
+        def comlex_ptp_estimation(Z):
+            point0 = Z[0,0]
+            point1 = Z.ravel()[argmax(abs(Z-point0))]
+            point2 = Z.ravel()[argmax(abs(Z-point1))]
+            point3 = Z.ravel()[argmax(abs(Z-point2))]
+            return abs(point3-point2)
+
+        mean_derivative = mean(abs(diff(data)))
+        data_ptp = comlex_ptp_estimation(data)
+        if mean_derivative > 0.2*data_ptp:
+            # we probably have a lot of noise
+            self._noisy_data = True
+
+        preprocessed_data = filtered_data if self._noisy_data else data
+
         # Taking peaks deeper than half of the distance between the median
         # transmission level and the deepest point
-        threshold = abs(data).min()+0.5*(median(abs(data))-abs(data).min())
+        threshold = abs(preprocessed_data).min()+\
+                0.5*(median(abs(preprocessed_data))-abs(preprocessed_data).min())
 
         res_points = []
         self._extracted_indices = []
+        self._extraction_types =[]
+
         for idx, row in enumerate(data):
-            filtered_row = (savgol_filter(real(row), 21, 2)\
-                                + 1j*savgol_filter(imag(row), 21, 2))
-            filtered_row = abs(filtered_row)
-            extrema = argrelextrema(filtered_row, less, order=10)[0]
-            extrema = extrema[filtered_row[extrema]<threshold]
+            preprocessed_row = preprocessed_data[idx]
+            preprocessed_row = abs(preprocessed_row)
+            extrema = argrelextrema(preprocessed_row, less, order=10)[0]
+            extrema = extrema[preprocessed_row[extrema]<threshold]
 
             if len(extrema) > 0:
                 RD = ResonatorDetector(freqs, row, plot=False,
@@ -133,9 +156,12 @@ class AnticrossingOracle():
                 result = RD.detect()
                 if result is not None:
                     res_points.append((curs[idx], result[0]))
+                    self._extraction_types.append("fit")
                 else:
-                    smallest_extremum = extrema[argmin(filtered_row[extrema])]
+                    smallest_extremum = extrema[argmin(preprocessed_row[extrema])]
                     res_points.append((curs[idx], freqs[smallest_extremum]))
+                    self._extraction_types.append("min")
+
                 self._extracted_indices.append(idx)
 
         self._res_points = array(res_points)

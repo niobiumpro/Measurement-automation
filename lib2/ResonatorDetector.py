@@ -20,7 +20,7 @@ class ResonatorDetector():
 
         frequencies, sdata = self._freqs, self._s_data
 
-        for port in [self._filtered_port, self._port]:
+        for port in [self._port, self._filtered_port]:
             if not self._fast:
                 result = self._fit(port)
             else:
