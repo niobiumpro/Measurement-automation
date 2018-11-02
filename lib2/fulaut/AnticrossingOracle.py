@@ -20,7 +20,8 @@ class AnticrossingOracle():
 
     qubit_spectra = {"transmon":transmon_spectrum}
 
-    def __init__(self, qubit_type, sts_result, plot=False, fast = False):
+    def __init__(self, qubit_type, sts_result, plot=False,
+                 fast_res_detect = False):
         self._qubit_spectrum = AnticrossingOracle.qubit_spectra[qubit_type]
         self._sts_result = sts_result
         self._plot = plot
@@ -28,8 +29,8 @@ class AnticrossingOracle():
         self._minimum_points_around_zero = 5
         self._distance_from_intersection = 2
         self._logger = LoggingServer.getInstance()
-        self._fast = fast
-
+        self._fast = True
+        self._fast_res_detect = fast_res_detect
         self._extract_data()
 
     def launch(self):
@@ -39,6 +40,7 @@ class AnticrossingOracle():
 
         d_range = slice(0.,0.9,0.9/9)
         mean_freq = mean(self._res_points[:,1])
+        f_range = slice(mean_freq-1e6, mean_freq+1e6, 1e6)
         q_freq_range = slice(4e9,12e9, 100e6)
         g_range = slice(20e6, 40e6, 20e6/5)
         Ns = 3
@@ -53,11 +55,11 @@ class AnticrossingOracle():
 
             self._iteration_counter = 0
             result = brute(self._brute_cost_function,
-                           (g_range, q_freq_range, d_range), Ns=Ns,
-                           args=args+(mean_freq, self._period, sweet_spot_cur), finish=None)
+                           (f_range, g_range, q_freq_range, d_range), Ns=Ns,
+                           args=args+(self._period, sweet_spot_cur), finish=None)
 
-            g, q_max_freq, d = list(result)
-            full_params = [mean_freq, g, self._period, sweet_spot_cur, q_max_freq, d]
+            freq, g, q_max_freq, d = list(result)
+            full_params = [freq, g, self._period, sweet_spot_cur, q_max_freq, d]
 
             self._iteration_counter = 0
             result = minimize(self._cost_function, full_params,
@@ -76,6 +78,9 @@ class AnticrossingOracle():
                 self._loss = loss
                 best_fit_loss = loss
                 best_fitresult = result
+
+            if loss<0.05:
+                break
 
         res_freq, g, period, sweet_spot_cur, q_freq, d = best_fitresult.x
 
@@ -116,17 +121,20 @@ class AnticrossingOracle():
         res_points = []
         self._extracted_indices = []
         for idx, row in enumerate(data):
-            row = abs(row)
-            extrema = argrelextrema(row, less, order=10)[0]
-            extrema = extrema[row[extrema]<threshold]
+            filtered_row = (savgol_filter(real(row), 21, 2)\
+                                + 1j*savgol_filter(imag(row), 21, 2))
+            filtered_row = abs(filtered_row)
+            extrema = argrelextrema(filtered_row, less, order=10)[0]
+            extrema = extrema[filtered_row[extrema]<threshold]
 
-            if len(extrema)>0:
-                RD = ResonatorDetector(freqs, data[idx], plot=False)
+            if len(extrema) > 0:
+                RD = ResonatorDetector(freqs, row, plot=False,
+                                       fast=self._fast_res_detect)
                 result = RD.detect()
                 if result is not None:
                     res_points.append((curs[idx], result[0]))
                 else:
-                    smallest_extremum = extrema[argmin(row[extrema])]
+                    smallest_extremum = extrema[argmin(filtered_row[extrema])]
                     res_points.append((curs[idx], freqs[smallest_extremum]))
                 self._extracted_indices.append(idx)
 
@@ -173,6 +181,22 @@ class AnticrossingOracle():
         self._duty, self._phase = duty, phase
         sws1 = phase/2/pi*self._period + self._period*duty/2
         sws2 = phase/2/pi*self._period - self._period*(1-duty)/2
+
+        if max(abs(diff(data))) > 0.5*ptp(data):
+            # we probably have anticrossings
+            max_num_of_anticrossings = ceil(ptp(self._curs)/self._period)*2
+            min_number_of_anticrossings = floor(ptp(self._curs)/self._period)*2
+            large_derivatives = where(abs(diff(data)) > 0.5*ptp(data))[0]
+
+            if min_number_of_anticrossings <= len(large_derivatives) <= max_num_of_anticrossings:
+                # everything is fine, not noise
+                return [sws2]
+
+        elif max(abs(diff(data))) < 0.1*ptp(data):
+            # we probably have smooth curves
+            return [sws1]
+
+        # we will check both, noisy scan
         return sws1, sws2
 
 
@@ -275,7 +299,7 @@ class AnticrossingOracle():
     #     phis_fine = linspace(phis[0],phis[-1], 1000)
         f_qs = self._qubit_spectrum(curs, *qubit_params)
 
-        span = ptp(self._freqs)
+        freq_span = self._freqs[-1] - self._freqs[0]
         levels = self._eigenlevels(f_qs, f_r, g)
 
         if plot:
@@ -284,11 +308,10 @@ class AnticrossingOracle():
             plt.plot(curs, levels[2,:])
             plt.ylim(self._freqs[0], self._freqs[-1])
 
-        freq_span = ptp(self._freqs)
         upper_limit = f_r+freq_span
         lower_limit = f_r-freq_span
 
-        res_freqs_model = zeros_like(curs)+mean(self._freqs)
+        res_freqs_model = zeros_like(curs)+0.5*(self._freqs[-1]+self._freqs[0])
         idcs1 = where(logical_and(lower_limit<levels[1,:],
                         levels[1,:]<upper_limit))
         idcs2 = where(logical_and(lower_limit<levels[2,:],
@@ -299,8 +322,8 @@ class AnticrossingOracle():
 
         return res_freqs_model
 
-    def _brute_cost_function(self, params, curs, res_freqs, f_res, period, sws_cur):
-        g, q_max_freq, d = list(params)
+    def _brute_cost_function(self, params, curs, res_freqs, period, sws_cur):
+        f_res, g, q_max_freq, d = list(params)
         full_params =\
             [f_res, g, period, sws_cur, q_max_freq, d]
         return self._cost_function(full_params, curs, res_freqs,
