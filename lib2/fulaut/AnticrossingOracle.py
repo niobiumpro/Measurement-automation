@@ -39,10 +39,10 @@ class AnticrossingOracle():
         self._period = self._find_period()
         potential_sweet_spots = self._find_potential_sweet_spots()
 
-        d_range = slice(0.1, 0.9,0.9/9)
+        d_range = slice(0, 0.9,0.9/9)
         mean_freq = mean(self._res_points[:,1])
         f_range = slice(mean_freq-1e6, mean_freq+1.1e6, 1e6)
-        q_freq_range = slice(4e9,12.01e9, 100e6)
+        q_freq_range = slice(4e9,10e9, 100e6)
         g_range = slice(20e6, 40e6, 20e6/5)
         Ns = 3
         args = (self._res_points[:,0], self._res_points[:,1])
@@ -129,11 +129,13 @@ class AnticrossingOracle():
 
         mean_derivative = mean(abs(diff(data)))
         data_ptp = comlex_ptp_estimation(data)
+
         if mean_derivative > 0.2*data_ptp:
             # we probably have a lot of noise
             self._noisy_data = True
 
         preprocessed_data = filtered_data if self._noisy_data else data
+        self._preprocessed_data = preprocessed_data
 
         # Taking peaks deeper than half of the distance between the median
         # transmission level and the deepest point
@@ -144,25 +146,27 @@ class AnticrossingOracle():
         self._extracted_indices = []
         self._extraction_types =[]
 
-        for idx, row in enumerate(data):
-            preprocessed_row = preprocessed_data[idx]
+        for idx, preprocessed_row in enumerate(preprocessed_data):
             preprocessed_row = abs(preprocessed_row)
             extrema = argrelextrema(preprocessed_row, less, order=10)[0]
             extrema = extrema[preprocessed_row[extrema]<threshold]
 
             if len(extrema) > 0:
-                RD = ResonatorDetector(freqs, row, plot=False,
+                RD = ResonatorDetector(freqs, preprocessed_data[idx], plot=False,
                                        fast=self._fast_res_detect)
                 result = RD.detect()
                 if result is not None:
                     res_points.append((curs[idx], result[0]))
                     self._extraction_types.append("fit")
+                    self._extracted_indices.append(idx)
+
                 else:
-                    smallest_extremum = extrema[argmin(preprocessed_row[extrema])]
+                    smallest_extremum =\
+                        extrema[argmin(preprocessed_row[extrema])]
                     res_points.append((curs[idx], freqs[smallest_extremum]))
                     self._extraction_types.append("min")
+                    self._extracted_indices.append(idx)
 
-                self._extracted_indices.append(idx)
 
         self._res_points = array(res_points)
         self._freqs = freqs
@@ -201,7 +205,7 @@ class AnticrossingOracle():
         data = self._res_points[:,1]-mean(self._res_points[:,1])
         duty, phase = brute(self._cost_function_sweet_spots,
                             ((0, 1), (-pi, pi)),
-                            Ns = 20,
+                            Ns = 50,
                             args=(self._res_points[:,0], data),
                             full_output=0)
         self._duty, self._phase = duty, phase
