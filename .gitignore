@@ -6,3 +6,4 @@ data*
 *.ipynb
 qubit-measurements*
 log/
+*.pkl
