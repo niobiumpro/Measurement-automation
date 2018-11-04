@@ -216,35 +216,51 @@ class SpectrumOracle():
 #         print(params)
 
         q_freqs = self._qubit_spectrum(points[:,0], *params[:4])
-        distances = abs(q_freqs - points[:,1])
-        distances2 = abs(q_freqs - params[-1] - points[:,1])
-        distances3 = abs(q_freqs - 2*params[-1] - points[:,1])
 
-        chosen = distances < y_scan_area_size
-        chosen2 = distances2 < y_scan_area_size
-        chosen3 = distances3 < y_scan_area_size
+        frequency_shifts = [0, -params[-1], -2*params[-1]]
+        loss_factors = [1, .1, .01]
+        lines_distances = []
+        lines_chosen_points = []
 
-        distances_chosen = distances[chosen]
-        distances_chosen2 = distances2[chosen2]
-        distances_chosen3 = distances3[chosen3]
-        chosen_points = points[chosen]
-        chosen_points2 = points[chosen2]
-        chosen_points3 = points[chosen3]
+        for shift in frequency_shifts:
+            distances = abs(q_freqs - points[:,1] + shift)
+
+            chosen = distances < y_scan_area_size
+            close_distances = distances[chosen]
+            close_points = points[chosen]
+
+            nonzerodiff = flatnonzero(np.diff(np.r_[0,points[chosen][:,0],0]))
+            groups_of_same_x_coord = vstack((nonzerodiff[:-1], nonzerodiff[1:]))\
+                                    .T
+
+            chosen_distances = []
+            chosen_points = []
+            for group in groups_of_same_x_coord:
+                same_x_distances = close_distances[group[0]:group[1]]
+                argmin_of_group = argmin(same_x_distances)
+                chosen_distances.append(same_x_distances[argmin_of_group])
+                chosen_points.append(close_points[group[0]+argmin_of_group])
+
+            lines_distances.append(chosen_distances)
+            lines_chosen_points.append(chosen_points)
 
         d = params[3]
-        if len(chosen_points)<len(self._parameter_values)/3 or d>0.95:
-            loss_value = sum(distances)**2
+        if len(lines_distances[0])<len(self._parameter_values)/3 or d>0.95:
+            loss_value = sum(lines_distances[0])**2
         else:
-            loss_value = distances_chosen.sum()/(len(chosen)+1)
-            loss_value += 0.1*distances_chosen2.sum()/(len(chosen2)+1)
-            loss_value += 0.01*distances_chosen3.sum()/(len(chosen3)+1)
-            loss_value /= (len(chosen_points)+len(chosen_points2)+len(chosen_points3))**2
+            loss_value = 0
+            for idx, loss_factor in enumerate(loss_factors):
+                loss_value +=\
+                    loss_factor*sum(lines_distances[idx])\
+                        /(len(lines_distances)+1)
+            loss_value /= len(concatenate(lines_distances))**2
         if verbose:
-            print((len(chosen_points)+len(chosen_points2)+len(chosen_points3)))
-            return loss_value, (chosen_points, chosen_points2, chosen_points3)
+            print(len(concatenate(lines_distances)))
+            return loss_value, lines_chosen_points
 
         if self._counter%10 == 0:
-            print(", loss:", "%.2e"%loss_value, ", chosen points:", len(chosen_points))
+            print(", loss:", "%.2e"%loss_value,
+                  ", chosen points:", len(concatenate(lines_distances)))
             clear_output(wait=True)
         return loss_value
 
