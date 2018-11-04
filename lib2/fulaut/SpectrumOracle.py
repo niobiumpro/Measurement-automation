@@ -33,7 +33,7 @@ class SpectrumOracle():
         fl_grid = 0.98*period, 1.02*period, 3
         sws_grid = sweet_spot_cur-0.02*period, sweet_spot_cur+0.02*period, 5
         freq_grid = q_freq*0.7, q_freq*1.3, 50
-        d_grid = 0.1, .8, 5
+        d_grid = 0.1, .8, 8
         alpha_grid = 100e-3, 120e-3, 5
 
         slices = []
@@ -219,12 +219,13 @@ class SpectrumOracle():
 
         frequency_shifts = [0, -params[-1], -2*params[-1]]
         loss_factors = [1, .1, .01]
-        lines_distances = []
+        lines_chosen_distances = []
         lines_chosen_points = []
+        lines_distances = []
 
         for shift in frequency_shifts:
             distances = abs(q_freqs - points[:,1] + shift)
-
+            lines_distances.append(distances)
             chosen = distances < y_scan_area_size
             close_distances = distances[chosen]
             close_points = points[chosen]
@@ -241,26 +242,26 @@ class SpectrumOracle():
                 chosen_distances.append(same_x_distances[argmin_of_group])
                 chosen_points.append(close_points[group[0]+argmin_of_group])
 
-            lines_distances.append(chosen_distances)
+            lines_chosen_distances.append(chosen_distances)
             lines_chosen_points.append(chosen_points)
 
         d = params[3]
-        if len(lines_distances[0])<len(self._parameter_values)/3 or d>0.95:
-            loss_value = sum(lines_distances[0])**2
+        if len(lines_chosen_distances[0])<len(self._parameter_values)/3 or d>0.95:
+            loss_value = sum(distances[0])**2
         else:
             loss_value = 0
             for idx, loss_factor in enumerate(loss_factors):
                 loss_value +=\
-                    loss_factor*sum(lines_distances[idx])\
-                        /(len(lines_distances)+1)
-            loss_value /= len(concatenate(lines_distances))**2
+                    loss_factor*sum(lines_chosen_distances[idx])\
+                        /(len(lines_chosen_distances)+1)
+            loss_value /= len(concatenate(lines_chosen_distances))**2
         if verbose:
-            print(len(concatenate(lines_distances)))
+            print(len(concatenate(lines_chosen_distances)))
             return loss_value, lines_chosen_points
 
         if self._counter%10 == 0:
             print(", loss:", "%.2e"%loss_value,
-                  ", chosen points:", len(concatenate(lines_distances)))
+                  ", chosen points:", len(concatenate(lines_chosen_distances)))
             clear_output(wait=True)
         return loss_value
 
