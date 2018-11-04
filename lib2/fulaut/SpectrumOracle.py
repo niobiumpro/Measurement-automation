@@ -107,7 +107,8 @@ class SpectrumOracle():
                                                      fine_freq_grid,
                                                      fine_d_grid,
                                                      fine_alpha_grid),
-            args = (self._y_scan_area_size, self._points), Ns=Ns, full_output=False, finish=None)
+            args = (self._y_scan_area_size, self._points),
+            Ns=Ns, full_output=False)
 
         if plot:
             plt.plot(self._parameter_values,
@@ -142,10 +143,10 @@ class SpectrumOracle():
         for idx in range(len(self._parameter_values)):
             row = abs(abs(self._Z))[idx]
             extrema_idcs = array(argrelextrema(row, np.greater, order=2))[0]
-            threshold = 0.1
+            threshold = 0.0
             bright_extrema = extrema_idcs
 
-            condition1 = row[extrema_idcs]>median(row)+0.05*ptp(abs(self._Z))
+            condition1 = row[extrema_idcs]>median(row)+0.01*ptp(abs(self._Z))
             while len(bright_extrema)>5:
                 condition2 = row[extrema_idcs]>threshold*np.max(abs(self._Z))
                 bright_extrema = extrema_idcs[np.logical_and(condition1, condition2)]
@@ -247,7 +248,7 @@ class SpectrumOracle():
 
         d = params[3]
         if len(lines_chosen_distances[0])<len(self._parameter_values)/3 or d>0.95:
-            loss_value = sum(distances[0])**2
+            loss_value = sum(lines_distances[0])**2
         else:
             loss_value = 0
             for idx, loss_factor in enumerate(loss_factors):
@@ -257,7 +258,7 @@ class SpectrumOracle():
             loss_value /= len(concatenate(lines_chosen_distances))**2
         if verbose:
             print(len(concatenate(lines_chosen_distances)))
-            return loss_value, lines_chosen_points
+            return loss_value, [array(l) for l in lines_chosen_points]
 
         if self._counter%10 == 0:
             print(", loss:", "%.2e"%loss_value,
