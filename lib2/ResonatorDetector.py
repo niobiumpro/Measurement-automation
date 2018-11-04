@@ -67,4 +67,5 @@ class ResonatorDetector():
             abs(fit_amplitude-expected_amplitude)<5*expected_amplitude:
             return fit_frequency, fit_amplitude, fit_angle
         else:
-            print(fit_frequency, expected_frequency)
+            pass
+            # print(fit_frequency, expected_frequency)
