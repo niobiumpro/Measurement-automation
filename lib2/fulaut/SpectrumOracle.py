@@ -33,7 +33,7 @@ class SpectrumOracle():
         fl_grid = 0.98*period, 1.02*period, 3
         sws_grid = sweet_spot_cur-0.02*period, sweet_spot_cur+0.02*period, 5
         freq_grid = q_freq*0.7, q_freq*1.3, 50
-        d_grid = d*0.9, d*1.1, 5
+        d_grid = 0.1, .8, 5
         alpha_grid = 100e-3, 120e-3, 5
 
         slices = []
