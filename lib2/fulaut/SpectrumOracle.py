@@ -102,12 +102,12 @@ class SpectrumOracle():
         self._counter = 0
         self._iterations = Ns**4*self._grids[-1][2]
 
-        opt_params = brute(self._cost_function_fine, (fine_period_grid,
+        opt_params = brute(self._cost_function_fine_fast, (fine_period_grid,
                                                      fine_sws_grid,
                                                      fine_freq_grid,
                                                      fine_d_grid,
                                                      fine_alpha_grid),
-            args = (self._y_scan_area_size, self._points), Ns=Ns, full_output=False)
+            args = (self._y_scan_area_size, self._points), Ns=Ns, full_output=False, finish=None)
 
         if plot:
             plt.plot(self._parameter_values,
@@ -170,23 +170,21 @@ class SpectrumOracle():
 
 
     def _cost_function_coarse(self, params, y_scan_area_size, points, verbose=False):
-        clear_output(wait=True)
         percentage_done = self._counter/self._iterations*100
-        if percentage_done <= 100:
+        if percentage_done <= 100 and self._counter%10 == 0:
             print("\rDone: %.2f%%, %.d/%d"%(percentage_done, self._counter, self._iterations), end="")
             print(", ["+(("{:.2e}, "*len(params))[:-2]).format(*params)+"]", end="")
 #             sleep(0.1)
-        else:
+        elif self._counter%10 == 0:
             print("\rDone: 100%, polishing...", end="")
             print(", params:", params, end="")
 #             sleep(0.1)
         self._counter += 1
 #         print(params)
-        q_freq = params[0]
         params = self._p0[:2]+list(params)
 
         distances = abs(self._qubit_spectrum(points[:,0], *params)-points[:,1])
-        chosen = distances<y_scan_area_size
+        chosen = distances < y_scan_area_size
         distances_chosen = distances[chosen]
         chosen_points = points[chosen]
 
@@ -197,11 +195,62 @@ class SpectrumOracle():
             loss_value = distances_chosen.sum()/(len(chosen_points)+1)**2
         if verbose:
             return loss_value, chosen_points
-        print(", loss:", "%.2e"%loss_value, ", chosen points:", len(chosen_points))
+
+        if self._counter%10 == 0:
+            print(", loss:", "%.2e"%loss_value, ", chosen points:", len(chosen_points))
+            clear_output(wait=True)
+        return loss_value
+
+    def _cost_function_fine_fast(self, params, y_scan_area_size, points, verbose=False):
+
+        percentage_done = self._counter/self._iterations*100
+        if percentage_done <= 100 and self._counter%10 == 0:
+            print("\rDone: %.2f%%, %.d/%d"%(percentage_done, self._counter, self._iterations), end="")
+            print(", ["+(("{:.2e}, "*len(params))[:-2]).format(*params)+"]", end="")
+#             sleep(0.1)
+        elif self._counter%10 == 0:
+            print("\rDone: 100%, polishing...", end="")
+            print(", params:", params, end="")
+#             sleep(0.1)
+        self._counter += 1
+#         print(params)
+
+        q_freqs = self._qubit_spectrum(points[:,0], *params[:4])
+        distances = abs(q_freqs - points[:,1])
+        distances2 = abs(q_freqs - params[-1] - points[:,1])
+        distances3 = abs(q_freqs - 2*params[-1] - points[:,1])
+
+        chosen = distances < y_scan_area_size
+        chosen2 = distances2 < y_scan_area_size
+        chosen3 = distances3 < y_scan_area_size
+
+        distances_chosen = distances[chosen]
+        distances_chosen2 = distances2[chosen2]
+        distances_chosen3 = distances3[chosen3]
+        chosen_points = points[chosen]
+        chosen_points2 = points[chosen2]
+        chosen_points3 = points[chosen3]
+
+        d = params[3]
+        if len(chosen_points)<len(self._parameter_values)/3 or d>0.95:
+            loss_value = sum(distances)**2
+        else:
+            loss_value = distances_chosen.sum()/(len(chosen)+1)
+            loss_value += 0.1*distances_chosen2.sum()/(len(chosen2)+1)
+            loss_value += 0.01*distances_chosen3.sum()/(len(chosen3)+1)
+            loss_value /= (len(chosen_points)+len(chosen_points2)+len(chosen_points3))**2
+        if verbose:
+            print((len(chosen_points)+len(chosen_points2)+len(chosen_points3)))
+            return loss_value, (chosen_points, chosen_points2, chosen_points3)
+
+        if self._counter%10 == 0:
+            print(", loss:", "%.2e"%loss_value, ", chosen points:", len(chosen_points))
+            clear_output(wait=True)
         return loss_value
 
     def _cost_function_fine(self, params, y_scan_area_size, points, verbose=False):
-        x_coords = sorted(set(points[:,0]))
+
+        x_coords = array(list(sorted(set(points[:,0]))))
 
         loss = []
         loss2 = []
@@ -211,12 +260,14 @@ class SpectrumOracle():
         chosen_points3 = []
 
         total_distance_of_the_main_line_from_points = 0
+        q_freqs = self._qubit_spectrum(x_coords, *params[:4])
 
-        for x_coord in x_coords:
-            same_x_points = points[points[:,0]==x_coord]
-            distances = abs(self._qubit_spectrum(x_coord, *params[:4])-same_x_points[:,1])
-            distances2 = abs(self._qubit_spectrum(x_coord, *params[:4])-params[-1]-same_x_points[:,1])
-            distances3 = abs(self._qubit_spectrum(x_coord, *params[:4])-2*params[-1]-same_x_points[:,1])
+
+        for idx, x_coord in enumerate(x_coords):
+            same_x_points = points[points[:,0] == x_coord]
+            distances = abs(q_freqs[idx]-same_x_points[:,1])
+            distances2 = abs(q_freqs[idx]-params[-1]-same_x_points[:,1])
+            distances3 = abs(q_freqs[idx]-2*params[-1]-same_x_points[:,1])
             total_distance_of_the_main_line_from_points += sum(distances)
 
             min_arg = argmin(distances)
@@ -249,7 +300,7 @@ class SpectrumOracle():
                                 0.01*sum(array(loss3))/(len(loss3)+1)
             loss_value /= total_chosen_points**2
 
-        if self._counter%1==0:
+        if self._counter%10==0:
             percentage_done = self._counter/self._iterations*100
             clear_output(wait=True)
             print("\rDone: %.2f%%, %.d/%d"%(percentage_done, self._counter, self._iterations), end="")
@@ -258,5 +309,5 @@ class SpectrumOracle():
         self._counter += 1
 
         if verbose:
-            return loss_value, chosen_points, chosen_points2, chosen_points3
+            return loss_value, (array(chosen_points), array(chosen_points2), array(chosen_points3))
         return loss_value
