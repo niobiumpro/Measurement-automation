@@ -7,6 +7,8 @@ from scipy.optimize import *
 from IPython.display import clear_output
 from lib2.fulaut.qubit_spectra import *
 
+from skimage.filters import threshold_otsu
+
 class SpectrumOracle():
 
     '''
@@ -33,7 +35,7 @@ class SpectrumOracle():
         fl_grid = 0.98*period, 1.02*period, 3
         sws_grid = sweet_spot_cur-0.02*period, sweet_spot_cur+0.02*period, 5
         freq_grid = q_freq*0.7, q_freq*1.3, 50
-        d_grid = 0.1, .8, 8
+        d_grid = 0.1, .91, 8
         alpha_grid = 100e-3, 120e-3, 5
 
         slices = []
@@ -139,18 +141,23 @@ class SpectrumOracle():
             self._freqs = data["frequency"][:]/1e9
         self._Z = (data["data"].T - data["data"][:, -1]).T
 
+
+        self._thresh_otsu = threshold_otsu(abs(self._Z))
+
         points = []
         for idx in range(len(self._parameter_values)):
-            row = abs(abs(self._Z))[idx]
-            extrema_idcs = array(argrelextrema(row, np.greater, order=2))[0]
-            threshold = 0.0
-            bright_extrema = extrema_idcs
-
-            condition1 = row[extrema_idcs]>median(row)+0.01*ptp(abs(self._Z))
-            while len(bright_extrema)>5:
-                condition2 = row[extrema_idcs]>threshold*np.max(abs(self._Z))
-                bright_extrema = extrema_idcs[np.logical_and(condition1, condition2)]
-                threshold+=0.01
+            row = abs(self._Z)[idx]
+            # extrema_idcs = argrelextrema(row, np.greater, order=1)[0]
+            #
+            # bright_extrema = extrema_idcs[row[extrema_idcs]>0.5*self._thresh_otsu]
+            #
+            # threshold = 0.0
+            # while len(bright_extrema)>5:
+            #     condition = row[extrema_idcs]>threshold*np.max(abs(self._Z))
+            #     bright_extrema = extrema_idcs[condition]
+            #     threshold+=0.01
+            bright_extrema = find_peaks(row, prominence = 0.5*ptp(row))[0]
+            bright_extrema = bright_extrema[row[bright_extrema]>self._thresh_otsu]
             points += list(zip([self._parameter_values[idx]]*len(bright_extrema),
                             self._freqs[bright_extrema]))
 
@@ -247,7 +254,9 @@ class SpectrumOracle():
             lines_chosen_points.append(chosen_points)
 
         d = params[3]
-        if len(lines_chosen_distances[0])<len(self._parameter_values)/3 or d>0.95:
+        if len(lines_chosen_distances[0]) < len(self._parameter_values)/3\
+           or d>0.95\
+           or len(lines_chosen_distances[0]) < len(lines_chosen_distances[1]):
             loss_value = sum(lines_distances[0])**2
         else:
             loss_value = 0
