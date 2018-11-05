@@ -5,9 +5,10 @@ import numpy as np
 from scipy.signal import *
 from scipy.optimize import *
 from IPython.display import clear_output
+from skimage.filters import threshold_otsu
+
 from lib2.fulaut.qubit_spectra import *
 
-from skimage.filters import threshold_otsu
 
 class SpectrumOracle():
 
@@ -35,14 +36,14 @@ class SpectrumOracle():
         fl_grid = 0.98*period, 1.02*period, 3
         sws_grid = sweet_spot_cur-0.02*period, sweet_spot_cur+0.02*period, 5
         freq_grid = q_freq*0.7, q_freq*1.3, 50
-        d_grid = 0.1, .91, 8
+        d_grid = .1, .9, 64
         alpha_grid = 100e-3, 120e-3, 5
 
         slices = []
         self._grids = (fl_grid, sws_grid, freq_grid, d_grid, alpha_grid)
         for grid in self._grids:
             step = (grid[1]-grid[0])/grid[2]
-            slices.append(slice(grid[0], grid[1], step))
+            slices.append(slice(grid[0], grid[1]+0.01*step, step))
 
         self._p0 = [(grid[0]+grid[1])/2 for grid in self._grids]
         self._slices = slices
@@ -60,33 +61,35 @@ class SpectrumOracle():
         scan_area_sizes =\
             linspace(self._y_scan_area_size/2, self._y_scan_area_size*2, 10)
 
-        candidate_coarse_params = []
-        candidate_losses = []
-        for y_scan_area_size in scan_area_sizes:
-            self._counter = 0
-            candidate_params = brute(self._cost_function_coarse,
-                                      (freq_slice, d_slice),
-                                      args =\
-                                        (y_scan_area_size,
-                                         self._points),
-                                      full_output=False)
-            candidate_loss =\
-                    self._cost_function_coarse(candidate_params,
-                                               y_scan_area_size,
-                                               self._points)
-            candidate_coarse_params.append(candidate_params)
-            candidate_losses.append(candidate_loss)
-        candidate_coarse_params = array(candidate_coarse_params)
+        # refine frequency
+        self._counter = 0
+        candidate_params = brute(self._cost_function_coarse,
+                                 (freq_slice, d_slice),
+                                 args=(self._y_scan_area_size*2,
+                                       self._points),
+                                 full_output=False)
 
-        opt_params_coarse = None
-        min_loss_idx = argmin(candidate_losses)
-        min_loss = candidate_losses[min_loss_idx]
-        max_frequency_idx = argmax(candidate_coarse_params[:,0])
-        max_frequency_params_loss = candidate_losses[max_frequency_idx]
-        if max_frequency_params_loss<10*min_loss:
-            opt_params_coarse = candidate_coarse_params[max_frequency_idx]
-        else:
-            opt_params_coarse = candidate_coarse_params[min_loss_idx]
+        freq_slice = slice(candidate_params[0]-300e-3,
+                            candidate_params[0]+301e-3,
+                            10e-3)
+        self._refine_freq_slice = freq_slice
+        self._iterations = 60*self._grids[3][2]
+
+        params, fval, grid, loss = brute(self._cost_function_coarse,
+                                         (freq_slice, d_slice),
+                                         args=(self._y_scan_area_size,
+                                         self._points),
+                                         full_output=True, finish=None)
+        # print(params)
+        self._coarse_loss = loss
+        extrema = self._argrelextrema2D(loss).T
+        self._candidate_freqs = mgrid[freq_slice][extrema[0]]
+        self._candidate_ds = mgrid[d_slice][extrema[1]]
+        self._candidate_losses = loss[extrema[0], extrema[1]]
+        # return None
+        # opt_params_coarse = max(self._candidate_freqs), min(self._candidate_ds)
+        self._opt_params_coarse = opt_params_coarse = params
+        self._coarse_frequency = opt_params_coarse[0]
 
         opt_params_coarse = self._p0[:2]+list(opt_params_coarse)
         if plot:
@@ -95,22 +98,23 @@ class SpectrumOracle():
             plt.plot(self._parameter_values,
                     self._qubit_spectrum(self._parameter_values, *opt_params_coarse), ":")
 
-        fine_period_grid = 0.95*self._p0[0], 1.05*self._p0[0]
+        fine_period_grid = slice(self._p0[0], self._p0[0]+0.1, 1)
         fine_sws_grid = self._p0[1]-0.01*self._p0[0], self._p0[1]+0.01*self._p0[0]
-        fine_freq_grid = opt_params_coarse[2]*0.975, opt_params_coarse[2]*1.025
+        fine_freq_grid = slice(self._coarse_frequency, self._coarse_frequency+0.21, 0.2/5)
         fine_d_grid = opt_params_coarse[3]*0.95, opt_params_coarse[3]*1.05
         fine_alpha_grid = self._slices[-1]
+        self._fine_slices = (fine_period_grid,
+                             fine_sws_grid,
+                             fine_freq_grid,
+                             fine_d_grid,
+                             fine_alpha_grid)
         Ns = 5
         self._counter = 0
-        self._iterations = Ns**4*self._grids[-1][2]
+        self._iterations = Ns**3*self._grids[-1][2]
 
-        opt_params = brute(self._cost_function_fine_fast, (fine_period_grid,
-                                                     fine_sws_grid,
-                                                     fine_freq_grid,
-                                                     fine_d_grid,
-                                                     fine_alpha_grid),
-            args = (self._y_scan_area_size, self._points),
-            Ns=Ns, full_output=False)
+        opt_params = brute(self._cost_function_fine_fast, self._fine_slices,
+                           args=(self._y_scan_area_size, self._points),
+                           Ns=Ns, full_output=False, finish=None).tolist()
 
         if plot:
             plt.plot(self._parameter_values,
@@ -125,7 +129,7 @@ class SpectrumOracle():
             plt.gcf().set_size_inches(15,5)
 
         opt_params[2] = opt_params[2]*1e9
-        return opt_params
+        return array(opt_params)
 
 
     def _extract_data(self, plot=False):
@@ -139,27 +143,26 @@ class SpectrumOracle():
             self._freqs = data["Frequency [Hz]"][:]/1e9
         except:
             self._freqs = data["frequency"][:]/1e9
-        self._Z = (data["data"].T - data["data"][:, -1]).T
+        self._Z = (data["data"].T - mean(data["data"])).T
 
-
-        self._thresh_otsu = threshold_otsu(abs(self._Z))
+        self._thresh = sqrt(median(diff(abs(self._Z))**2))
 
         points = []
         for idx in range(len(self._parameter_values)):
             row = abs(self._Z)[idx]
-            # extrema_idcs = argrelextrema(row, np.greater, order=1)[0]
-            #
-            # bright_extrema = extrema_idcs[row[extrema_idcs]>0.5*self._thresh_otsu]
-            #
-            # threshold = 0.0
-            # while len(bright_extrema)>5:
-            #     condition = row[extrema_idcs]>threshold*np.max(abs(self._Z))
-            #     bright_extrema = extrema_idcs[condition]
-            #     threshold+=0.01
-            bright_extrema = find_peaks(row, prominence = 0.5*ptp(row))[0]
-            bright_extrema = bright_extrema[row[bright_extrema]>self._thresh_otsu]
+            row = row - median(row)
+
+            if sqrt(median(diff(row)**2)) > 0.1*ptp(row):
+                # we probably have a noisy row
+                continue
+
+            bright_extrema = find_peaks(row, prominence = 0.25*ptp(row))[0]
+            bright_extrema = bright_extrema[row[bright_extrema] > 1*self._thresh]
+
+            sort_idx = argsort(row[bright_extrema])
+            bright_extrema = bright_extrema[sort_idx][-4:] # only take up to 4 brightest ones
             points += list(zip([self._parameter_values[idx]]*len(bright_extrema),
-                            self._freqs[bright_extrema]))
+                               self._freqs[bright_extrema]))
 
         self._points = array(points)
 
@@ -171,7 +174,6 @@ class SpectrumOracle():
                                             freqs[-1:]+(freqs[1]-freqs[0])/2))
 
             plt.pcolormesh(x_plot, freqs_plot, abs(self._Z).T)
-            plt.plot()
             plt.plot(self._points[:,0], self._points[:,1], 'r.')
             plt.colorbar()
             plt.gcf().set_size_inches(15,5)
@@ -197,10 +199,10 @@ class SpectrumOracle():
         chosen_points = points[chosen]
 
         d = params[3]
-        if len(chosen_points)<len(self._parameter_values)/3 or d>0.95:
-            loss_value = sum(distances)**2
+        if len(chosen_points)<len(self._parameter_values)/3 or d>0.7:
+            loss_value = sum(distances)/len(distances)
         else:
-            loss_value = distances_chosen.sum()/(len(chosen_points)+1)**2
+            loss_value = distances_chosen.sum()/(len(chosen_points)+1)**3
         if verbose:
             return loss_value, chosen_points
 
@@ -215,13 +217,10 @@ class SpectrumOracle():
         if percentage_done <= 100 and self._counter%10 == 0:
             print("\rDone: %.2f%%, %.d/%d"%(percentage_done, self._counter, self._iterations), end="")
             print(", ["+(("{:.2e}, "*len(params))[:-2]).format(*params)+"]", end="")
-#             sleep(0.1)
         elif self._counter%10 == 0:
             print("\rDone: 100%, polishing...", end="")
             print(", params:", params, end="")
-#             sleep(0.1)
         self._counter += 1
-#         print(params)
 
         q_freqs = self._qubit_spectrum(points[:,0], *params[:4])
 
@@ -254,10 +253,9 @@ class SpectrumOracle():
             lines_chosen_points.append(chosen_points)
 
         d = params[3]
-        if len(lines_chosen_distances[0]) < len(self._parameter_values)/3\
-           or d>0.95\
-           or len(lines_chosen_distances[0]) < len(lines_chosen_distances[1]):
-            loss_value = sum(lines_distances[0])**2
+        if len(lines_chosen_distances[0]) < 0.5*len(self._parameter_values):
+           # or d > 0.95:
+            loss_value = sum(lines_distances[0])**2/len(lines_distances[0])
         else:
             loss_value = 0
             for idx, loss_factor in enumerate(loss_factors):
@@ -265,14 +263,17 @@ class SpectrumOracle():
                     loss_factor*sum(lines_chosen_distances[idx])\
                         /(len(lines_chosen_distances)+1)
             loss_value /= len(concatenate(lines_chosen_distances))**2
-        if verbose:
-            print(len(concatenate(lines_chosen_distances)))
-            return loss_value, [array(l) for l in lines_chosen_points]
+
 
         if self._counter%10 == 0:
             print(", loss:", "%.2e"%loss_value,
                   ", chosen points:", len(concatenate(lines_chosen_distances)))
             clear_output(wait=True)
+
+        if verbose:
+            print(len(concatenate(lines_chosen_distances)))
+            return loss_value, [array(l) for l in lines_chosen_points]
+
         return loss_value
 
     def _cost_function_fine(self, params, y_scan_area_size, points, verbose=False):
@@ -338,3 +339,14 @@ class SpectrumOracle():
         if verbose:
             return loss_value, (array(chosen_points), array(chosen_points2), array(chosen_points3))
         return loss_value
+
+    def _argrelextrema2D(self, data):
+        both_axes_extrema = []
+        y = array(argrelextrema(data, less, 1, order=10)).T
+        x = array(argrelextrema(data, less, 0, order=10)).T
+        for point in y:
+            equality = (point == x).T
+            equals = where(np.logical_and(*equality))[0]
+            if equals.size != 0:
+                both_axes_extrema.append(point)
+        return array(both_axes_extrema)
