@@ -105,20 +105,20 @@ class SpectrumOracle():
         fine_period_grid = slice(self._p0[0], self._p0[0]+0.1, 1)
         fine_sws_grid = slice(opt_params_coarse[1], opt_params_coarse[1]+0.1, 1)
         fine_freq_grid = slice(self._coarse_frequency, self._coarse_frequency+0.21, 0.2/5)
-        fine_d_grid = opt_params_coarse[3]*0.95, opt_params_coarse[3]*1.05
+        fine_d_grid = slice(opt_params_coarse[3]*1, opt_params_coarse[3]+0.1, 1)
         fine_alpha_grid = self._slices[-1]
         self._fine_slices = (fine_period_grid,
                              fine_sws_grid,
                              fine_freq_grid,
                              fine_d_grid,
                              fine_alpha_grid)
-        Ns = 5
+
         self._counter = 0
-        self._iterations = Ns**2*self._grids[-1][2]
+        self._iterations = 6*(self._grids[-1][2]+1)
 
         opt_params = brute(self._cost_function_fine_fast, self._fine_slices,
-                           args=args,
-                           Ns=Ns, full_output=False).tolist()
+                           args=args, Ns=1,
+                           full_output=False)
 
         self._fine_opt_params = opt_params
         self._fine_frequency = opt_params[2]
@@ -242,15 +242,15 @@ class SpectrumOracle():
         percentage_done = self._counter/self._iterations*100
         if percentage_done <= 100 and self._counter%10 == 0:
             print("\rDone: %.2f%%, %.d/%d"%(percentage_done, self._counter, self._iterations), end="")
-            print(", ["+(("{:.2e}, "*len(params))[:-2]).format(*params)+"]", end="")
+            print(", ["+(("{:.3e}, "*len(params))[:-2]).format(*params)+"]", end="")
         elif self._counter%10 == 0:
             print("\rDone: 100%, polishing...", end="")
-            print(", params:", params, end="")
+            print(", ["+(("{:.3e}, "*len(params))[:-2]).format(*params)+"]", end="")
         self._counter += 1
 
         q_freqs = self._qubit_spectrum(points[:,0], *params[:4])
 
-        frequency_shifts = [0, -params[-1], -2*params[-1]]
+        frequency_shifts = [0, -params[4], -2*params[4]]
         loss_factors = [1, 1, 1]
         lines_chosen_distances = []
         lines_chosen_points = []
@@ -283,20 +283,20 @@ class SpectrumOracle():
            # or d > 0.95:
             loss_value = sum(lines_distances[0])**2/len(lines_distances[0])
         elif len(lines_chosen_distances[2])>len(lines_chosen_distances[1]):
-            loss_value = 1 # we do not tolerate empty middle line
+            loss_value = 1.0 # we do not tolerate empty middle line
         else:
             loss_value = 0
             for idx, loss_factor in enumerate(loss_factors):
                 loss_value +=\
                     loss_factor*sum(lines_chosen_distances[idx])\
-                        /(len(lines_chosen_distances)+1)
+                        /(len(lines_chosen_distances[idx])+1)
             loss_value /= len(concatenate(lines_chosen_distances))**2
 
 
         if self._counter%10 == 0:
             print(", loss:", "%.2e"%loss_value,
                   ", chosen points:", len(concatenate(lines_chosen_distances)))
-            clear_output(wait=True)
+            # clear_output(wait=True)
 
         if verbose:
             print(len(concatenate(lines_chosen_distances)))
