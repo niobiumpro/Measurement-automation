@@ -27,7 +27,7 @@ Classes implementing this interface should implement following features:
 from numpy import *
 import copy
 
-import os, fnmatch
+import os, fnmatch, platform
 import pickle
 from threading import Lock
 from matplotlib import pyplot as plt
@@ -96,11 +96,16 @@ class MeasurementResult():
         If the user hits EOF (*nix: Ctrl-D, Windows: Ctrl-Z+Return), raise EOFError.
         On *nix systems, readline is used if available.
         '''
-        paths = find(name+'.pkl', 'data/'+sample_name+'/'+date)
 
+        if platform.system() is "Windows":
+            paths = find(name+'.pkl', 'data\\'+sample_name+'\\'+date)
+            sep = "\\"
+        else:
+            paths = find(name+'.pkl', 'data/'+sample_name+'/'+date)
+            sep = "/"
         path = None
         if len(paths)>1:
-            dates = [datetime.strptime(path.split("/")[2], "%b %d %Y")\
+            dates = [datetime.strptime(path.split(sep)[2], "%b %d %Y")\
                                                             for path in paths]
             z = zip(dates, paths)
             sorted_dates, sorted_paths = zip(*sorted(z))
@@ -129,7 +134,7 @@ class MeasurementResult():
                 return pickle.load(f)
             else:
                 return [pickle.load(f)]
-                
+
     def get_save_path(self):
 
         sample_directory = 'data\\'+self._sample_name

@@ -118,7 +118,11 @@ class AnticrossingOracle():
         return best_fitresult.x, best_fit_loss
 
     def _extract_data(self, plot=False):
-        data = self._sts_result.get_data()
+        try:
+            data = self._sts_result.get_data()
+        except:
+            # maybe we have raw dict
+            data = self._sts_result
         try:
             curs, freqs, self._data =\
                 data["Current [A]"], data["frequency"], data["data"]
