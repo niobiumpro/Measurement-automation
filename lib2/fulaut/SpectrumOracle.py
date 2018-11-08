@@ -104,7 +104,7 @@ class SpectrumOracle():
 
         fine_period_grid = slice(self._p0[0], self._p0[0]+0.1, 1)
         fine_sws_grid = slice(opt_params_coarse[1], opt_params_coarse[1]+0.1, 1)
-        fine_freq_grid = slice(self._coarse_frequency, self._coarse_frequency+0.21, 0.2/5)
+        fine_freq_grid = slice(self._coarse_frequency, self._coarse_frequency+0.51, 0.5/10)
         fine_d_grid = slice(opt_params_coarse[3]*1, opt_params_coarse[3]+0.1, 1)
         fine_alpha_grid = self._slices[-1]
         self._fine_slices = (fine_period_grid,
@@ -282,7 +282,7 @@ class SpectrumOracle():
         if len(lines_chosen_distances[0]) < 0.5*len(self._parameter_values):
            # or d > 0.95:
             loss_value = sum(lines_distances[0])**2/len(lines_distances[0])
-        elif len(lines_chosen_distances[2])>len(lines_chosen_distances[1]):
+        elif len(lines_chosen_distances[1])>len(lines_chosen_distances[0]):
             loss_value = 1.0 # we do not tolerate empty middle line
         else:
             loss_value = 0
@@ -296,7 +296,7 @@ class SpectrumOracle():
         if self._counter%10 == 0:
             print(", loss:", "%.2e"%loss_value,
                   ", chosen points:", len(concatenate(lines_chosen_distances)))
-            # clear_output(wait=True)
+            clear_output(wait=True)
 
         if verbose:
             print(len(concatenate(lines_chosen_distances)))
