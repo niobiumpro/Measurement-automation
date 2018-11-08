@@ -104,7 +104,7 @@ class SpectrumOracle():
 
         fine_period_grid = slice(self._p0[0], self._p0[0]+0.1, 1)
         fine_sws_grid = slice(opt_params_coarse[1], opt_params_coarse[1]+0.1, 1)
-        fine_freq_grid = slice(self._coarse_frequency, self._coarse_frequency+0.51, 0.5/10)
+        fine_freq_grid = slice(self._coarse_frequency, self._coarse_frequency+0.21, 0.2/10)
         fine_d_grid = slice(opt_params_coarse[3]*1, opt_params_coarse[3]+0.1, 1)
         fine_alpha_grid = self._slices[-1]
         self._fine_slices = (fine_period_grid,
@@ -114,12 +114,12 @@ class SpectrumOracle():
                              fine_alpha_grid)
 
         self._counter = 0
-        self._iterations = 6*(self._grids[-1][2]+1)
+        self._iterations = 11*(self._grids[-1][2]+1)
 
         opt_params = brute(self._cost_function_fine_fast, self._fine_slices,
                            args=args, Ns=1,
                            full_output=False)
-
+        # return opt_params
         self._fine_opt_params = opt_params
         self._fine_frequency = opt_params[2]
         self._fine_alpha = opt_params[4]
@@ -151,6 +151,10 @@ class SpectrumOracle():
             plt.plot(self._parameter_values,
                         self._qubit_spectrum(self._parameter_values,
                                             *opt_params[:-1])-2*opt_params[-1])
+
+            plt.plot(self._parameter_values,
+                        self._qubit_spectrum(self._parameter_values,
+                                            *opt_params[:-1])-3*opt_params[-1])
             plt.gcf().set_size_inches(15,5)
 
         opt_params[2] = opt_params[2]*1e9
@@ -250,8 +254,8 @@ class SpectrumOracle():
 
         q_freqs = self._qubit_spectrum(points[:,0], *params[:4])
 
-        frequency_shifts = [0, -params[4], -2*params[4]]
-        loss_factors = [1, 1, 1]
+        frequency_shifts = [0, -params[4], -2*params[4], -3*params[4]]
+        loss_factors = [1, 1, 1, 1]
         lines_chosen_distances = []
         lines_chosen_points = []
         lines_distances = []
@@ -282,8 +286,6 @@ class SpectrumOracle():
         if len(lines_chosen_distances[0]) < 0.5*len(self._parameter_values):
            # or d > 0.95:
             loss_value = sum(lines_distances[0])**2/len(lines_distances[0])
-        elif len(lines_chosen_distances[1])>len(lines_chosen_distances[0]):
-            loss_value = 1.0 # we do not tolerate empty middle line
         else:
             loss_value = 0
             for idx, loss_factor in enumerate(loss_factors):
