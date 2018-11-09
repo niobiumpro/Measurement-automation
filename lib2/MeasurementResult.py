@@ -114,8 +114,12 @@ class MeasurementResult():
             if return_all:
                 dict_of_res=[]
                 for idx, path in enumerate(paths):
-                    with open(path, "rb") as f:
-                        dict_of_res.append(pickle.load(f))
+                    try:
+                        with open(path, "rb") as f:
+                            dict_of_res.append(pickle.load(f))
+                    except pickle.UnpicklingError as e:
+                        dict_of_res.append(e)
+
                 return dict_of_res
             else:
                 for idx, file in enumerate(paths):
