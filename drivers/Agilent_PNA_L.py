@@ -1,4 +1,4 @@
-# Agilent_PNA_L.py
+    # Agilent_PNA_L.py
 # Gleb Fedorov <vdrhtc@gmail.com>
 # Derived from Agilent PNA X made by Marcus Jerger, 2012
 # Derived from Anritsu_VNA.py hacked by Hannes Rotzinger hannes.rotzinger@kit.edu, 2011
@@ -124,16 +124,34 @@ class Agilent_PNA_L(Instrument):
         self.add_parameter('trigger_source', type=bytes,
             flags=Instrument.FLAG_GETSET)
 
+        # output trigger stuff by Elena
+        self.add_parameter('aux_num', type=int,
+            flags=Instrument.FLAG_GETSET)
+
+        self.add_parameter('trig_per_point', type=bool,
+            flags=Instrument.FLAG_GETSET)
+
+        self.add_parameter('pos', type=bool,
+            flags=Instrument.FLAG_GETSET)
+
+        self.add_parameter('bef', type=bool,
+            flags=Instrument.FLAG_GETSET)
+
+        self.add_parameter('trig_dur', type=float,
+            flags=Instrument.FLAG_GETSET,
+            minval=2e-3, units='s')
+
+
         # sets the S21 setting in the PNA X
-        self.define_S21() # this two lines is uncommented by Shamil 06/26/2017 due to the fact that
-        self.set_S21()  # by using high level measurement child classes it is not possible to continue proper operation
+        # self.define_S21() # this two lines is uncommented by Shamil 06/26/2017 due to the fact that
+        # self.set_S21()  # by using high level measurement child classes it is not possible to continue proper operation
                         # of PNA-L after self._visaintrument.write( "SYST:FPReset" ) command, it seem like without this
                         # lines of code there is no trace selected after self.select_default_trace()
                         # and self.get_all seem do interrupt the program with timeout exception thrown by low-level visa
                         # GPIB drivers. The reason is that PNA-L doesn't have any number of points in sweep (get_all start
                         # by quering number of points in current sweep), because there is no traces defined, hence there
                         # is no number of points available to read
-        self.select_default_trace()
+        # self.select_default_trace()
 
 
         # Implement functions
@@ -401,6 +419,16 @@ class Agilent_PNA_L(Instrument):
         if "sweep_type" in parameters_dict.keys():
             self.set_sweep_type(parameters_dict["sweep_type"])
 
+        if "aux_num" in parameters_dict.keys():
+            self.set_aux_num(parameters_dict["aux_num"])
+        if "trig_per_point" in parameters_dict.keys():
+            self.set_trig_per_point(parameters_dict["trig_per_point"])
+        if "pos" in parameters_dict.keys():
+            self.set_pos(parameters_dict["pos"])
+        if "bef" in parameters_dict.keys():
+            self.set_bef(parameters_dict["bef"])
+        if "trig_dur" in parameters_dict.keys():
+            self.set_trig_dur(parameters_dict["trig_dur"])
 
     def do_set_CWfreq(self,freq):
         '''
@@ -862,3 +890,43 @@ class Agilent_PNA_L(Instrument):
         return self._visainstrument.write(msg)
     def ask(self,msg):
         return self._visainstrument.ask(msg)
+
+
+    def do_set_aux_num(self, aux_num):
+        self._visainstrument.write("TRIG:CHAN:AUX %i"%(aux_num))
+
+    def do_get_aux_num(self):
+        raise NotImplemented
+
+    def do_set_trig_per_point(self, trig_per_point):
+        if trig_per_point==True:
+            self._visainstrument.write("TRIG:CHAN:AUX:INT POIN")
+        else:
+            self._visainstrument.write("TRIG:CHAN:AUX:INT SWE")
+
+    def do_get_trig_per_point(self):
+        raise NotImplemented
+
+    def do_set_pos(self, pos):
+        if pos==True:
+            self._visainstrument.write("TRIG:CHAN:AUX:OPOL POS")
+        else:
+            self._visainstrument.write("TRIG:CHAN:AUX:OPOL NEG")
+
+    def do_get_pos(self):
+            raise NotImplemented
+
+    def do_set_bef(self, bef):
+        if bef == True:
+            self._visainstrument.write("TRIG:CHAN:AUX:POS BEF")
+        else:
+            self._visainstrument.write("TRIG:CHAN:AUX:POS AFT")
+
+    def do_get_bef(self):
+            raise NotImplemented
+
+    def do_set_trig_dur(self, trig_dur): # > 2e-3 sec (EXG restriction)
+        self._visainstrument.write("TRIG:CHAN:AUX:DUR %f"%trig_dur)
+
+    def do_get_trig_dur(self):
+            raise NotImplemented
