@@ -1,4 +1,4 @@
-'''
+"""
 Base interface for all measurements.
 
 Should define the raw_data type (???)
@@ -28,7 +28,7 @@ some other bullshit:
         set_varied_parameters (установить изменяемые параметры и их значения; надо написать для STS)
         launch (возможно, целиком должен быть реализован здесь, так как он универсальный)
         _record_data (будет содержать логику измерения, пользуясь приборами и параметрами, определенными выше)\
-'''
+"""
 from numpy import *
 import copy
 import pyvisa
@@ -55,43 +55,43 @@ import traceback
 
 from lib2.LoggingServer import LoggingServer
 
-class Measurement():
 
-    '''
+class Measurement:
+
+    """
     Any inheritance?
     The class contains methods to help with the implementation of measurement classes.
 
-    '''
+    """
     _logger = LoggingServer.getInstance()
     _actual_devices = {}
     _log = []
     _devs_dict = \
-        {'vna1' : [ ["PNA-L","PNA-L1"], [Agilent_PNA_L,"Agilent_PNA_L"] ],\
-         'vna2': [ ["PNA-L-2","PNA-L2"], [Agilent_PNA_L,"Agilent_PNA_L"] ],\
-		 'vna3': [ ["pna"], [Agilent_PNA_L,"Agilent_PNA_L"] ],\
-         'vna4': [ ["ZNB"], [znb, "Znb"] ],\
-         'exa' : [ ["EXA"], [Agilent_EXA,"Agilent_EXA_N9010A"] ],\
-         'exg' : [ ["EXG"], [E8257D,"EXG"] ],\
-         'psg2' :[ ['PSG'], [E8257D,"EXG"] ],\
-         'mxg' : [ ["MXG"], [E8257D,"MXG"] ],\
-		 'psg1': [ ["psg1"], [E8257D,"EXG"] ],\
-         'awg1': [ ["AWG","AWG1"], [KeysightAWG,"KeysightAWG"] ],\
-         'awg2': [ ["AWG_Vadik","AWG2"], [KeysightAWG,"KeysightAWG"] ],\
-         'awg3': [ ["AWG3"], [KeysightAWG,"KeysightAWG"] ],\
-         'awg4':  [ ["TEK1"], [Tektronix_AWG5014, "Tektronix_AWG5014"] ],\
-         'dso' : [ ["DSO"], [Keysight_DSOX2014,"Keysight_DSOX2014"] ],\
-         'yok1': [ ["GS210_1"], [Yokogawa_GS200,"Yokogawa_GS210"] ], \
-         'yok2': [ ["GS210_2"], [Yokogawa_GS200,"Yokogawa_GS210"] ], \
-         'yok3': [ ["GS210_3"], [Yokogawa_GS200,"Yokogawa_GS210"] ],    \
-         'yok4': [ ["gs210"], [Yokogawa_GS200,"Yokogawa_GS210"] ], \
-         'yok5': [ ["GS_210_3"], [Yokogawa_GS200,"Yokogawa_GS210"] ], \
-         'yok6': [ ["YOK1"], [Yokogawa_GS200,"Yokogawa_GS210"] ], \
-         'k6220':[["k6220"], [k6220,"K6220"] ], \
-		 }
-
+        {'vna1':  [["PNA-L", "PNA-L1"], [Agilent_PNA_L, "Agilent_PNA_L"]],
+         'vna2':  [["PNA-L-2", "PNA-L2"], [Agilent_PNA_L, "Agilent_PNA_L"]],
+         'vna3':  [["pna"], [Agilent_PNA_L, "Agilent_PNA_L"]],
+         'vna4':  [["ZNB"], [znb, "Znb"]],
+         'exa' :  [["EXA"], [Agilent_EXA, "Agilent_EXA_N9010A"]],
+         'exg' :  [["EXG"], [E8257D, "EXG"]],
+         'psg2':  [['PSG'], [E8257D, "EXG"]],
+         'mxg' :  [["MXG"], [E8257D, "MXG"]],
+         'psg1':  [["psg1"], [E8257D, "EXG"]],
+         'awg1':  [["AWG", "AWG1"], [KeysightAWG, "KeysightAWG"]],
+         'awg2':  [["AWG_Vadik", "AWG2"], [KeysightAWG, "KeysightAWG"]],
+         'awg3':  [["AWG3"], [KeysightAWG, "KeysightAWG"]],
+         'awg4':  [["TEK1"], [Tektronix_AWG5014, "Tektronix_AWG5014"]],
+         'dso':   [["DSO"], [Keysight_DSOX2014, "Keysight_DSOX2014"]],
+         'yok1':  [["GS210_1"], [Yokogawa_GS200, "Yokogawa_GS210"]],
+         'yok2':  [["GS210_2"], [Yokogawa_GS200, "Yokogawa_GS210"]],
+         'yok3':  [["GS210_3"], [Yokogawa_GS200, "Yokogawa_GS210"]],
+         'yok4':  [["gs210"], [Yokogawa_GS200, "Yokogawa_GS210"]],
+         'yok5':  [["GS_210_3"], [Yokogawa_GS200, "Yokogawa_GS210"]],
+         'yok6':  [["YOK1"], [Yokogawa_GS200, "Yokogawa_GS210"]],
+         'k6220': [["k6220"], [k6220, "K6220"]]
+         }
 
     def __init__(self, name, sample_name, devs_aliases_map, plot_update_interval=5):
-        '''
+        """
         Parameters:
         --------------------
         name: string
@@ -113,7 +113,7 @@ class Measurement():
 
         if key is not recognised doesn't returns a mistake
 
-        '''
+        """
         self._interrupted = False
         self._name = name
         self._sample_name = sample_name
@@ -129,28 +129,30 @@ class Measurement():
                 # returns list of tuples: (IP Address string, alias) for all
                 # devices present in VISA
         self._write_to_log()
-        for field_name, value in self._devs_aliases_map.items():
-            if isinstance(value, str):
-                name = value
-                if name in Measurement._actual_devices.keys():
-                    print(name + ' is already initialized')
-                    device_object = Measurement._actual_devices[name]
-                    self.__setattr__("_"+field_name, device_object)
-                    continue
-
-                if name in Measurement._devs_dict.keys():
-                    for device_address in self._devs_info:
-                        if device_address in Measurement._devs_dict[name][0]:
-                            # print(name, device_address)
-                            device_object = getattr(*Measurement._devs_dict[name][1])(device_address)
-                            Measurement._actual_devices[name]=device_object
-                            print("The device %s is detected as %s"%(name, device_address))
-                            self.__setattr__("_"+field_name, device_object)
-                            break
+        for field_name, dev_list in self._devs_aliases_map.items():
+            atr_name = "_" + field_name + '_list'
+            self.__setattr__(atr_name, [None]*len(dev_list))
+            for index, value in enumerate(dev_list):
+                if isinstance(value, str):
+                    name = value
+                    if name in Measurement._actual_devices.keys():
+                        print(name + ' is already initialized')
+                        device_object = Measurement._actual_devices[name]
+                        self.atr_name[index] = device_object
+                        continue
+                    if name in Measurement._devs_dict.keys():
+                        for device_address in self._devs_info:
+                            if device_address in Measurement._devs_dict[name][0]:
+                                # print(name, device_address)
+                                device_object = getattr(*Measurement._devs_dict[name][1])(device_address)
+                                Measurement._actual_devices[name] = device_object
+                                print("The device %s is detected as %s" % (name, device_address))
+                                self.atr_name[index] = device_object
+                                break
+                    else:
+                        print("Device", name, "is unknown!")
                 else:
-                    print("Device", name, "is unknown!")
-            else:
-                self.__setattr__("_"+field_name, value)
+                    self.atr_name[index] = value
 
     @staticmethod
     def close_devs(devs_to_close):
@@ -158,38 +160,36 @@ class Measurement():
             if name in Measurement._actual_devices.keys():
                 Measurement._actual_devices.pop(name)._visainstrument.close()
 
-
     def _load_fixed_parameters_into_devices(self):
-        '''
+        """
         exa_parameters
         fixed_pars: {'dev1': {'par1': value1, 'par2': value2},
                      'dev2': {par1: value1, par2: ...}...}
-        '''
+        """
         for dev_name in self._fixed_pars.keys():
             dev = getattr(self, '_' + dev_name)
             dev.set_parameters(self._fixed_pars[dev_name])
 
     def set_fixed_parameters(self, **fixed_pars):
-        '''
+        """
         fixed_pars: {'dev1': {'par1': value1, 'par2': value2},
                      'dev2': {par1: value1, par2: ...},...}
-        '''
+        """
         self._fixed_pars = fixed_pars
         for dev_name in self._fixed_pars.keys():
             self._measurement_result.get_context().get_equipment()[dev_name] = fixed_pars[dev_name]
         self._load_fixed_parameters_into_devices()
 
-
     def set_swept_parameters(self, **swept_pars):
-        '''
+        """
         swept_pars :{'par1': (setter1, [value1, value2, ...]),
                      'par2': (setter2, [value1, value2, ...]), ...}
-        '''
+        """
         self._swept_pars = swept_pars
         self._swept_pars_names = list(swept_pars.keys())
         self._measurement_result.set_parameter_names(self._swept_pars_names)
         self._last_swept_pars_values = \
-                            {name:None for name in self._swept_pars_names}
+            {name: None for name in self._swept_pars_names}
 
     def _call_setters(self, values_group):
         for name, value in zip(self._swept_pars_names, values_group):

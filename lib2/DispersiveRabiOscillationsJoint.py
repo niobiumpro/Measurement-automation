@@ -14,6 +14,27 @@ class DispersiveRabiOscillationsJoint(VNATimeResolvedDispersiveMeasurement1D):  
         self._swept_parameter_name = "excitation_duration"
         self._two_qubits = two_qubits
 
+    def set_fixed_parameters(self, pulse_sequence_parameters,
+                             **dev_params):
+        """
+        :param dev_params:
+            Minimum expected keys and elements expected in each:
+                'vna'
+                'q_frequency': 0,1
+                'q_awg': 0,1
+                'ro_awg'
+        """
+        q2_if_frequency = dev_params['q_awg'][1]["calibration"] \
+            .get_radiation_parameters()["if_frequency"]
+
+        q2_lo_parameters = {"power": dev_params['q_awg'][1]["calibration"].get_radiation_parameters()["lo_power"],
+                            "frequency": dev_params['q_frequency'][1] + q2_if_frequency}
+
+        dev_params['q_lo'] = [None, q2_lo_parameters]
+
+        super().set_fixed_parameters(pulse_sequence_parameters,
+                                     **dev_params)
+
     def set_swept_parameters(self, excitation_durations):
         super().set_swept_parameters(self._swept_parameter_name, excitation_durations)
 

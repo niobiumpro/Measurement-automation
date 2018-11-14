@@ -1,12 +1,7 @@
-from matplotlib import pyplot as plt, colorbar
-from lib2.VNATimeResolvedDispersiveMeasurement2D import *
-from scipy.interpolate import interp2d
-from lib2.QuantumState import *
+from lib2.VNATimeResolvedDispersiveMeasurement import *
 import numpy as np
-from qutip import qeye, sigmax, sigmay, sigmaz, fidelity, Qobj, expect, tensor
+from qutip import sigmax, sigmay, sigmaz, Qobj, expect, tensor
 from math import *
-from IPython.display import clear_output
-
 
 from scipy import optimize
 from tqdm import tqdm_notebook
@@ -14,6 +9,22 @@ from tqdm import tqdm_notebook
 
 
 class Tomo:
+    """
+    Class for tomograhy
+    Finds density matrix minimizing cost function for the measurements conducted.
+
+    Requires either:
+        - (one measurement operator + single qubit rotations) to be uploaded
+        Methods:
+            upload_rotation_sequence_from_command_list(...)
+            upload_measurement_operator(...)
+            construct_measurements(...)
+
+        - (measurement operators + measured expected values) to be uploaded directly
+        Methods:
+            upload_measurements(...)
+    Use find_rho() to get density matrix. Optimization procedure is launched several times and best result is shown.
+    """
 
     def __init__(self, dim=4):
         self._dim = dim
@@ -22,7 +33,7 @@ class Tomo:
         self._measurements = []
 
     @staticmethod
-    def x_to_rho(x):                                # Параметризация матрицы плотности
+    def x_to_rho(x):                                # Density matrix parametrization via Cholesky decomposition
         dim = int(sqrt(len(x)))
         t = np.identity(dim, complex)
         for i in range(dim):
@@ -30,7 +41,7 @@ class Tomo:
         k = dim
         for i in range(dim):
             for l in range(i + 1, dim):
-                t[i, l] = x[k] + (1j) * x[k + 1]
+                t[i, l] = x[k] + 1j * x[k + 1]
                 k += 2
         q_dim = [2] * int(log(dim) / log(2))
         rho = Qobj(t, dims=[q_dim, q_dim])
@@ -102,9 +113,13 @@ class Tomo:
         return self.x_to_rho(best.x)
 
 
-class DispersiveJointTomography(VNATimeResolvedDispersiveMeasurement):      # TODO
+class DispersiveJointTomography(VNATimeResolvedDispersiveMeasurement):
 
     def __init__(self):
+
+    # TODO
+    #     1. Preparation pulse sequence
+    #     2. Rotation pulses on both qubits
 
 
 class DispersiveJointTomographyResult(VNATimeResolvedDispersiveMeasurementResult):      # TODO
@@ -116,27 +131,20 @@ class DispersiveJointTomographyResult(VNATimeResolvedDispersiveMeasurementResult
         self._smoothing_factor = smoothing_factor
         self._betas = (0, 0, 0, 0)
 
-    @staticmethod
-    def _meas_op(amp, ph):
-        return (-1j * amp * pi / 2 * (cos(ph) * sigmax() + sin(ph) * sigmay())).expm()
-
-
-
-    def upload_betas(self, *betas):                                            # TODO
+    def upload_betas(self, *betas):
         self._betas = betas
 
-    def find_density_matrix(self):                                                                 # TODO name
-
+    def find_density_matrix(self):
         beta_II, beta_ZI, beta_IZ, beta_ZZ = self._betas
-        joint_op = (
-                beta_II * tensor(identity(2), identity(2)) +
-                beta_ZI * tensor(sigmaz(), identity(2)) +
-                beta_IZ * tensor(identity(2), sigmaz()) +
-                beta_ZZ * tensor(sigmaz(), sigmaz()))
+        joint_op = (beta_II * tensor(identity(2), identity(2)) +
+                    beta_ZI * tensor(sigmaz(), identity(2)) +
+                    beta_IZ * tensor(identity(2), sigmaz()) +
+                    beta_ZZ * tensor(sigmaz(), sigmaz()))
 
         tomo = Tomo(dim=4)
         tomo.upload_measurement_operator(joint_op)
         tomo.upload_rotation_sequence_from_command_list(??)                     #TODO
-        tomo.construct_measurements(??)                                         #TODO
 
+        res = self.get_data()['data']                                           #TODO
+        tomo.construct_measurements(res)
         return tomo.find_rho()

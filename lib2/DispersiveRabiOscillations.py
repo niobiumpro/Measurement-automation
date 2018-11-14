@@ -6,11 +6,11 @@ from lib2.VNATimeResolvedDispersiveMeasurement1D import *
 class DispersiveRabiOscillations(VNATimeResolvedDispersiveMeasurement1D):
 
     def __init__(self, name, sample_name, line_attenuation_db = 60, plot_update_interval=1,
-     **devs_aliases_map):
+                 **devs_aliases_map):
         devs_aliases_map["q_z_awg"] = None
         super().__init__(name, sample_name, devs_aliases_map, line_attenuation_db, plot_update_interval)
         self._measurement_result = DispersiveRabiOscillationsResult(name,
-                    sample_name)
+                                                                    sample_name)
         self._sequence_generator = IQPulseBuilder.build_dispersive_rabi_sequences
         self._swept_parameter_name = "excitation_duration"
 
