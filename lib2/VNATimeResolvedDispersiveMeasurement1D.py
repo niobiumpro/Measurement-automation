@@ -6,38 +6,45 @@ from lib2.IQPulseSequence import *
 from numpy.linalg import inv
 from scipy.optimize import least_squares, curve_fit
 
+
 class VNATimeResolvedDispersiveMeasurement1D(VNATimeResolvedDispersiveMeasurement):
 
-    def __init__(self,  name, sample_name, devs_aliases_map, line_attenuation_db = 60,
-     plot_update_interval = 1):
-        super().__init__(name, sample_name, devs_aliases_map, line_attenuation_db\
-            = line_attenuation_db, plot_update_interval = plot_update_interval)
+    def __init__(self,  name, sample_name, devs_aliases_map, line_attenuation_db=60,
+                 plot_update_interval=1):
+        super().__init__(name, sample_name, devs_aliases_map, line_attenuation_db
+                         =line_attenuation_db, plot_update_interval=plot_update_interval)
 
-    def set_fixed_parameters(self, vna_parameters, ro_awg_parameters,
-            q_awg_parameters, qubit_frequency, pulse_sequence_parameters,
-            q_z_awg_params = None):
-
-        vna_parameters["power"] = ro_awg_parameters["calibration"]\
+    def set_fixed_parameters(self, pulse_sequence_parameters,
+                             **dev_params):
+        """
+        :param dev_params:
+            Minimum expected keys and elements expected in each:
+                'vna'
+                'q_frequency': 0
+                'q_awg': 0
+                'ro_awg'
+        """
+        dev_params['vna']["power"] = dev_params['ro_awg']["calibration"]\
             .get_radiation_parameters()["lo_power"]
-        q_if_frequency = q_awg_parameters["calibration"] \
+        q1_if_frequency = dev_params['q_awg'][0]["calibration"] \
             .get_radiation_parameters()["if_frequency"]
 
-        q_lo_parameters = {"power":q_awg_parameters["calibration"]\
-            .get_radiation_parameters()["lo_power"],
-            "frequency":qubit_frequency+q_if_frequency}
+        q1_lo_parameters = {"power": dev_params['q_awg'][0]["calibration"]
+                            .get_radiation_parameters()["lo_power"],
+                            "frequency": dev_params['q_frequency'][0] + q1_if_frequency}
 
-        super().set_fixed_parameters(vna_parameters, q_lo_parameters,
-            ro_awg_parameters, q_awg_parameters, pulse_sequence_parameters,
-            q_z_awg_params = q_z_awg_params)
+        if 'q_lo' not in dev_params.keys():
+            dev_params['q_lo'] = [None]
+        dev_params['q_lo'][0] = q1_lo_parameters
+
+        super().set_fixed_parameters(pulse_sequence_parameters,
+                                     **dev_params)
 
     def set_swept_parameters(self, par_name, par_values):
-        swept_pars = {par_name:(self._output_pulse_sequence, par_values)}
+        swept_pars = {par_name: (self._output_pulse_sequence, par_values)}
         super().set_swept_parameters(**swept_pars)
 
     def _output_pulse_sequence(self, sequence_parameter):
-        '''
-        Should be implemented in a child class
-        '''
         self._pulse_sequence_parameters[self._swept_parameter_name] = sequence_parameter
         super()._output_pulse_sequence()
 

@@ -15,20 +15,26 @@ class DispersiveRadialTomography(VNATimeResolvedDispersiveMeasurement2D):
             DispersiveRadialTomographyResult(name, sample_name, smoothing_factor)
         self._sequence_generator = IQPulseBuilder.build_radial_tomography_pulse_sequences
 
-    def set_fixed_parameters(self, vna_parameters, ro_awg_parameters,
-            q_awg_parameters, excitation_frequency, pulse_sequence_parameters,
-            q_z_awg_params = None):
+    def set_fixed_parameters(self,  pulse_sequence_parameters,
+                             **dev_params):
+        """
+        :param dev_params:
+            Minimum expected keys and elements expected in each:
+                'vna'
+                'q_frequency: 0
+                'q_awg': 0
+                'ro_awg'
+        """
+        q_if_frequency = dev_params['q_awg'][0]["calibration"]\
+            .get_radiation_parameters()["if_frequency"]
 
-        q_if_frequency = q_awg_parameters["calibration"]\
-                    .get_radiation_parameters()["if_frequency"]
+        q_lo_parameters = {"power": dev_params['q_awg'][0]["calibration"]
+                           .get_radiation_parameters()["lo_power"],
+                           "frequency": dev_params['q_frequency'][0] + q_if_frequency}
 
-        q_lo_parameters = {"power": q_awg_parameters["calibration"]\
-                    .get_radiation_parameters()["lo_power"],
-                    "frequency": excitation_frequency+q_if_frequency}
-
-        super().set_fixed_parameters(vna_parameters, q_lo_parameters,
-            ro_awg_parameters, q_awg_parameters, pulse_sequence_parameters,
-            q_z_awg_params = q_z_awg_params)
+        super().set_fixed_parameters(pulse_sequence_parameters,
+                                     q_lo=[q_lo_parameters],
+                                     **dev_params)
 
     def set_swept_parameters(self, tomo_phases, tomo_pulse_amplitudes):
         q_if_frequency = self._q_awg.get_calibration() \
