@@ -145,7 +145,7 @@ class SingleToneSpectroscopyResult(MeasurementResult):
         '''
         self._unwrap_phase = unwrap_phase
 
-    def _plot(self, axes, caxes):
+    def _plot(self, axes, caxes, dynamic = False):
 
         ax_amps, ax_phas = axes
         cax_amps, cax_phas = caxes
@@ -169,7 +169,7 @@ class SingleToneSpectroscopyResult(MeasurementResult):
         step_y = Y[1] - Y[0]
         extent = [X[0] - step_x / 2, X[-1] + step_x / 2, Y[0] - step_y / 2, Y[-1] + step_y / 2]
 
-        if self._amps_map is None:
+        if self._amps_map is None or not dynamic:
             self._amps_map = ax_amps.imshow(abs(Z).T, origin='lower', cmap="RdBu_r",
                                             aspect='auto', vmax=self.max_abs, vmin=self.min_abs,
                                             extent=extent)
@@ -182,7 +182,7 @@ class SingleToneSpectroscopyResult(MeasurementResult):
             self._amp_cb.set_clim(self.min_abs, self.max_abs)
             plt.draw()
 
-        if self._phas_map is None:
+        if self._phas_map is None or not dynamic:
             self._phas_map = ax_phas.imshow(phases, origin='lower', aspect='auto',
                                             cmap="RdBu_r", vmin=self.min_phase, vmax=self.max_phase,
                                             extent=extent)
