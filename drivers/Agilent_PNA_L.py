@@ -533,14 +533,14 @@ class Agilent_PNA_L(Instrument):
             None
         '''
         self._visainstrument.write('SENS%i:AVER:COUN %i' % (self._ci,av))
-        # self._visainstrument.write('SENS:AVER:MODE POIN')
-        # self.do_set_average(True)
-        if av > 1:
-            self.do_set_average(True)
-            self._visainstrument.write('SENS:SWE:GRO:COUN %i'%av)
-        else:
-            self.do_set_average(False)
-            self._visainstrument.write('SENS:SWE:GRO:COUN 1')
+        self._visainstrument.write('SENS:AVER:MODE POIN')
+        self.do_set_average(True)
+        # if av > 1:
+        #     self.do_set_average(True)
+        #     self._visainstrument.write('SENS:SWE:GRO:COUN %i'%av)
+        # else:
+        #     self.do_set_average(False)
+        #     self._visainstrument.write('SENS:SWE:GRO:COUN 1')
 
     def do_get_averages(self):
         '''
@@ -656,8 +656,8 @@ class Agilent_PNA_L(Instrument):
         self.write("SENS:SWE:MODE CONT")
 
     def sweep_single(self):
-        # self.write("SENSe{0}:SWEep:MODE SINGle".format(self.current_channel))
-        self.write("SENS%i:SWE:MODE GROUPS"%(self._ci))
+        self.write("SENSe{0}:SWEep:MODE SINGle".format(self._ci))
+        # self.write("SENS%i:SWE:MODE GROUPS"%(self._ci))
 
     def do_set_startfreq(self,val):
         '''
