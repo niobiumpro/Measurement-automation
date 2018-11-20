@@ -1,5 +1,7 @@
 from lib2.TwoToneSpectroscopy import *
 from lib2.fulaut.SpectrumOracle import *
+from lib2.fulaut.GlobalParameters import *
+from lib2.fulaut.qubit_spectra import *
 
 from datetime import datetime
 
@@ -13,6 +15,8 @@ class TTSRunner():
         self._tts_name ="%s-two-tone"%qubit_name
         self._fit_p0 = fit_p0
 
+        self._which_sweet_spot = GlobalParameters.which_sweet_spot[qubit_name]
+
         if awgs is not None:
             self._ro_awg = awgs["ro_awg"]
             self._q_awg = awgs["q_awg"]
@@ -23,24 +27,38 @@ class TTSRunner():
 
         self._vna_parameters = {"bandwidth":200,
                                 "freq_limits":self._res_limits,
-                                "nop":20,
+                                "nop":10,
                                 "power":self._vna_power,
                                 "averages":1}
 
-        self._mw_src_parameters = {"power":0}
+        self._mw_src_parameters = {"power":-10}
 
         res_freq, g, period, sweet_spot, max_q_freq, d = self._fit_p0
 
-        if res_freq>max_q_freq:
-            mw_limits = (max_q_freq-1.5e9, res_freq-1e9)
+        if self._which_sweet_spot is "bottom":
+            center = sweet_spot + period/2
         else:
-            mw_limits = (res_freq-0.1e9, max_q_freq+1e9)
+            center = sweet_spot
 
-        self._mw_src_frequencies = linspace(*mw_limits, 101)
-        center = sweet_spot
-        self._currents = linspace(sweet_spot - period/8,
-                                  sweet_spot + period/8,
+        self._currents = linspace(center - period/4,
+                                  center + period/4,
                                   101)
+
+        min_q_freq =\
+         transmon_spectrum(sweet_spot+period/2, period, sweet_spot, max_q_freq, d)
+
+        expected_q_freq = min_q_freq\
+                            if self._which_sweet_spot is "bottom" \
+                            else max_q_freq
+
+        # if res_freq>expected_q_freq:
+        #     mw_limits = (expected_q_freq-1.5e9, res_freq-1e9)
+        # else:
+        #     mw_limits = (res_freq-0.1e9, expected_q_freq+1e9)
+
+        mw_limits = (expected_q_freq-0.5e9, expected_q_freq+1e9)
+
+        self._mw_src_frequencies = linspace(*mw_limits, 201)
 
         self._tts_result = None
         self._launch_datetime = datetime.today()

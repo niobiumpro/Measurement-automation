@@ -155,9 +155,9 @@ class SingleToneSpectroscopyResult(MeasurementResult):
             return
 
         X, Y, Z = self._prepare_data_for_plot(data)
-        phases = angle(Z).T if not self._unwrap_phase else unwrap(unwrap(angle(Z)).T)
-        phases[Z.T == 0] = 0
-        phases = phases if self._phase_units == "rad" else phases * 180 / pi
+        phases = abs(angle(Z).T) if not self._unwrap_phase else unwrap(angle(Z)).T
+        phases[Z.T==0] = 0
+        phases = phases if self._phase_units == "rad" else phases*180/pi
 
         if self._plot_limits_fixed is False:
             self.max_abs = max(abs(Z)[abs(Z) != 0])

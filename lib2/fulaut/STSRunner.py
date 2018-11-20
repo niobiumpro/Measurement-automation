@@ -25,7 +25,7 @@ class STSRunner():
                                "nop":101,
                                "power":self._vna_power,
                                "averages":1}
-        self._currents = linspace(-.5e-3, .5e-3, 101)
+        self._currents = linspace(-.1e-3, .1e-3, 101)
         self._sts_result = None
         self._launch_datetime = datetime.today()
 
@@ -51,11 +51,13 @@ class STSRunner():
             self._iterate_STS()
 
         ao = AnticrossingOracle("transmon", self._sts_result, plot=True)
-
+        res_points = ao.get_res_points()
         params, loss = ao.launch()
-        if loss<0.1:
 
-            print("Success! "+str(params)+" "+str(loss), end="")
+        self._logger.debug("Error: "+str(loss)+\
+                        ", ptp: "+str(ptp(res_points[:,1])/1e6))
+        if loss<0.05*ptp(res_points[:,1])/1e6:
+            self._logger.debug("Success! "+str(params)+" "+str(loss))
             self._sts_result._fit_result = (params, loss)
             print("Saving...", end="")
             self._sts_result.save()
@@ -77,9 +79,15 @@ class STSRunner():
             ao = AnticrossingOracle("transmon", self._sts_result, plot=True)
             res_points = ao.get_res_points()
 
-            if 0.01*self._scan_area < ptp(res_points[:,1]):
+            self._logger.debug("Scan: "+str(self._scan_area/1e6))
+            self._logger.debug("Ptp: "+str(ptp(res_points[:,1])/1e6))
+            if 0.01*self._scan_area < ptp(res_points[:,1])<0.5*self._scan_area:
                 self._logger.debug("Flux dependence found. Zooming...")
-                self._scan_area = max(ptp(res_points[:,1])/0.1, 3e6)
+                self._scan_area = max(ptp(res_points[:,1])/0.25, 3e6)
+                self._res_freq = mean(res_points[:,1])
+                break
+            elif ptp(res_points[:,1])>0.5*self._scan_area:
+                self._logger.debug("Strong flux dependence found. Leaving as is..")
                 self._res_freq = mean(res_points[:,1])
                 break
             else:
@@ -101,7 +109,7 @@ class STSRunner():
         elif len(intersections)<3:
             if max(abs(self._currents))>1e-3:
                 raise ValueError("Flux period is too large!")
-            self._currents = self._currents*10
+            self._currents = self._currents*2
             self._perform_STS()
 
 

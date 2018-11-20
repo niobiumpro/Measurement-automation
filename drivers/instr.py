@@ -95,7 +95,7 @@ class Instr(object):
                 print("Error in wait(): value returned: {0}".format(bla))
             else:
                 done = (2**5 == (2**5 & stb_value))
-                sleep(0.01)
+                sleep(0.001)
 
     def wait_for_srq(self): # ONLY WORKS WITH GPIB ! NOT TESTED !
         self._visainstrument.write("*OPC")

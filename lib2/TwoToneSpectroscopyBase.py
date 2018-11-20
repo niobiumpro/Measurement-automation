@@ -63,7 +63,7 @@ class TwoToneSpectroscopyBase(Measurement):
         super().set_fixed_parameters(vna=vna_parameters, mw_src=mw_src_parameters)
 
     def _detect_resonator(self, vna_parameters, plot=True, bandwidth_factor = 10):
-        self._vna.set_nop(800)
+        self._vna.set_nop(300)
         self._vna.set_freq_limits(*vna_parameters["freq_limits"])
         self._vna.set_power(vna_parameters["power"])
         self._vna.set_bandwidth(vna_parameters["bandwidth"]*bandwidth_factor)
