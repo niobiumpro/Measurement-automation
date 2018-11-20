@@ -33,7 +33,7 @@ class FastTwoToneSpectroscopyBase(Measurement):
         self._last_resonator_result = None
 
     def set_fixed_parameters(self, vna_parameters, mw_src_parameters, current=None,
-                             voltage=None, detect_resonator=True, bandwidth_factor=10):
+                             voltage=None, detect_resonator=True, bandwidth_factor=1):
 
         if "ext_trig_channel" in mw_src_parameters.keys():
             # internal adjusted trigger parameters for vna
@@ -77,7 +77,7 @@ class FastTwoToneSpectroscopyBase(Measurement):
         super().set_fixed_parameters(vna=vna_parameters, mw_src=mw_src_parameters)
 
     def _detect_resonator(self, vna_parameters, plot=True):
-        self._vna.set_nop(800)
+        self._vna.set_nop(100)
         self._vna.set_freq_limits(*vna_parameters["freq_limits"])
         if "res_find_power" in vna_parameters.keys():
             self._vna.set_power(vna_parameters["res_find_power"])
@@ -163,6 +163,10 @@ class FastTwoToneSpectroscopyBase(Measurement):
         vna.wait_for_stb()
         data = vna.get_sdata()
         return data
+
+    def _base_setter(self, value):
+        self._base_parameter_setter(value)
+        self._mw_src.send_sweep_trigger()  # telling mw_src to be ready to start
 
     def _adaptive_setter(self, value):
         self._base_parameter_setter(value)

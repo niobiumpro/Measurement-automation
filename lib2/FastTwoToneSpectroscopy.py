@@ -23,7 +23,7 @@ class FastFluxTwoToneSpectroscopy(FastTwoToneSpectroscopyBase):
     def set_swept_parameters(self, mw_src_frequencies, current_values=None,
                              voltage_values=None):
         base_parameter_values = current_values if voltage_values is None else voltage_values
-        base_parameter_setter = self._adaptive_setter if self._adaptive else self._base_parameter_setter
+        base_parameter_setter = self._adaptive_setter if self._adaptive else self._base_setter
 
         swept_pars = {self._base_parameter_name: (base_parameter_setter, base_parameter_values),
                       "Frequency [Hz]": (self._mw_src.set_frequency, mw_src_frequencies)}
@@ -47,7 +47,7 @@ class FastPowerTwoToneSpectroscopy(FastTwoToneSpectroscopyBase):
 
     def set_swept_parameters(self, mw_src_frequencies, power_values):
         self._base_parameter_setter = self._mw_src.set_power
-        base_parameter_setter = self._adaptive_setter if self._adaptive else self._base_parameter_setter
+        base_parameter_setter = self._adaptive_setter if self._adaptive else self._base_setter
 
         swept_pars = {"Power [dBm]": (base_parameter_setter, power_values),
                       "Frequency [Hz]": (self._mw_src.set_frequency, mw_src_frequencies)}
@@ -72,7 +72,7 @@ class FastAcStarkTwoToneSpectroscopy(FastTwoToneSpectroscopyBase):
                              voltage_values=None):
 
         base_parameter_values = current_values if voltage_values is None else voltage_values
-        base_parameter_setter = self._adaptive_setter if self._adaptive else self._base_parameter_setter
+        base_parameter_setter = self._adaptive_setter if self._adaptive else self._base_setter
 
         swept_pars = {self._base_parameter_name: (base_parameter_setter, base_parameter_values),
                       "Frequency [Hz]": (self._mw_src.set_frequency, mw_src_frequencies)}
