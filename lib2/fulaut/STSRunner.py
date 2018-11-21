@@ -25,7 +25,7 @@ class STSRunner():
                                "nop":101,
                                "power":self._vna_power,
                                "averages":1}
-        self._currents = linspace(-.1e-3, .1e-3, 101)
+        self._currents = linspace(-.15e-3, .0e-3, 101)
         self._sts_result = None
         self._launch_datetime = datetime.today()
 
@@ -56,7 +56,7 @@ class STSRunner():
 
         self._logger.debug("Error: "+str(loss)+\
                         ", ptp: "+str(ptp(res_points[:,1])/1e6))
-        if loss<0.05*ptp(res_points[:,1])/1e6:
+        if loss < 0.2*ptp(res_points[:,1])/1e6:
             self._logger.debug("Success! "+str(params)+" "+str(loss))
             self._sts_result._fit_result = (params, loss)
             print("Saving...", end="")
@@ -100,14 +100,16 @@ class STSRunner():
         self._vna_parameters["nop"] = 101
         self._perform_STS()
         ao = AnticrossingOracle("transmon", self._sts_result, plot=True)
-        intersections = ao.find_resonator_intersections()
-        self._logger.debug("Intersections found: "+str(intersections))
+        period = ao._find_period()
 
-        if len(intersections)>6:
-            self._currents = self._currents/2
+        N_periods = ptp(self._currents)/period
+        self._logger.debug("Periods: %.2f"%N_periods)
+
+        if N_periods > 2:
+            self._currents = self._currents/N_periods
             self._perform_STS()
-        elif len(intersections)<3:
-            if max(abs(self._currents))>1e-3:
+        elif N_periods < 2:
+            if max(abs(self._currents)) > 1e-3:
                 raise ValueError("Flux period is too large!")
             self._currents = self._currents*2
             self._perform_STS()
