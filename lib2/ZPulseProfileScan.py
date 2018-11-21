@@ -18,7 +18,7 @@ class ZPulseProfileScan(VNATimeResolvedDispersiveMeasurement2D):
     def set_swept_parameters(self, pi_pulse_delays, excitation_freqs):
         q_if_frequency = self._q_awg.get_calibration() \
             .get_radiation_parameters()["if_frequency"]
-        swept_pars = {"pi_pulse_delay":\
+        swept_pars = {"pi_pulse_delay":
                         (self._set_pi_pulse_delay_and_output,
                             pi_pulse_delays),
                       "excitation_frequency":

@@ -199,7 +199,8 @@ class MeasurementResult():
         be implemented for each subclass.
         '''
         fig, axes, caxes = self._prepare_figure()
-        self._plot(axes, caxes)
+        self._dynamic_visualize = False
+        self._plot(axes, caxes, False)
         figManager = plt.get_current_fig_manager()
         if maximized:
             try:
@@ -225,7 +226,7 @@ class MeasurementResult():
                 figManager.window.state('zoomed')
             # figManager.window.showMaximized()
 
-        self._plot(self._dynamic_axes, self._dynamic_caxes)
+        self._plot(self._dynamic_axes, self._dynamic_caxes, True)
 
     def _prepare_figure(self):
         '''

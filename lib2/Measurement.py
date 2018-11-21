@@ -303,12 +303,12 @@ class Measurement():
         measurement_data["data"] = self._raw_data
         return measurement_data
 
-    def _detect_resonator(self, plot=False):
+    def _detect_resonator(self, plot=False, tries_number=3):
         """
         Finds frequency of the resonator visible on the VNA screen
         """
         vna = self._vna
-        tries_number = 10
+        tries_number = 3
         for i in range(0, tries_number):
             vna.avg_clear(); vna.prepare_for_stb(); vna.sweep_single(); vna.wait_for_stb()
             frequencies, sdata = vna.get_frequencies(), vna.get_sdata()
@@ -320,8 +320,8 @@ class Measurement():
                 break
             else:
                 print("\rFit was inaccurate (try #%d), retrying"%i, end = "")
-        if result is None:
-            print(frequencies, sdata)
+        # if result is None:
+        # print(frequencies, sdata)
         return result
 
     def _detect_qubit(self):

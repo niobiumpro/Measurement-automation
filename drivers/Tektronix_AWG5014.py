@@ -79,7 +79,7 @@ class Tektronix_AWG5014(Instrument):
         for i in range(1, 9):
             self.get_marker_voltages(i)
         for i in range(1,5):
-            self.get_amplitude(i)
+            self.set_amplitude(2, i)
 
     def output_arbitrary_waveform(self, waveform, repetition_rate,
         channel, async=True):
@@ -164,8 +164,8 @@ class Tektronix_AWG5014(Instrument):
                 else:
                     host_channel_waveform = np.zeros((len(marker_waveform)))
 
-                self.set_waveform(host_channel_waveform/1.5*2, \
-                                            repetition_rate, host_channel)
+                self.set_waveform(host_channel_waveform * 2, \
+                                  repetition_rate, host_channel)
                 self.set_output(1, host_channel)
                 self.run()
                 self._visainstrument.query("*OPC?")

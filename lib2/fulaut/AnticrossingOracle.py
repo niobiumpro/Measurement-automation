@@ -124,16 +124,22 @@ class AnticrossingOracle():
             # maybe we have raw dict
             data = self._sts_result
         try:
-            curs, freqs, self._data =\
-                data["Current [A]"], data["frequency"], data["data"]
+            curs = data["Current [A]"]
         except:
-            curs, freqs, self._data =\
-                data["current"], data["frequency"], data["data"]
+            curs = data["current"]
+
+        try:
+            freqs = data["frequency"]
+        except:
+            freqs = data["Frequency [Hz]"]
+
+        self._data = data["data"]
+
         data = self._data
         res_freqs = []
 
         def comlex_ptp_estimation(Z):
-            point0 = Z[0,0]
+            point0 = Z[0, 0]
             point1 = Z.ravel()[argmax(abs(Z-point0))]
             point2 = Z.ravel()[argmax(abs(Z-point1))]
             point3 = Z.ravel()[argmax(abs(Z-point2))]
@@ -200,9 +206,12 @@ class AnticrossingOracle():
 
         self._corr = corr = correlate(data, data, "full")[data.size-1:]
         peaks = argrelextrema(corr, greater, order=10)[0]
-        period = peaks[argmax(corr[peaks])]
-        print(peaks, period)
-        return self._curs[period]-self._curs[0]
+        try:
+            period = peaks[argmax(corr[peaks])]
+            print(peaks, period)
+            return self._curs[period] - self._curs[0]
+        except ValueError:
+            return 1.5 * ptp(self._curs)
 
 
     def _model_square(self, duty, phase, x):
@@ -386,4 +395,4 @@ class AnticrossingOracle():
         return sum(cost)
 
     def get_res_points(self):
-        return self._res_points*1e9
+        return self._res_points

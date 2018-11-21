@@ -37,8 +37,11 @@ def load_IQMX_calibration_database(mixer_id, iq_attenuation):
 	directory = 'Data\\IQMXCalibration'
 
 	filename=mixer_id
-	with open(directory+"\\"+filename+'.pkl', 'rb') as f:
-		known_cal_data = pkl.load(f)
+    try:
+        with open(directory + "\\" + filename + '.pkl', 'rb') as f:
+            known_cal_data = pkl.load(f)
+    except FileNotFoundError:
+        return None
 	return known_cal_data[iq_attenuation]
 
 

@@ -2,6 +2,7 @@
 from matplotlib import pyplot as plt, colorbar
 from lib2.VNATimeResolvedDispersiveMeasurement import *
 
+
 class VNATimeResolvedDispersiveMeasurement2D(VNATimeResolvedDispersiveMeasurement):
 
     def __init__(self, name, sample_name, devs_aliases_map):
@@ -46,7 +47,7 @@ class VNATimeResolvedDispersiveMeasurement2DResult(
         '''
         pass
 
-    def _plot(self, axes, caxes):
+    def _plot(self, axes, caxes, dynamic):
 
         data = self.get_data()
         if "data" not in data.keys():
