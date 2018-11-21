@@ -7,22 +7,22 @@ import logging
 from time import sleep
 
 class Agilent_EXA_N9010A(Instrument):
-    '''
+    """
     This is the python driver for the Agilent EXA N9010A Signal Analyzer
 
     Usage:
     Initialise with
     <name> = instruments.create('<name>', address='<GPIB address>', reset=<bool>)
 
-    '''
+    """
 
     def __init__(self, address, channel_index = 1):
-        '''
+        """
         Initializes
 
         Input:
             address (string) : VISA address
-        '''
+        """
 
         Instrument.__init__(self, "EXA", tags=['physical'])
 
@@ -146,10 +146,10 @@ class Agilent_EXA_N9010A(Instrument):
               self._visainstrument.write('INIT1')
 
     def get_parameters(self):
-        '''
+        """
         Returns a dictionary containing bandwidth, nop, power, averages and
         freq_limits currently used by the EXA
-        '''
+        """
         return {"bandwidth":self.get_bandwidth(),
                   "nop":self.get_nop(),
                   "centerfreq":self.get_centerfreq(),
@@ -158,10 +158,10 @@ class Agilent_EXA_N9010A(Instrument):
                   "av_status":self.get_average()}
 
     def set_parameters(self, pars_dict):
-        '''
+        """
         Method allowing to set all of the EXA parameters at once (bandwidth, nop,
         centerfreq, spanfreq, averages and averaging status)
-        '''
+        """
         keys = pars_dict.keys()
         if "bandwidth" in keys: self.set_bandwidth(pars_dict["bandwidth"])
         if "nop" in keys: self.set_nop(pars_dict["nop"])
@@ -203,12 +203,12 @@ class Agilent_EXA_N9010A(Instrument):
         else: return False
 
     def get_tracedata(self):
-        '''
+        """
         Get the data of the current trace
 
         Output: (Frequency_List, Signal_List)
 
-        '''
+        """
         self._visainstrument.write(":FORMat:DATA REAL,32")
         self._visainstrument.write(":FORMat:BORDer SWAP")
         data = self._visainstrument.ask_for_values(":CALC:DATA1?")
@@ -260,7 +260,7 @@ class Agilent_EXA_N9010A(Instrument):
     ###
 
     def do_set_nop(self, nop):
-        '''
+        """
         Set Number of Points (nop) for sweep
 
         Input:
@@ -268,20 +268,20 @@ class Agilent_EXA_N9010A(Instrument):
 
         Output:
             None
-        '''
+        """
         self._visainstrument.write(':SENS%i:SWE:POIN %i' %(self._ci,nop))
         self._nop = nop
         self.get_freqpoints() #Update List of frequency points
 
     def do_get_nop(self):
-        '''
+        """
         Get Number of Points (nop) for sweep
 
         Input:
             None
         Output:
             nop (int)
-        '''
+        """
         if self._zerospan:
           return 1
         else:
@@ -289,7 +289,7 @@ class Agilent_EXA_N9010A(Instrument):
         return self._nop
 
     def do_set_average(self, status):
-        '''
+        """
         Set status of Average
 
         Input:
@@ -297,14 +297,14 @@ class Agilent_EXA_N9010A(Instrument):
 
         Output:
             None
-        '''
+        """
         if status:
             self._visainstrument.write(':AVERage:STAT 1')
         elif status == False:
             self._visainstrument.write(':AVERage:STAT 0')
 
     def do_get_average(self):
-        '''
+        """
         Get status of Average
 
         Input:
@@ -312,11 +312,11 @@ class Agilent_EXA_N9010A(Instrument):
 
         Output:
             Status of Averaging ('on' or 'off) (string)
-        '''
+        """
         return bool(int(self._visainstrument.ask(":AVERage:STAT?")))
 
     def do_set_averages(self, av):
-        '''
+        """
         Set number of averages
 
         Input:
@@ -324,7 +324,7 @@ class Agilent_EXA_N9010A(Instrument):
 
         Output:
             None
-        '''
+        """
         self._visainstrument.write(":AVERage:COUNt  %d"%av)
         if av > 1:
             self.do_set_average(True)
@@ -334,19 +334,19 @@ class Agilent_EXA_N9010A(Instrument):
             # self._visainstrument.write('SENS:SWE:GRO:COUN 1')
 
     def do_get_averages(self):
-        '''
+        """
         Get number of averages
 
         Input:
             None
         Output:
             number of averages
-        '''
+        """
         return self._visainstrument.query(":OBWidth:AVERage:COUNt?")
 
 
     def do_set_centerfreq(self,cf):
-        '''
+        """
         Set the center frequency
 
         Input:
@@ -354,13 +354,13 @@ class Agilent_EXA_N9010A(Instrument):
 
         Output:
             None
-        '''
+        """
         self._visainstrument.write('SENS%i:FREQ:CENT %f' % (self._ci,cf))
         self.get_startfreq();
         self.get_stopfreq();
         self.get_span();
     def do_get_centerfreq(self):
-        '''
+        """
         Get the center frequency
 
         Input:
@@ -368,11 +368,11 @@ class Agilent_EXA_N9010A(Instrument):
 
         Output:
             cf (float) :Center Frequency in Hz
-        '''
+        """
         return  float(self._visainstrument.ask('SENS%i:FREQ:CENT?'%(self._ci)))
 
     def do_set_span(self,span):
-        '''
+        """
         Set Span
 
         Input:
@@ -380,7 +380,7 @@ class Agilent_EXA_N9010A(Instrument):
 
         Output:
             None
-        '''
+        """
         self._visainstrument.write('SENS%i:FREQ:SPAN %i' % (self._ci,span))
         if span==0:
             self._zerospan=True
@@ -393,7 +393,7 @@ class Agilent_EXA_N9010A(Instrument):
 
 
     def do_get_span(self):
-        '''
+        """
         Get Span
 
         Input:
@@ -401,12 +401,12 @@ class Agilent_EXA_N9010A(Instrument):
 
         Output:
             span (float) : Span in Hz
-        '''
+        """
         span = self._visainstrument.ask('SENS%i:FREQ:SPAN?' % (self._ci) ) #float( self.ask('SENS1:FREQ:SPAN?'))
         return span
 
     def setup_list_sweep(self, frequency_list, rbw_list):
-        '''
+        """
         Setup the EXA for the list sweep measurement. See manual for details.
 
         Parameters:
@@ -415,7 +415,7 @@ class Agilent_EXA_N9010A(Instrument):
             List of the center frequencies for which the EXA will record data
         rbw_list: array-like
             list of the resolution bandwidths to be used for corresponding frequencies
-        '''
+        """
         self._visainstrument.write(":CONFigure:LIST")
         self._list_sweep = True
 
@@ -429,7 +429,7 @@ class Agilent_EXA_N9010A(Instrument):
         self._visainstrument.write(":LIST:SWEep:TIME "+sweep_times[:-1])
 
     def setup_swept_sa(self, center_freq=5e9, span=1e9, nop=1001, rbw=1e6):
-        '''
+        """
         Setup the EXA for the standard swept measurement. See manual for details.
 
         Parameters:
@@ -442,7 +442,7 @@ class Agilent_EXA_N9010A(Instrument):
             number of points for the sweep
         rbw: float
             resolution bandwidth for each point
-        '''
+        """
         self._visainstrument.write(":CONFigure:SAN")
         self._visainstrument.write(":DET:trace1 POS")
         self._list_sweep = False
@@ -453,9 +453,9 @@ class Agilent_EXA_N9010A(Instrument):
 
 
     def sweep_single(self):
-        '''
+        """
         Sweep single
-        '''
+        """
         self.init()
         #self.write("SENSe{0}:SWEep:MODE SINGle".format(self.current_channel))
         #self.write("SENS%i:SWE:MODE SING"%(self._ci))
@@ -465,10 +465,10 @@ class Agilent_EXA_N9010A(Instrument):
         return self._visainstrument.query("CHP:AVER:TCON?")[:-1]
 
     def set_averaging_setup(self, av_type='REP'):
-        '''
+        """
         types are "EXP" - continues after specified number (WTF)
                   "REP" - resets average counter
-        '''
+        """
         return self._visainstrument.write("CHP:AVER:TCON %s"%av_type)
 
     def set_singlesweep_mode(self):
@@ -478,7 +478,7 @@ class Agilent_EXA_N9010A(Instrument):
         return self._visainstrument.write("INIT:CONT 1")
 
     def do_set_startfreq(self,val):
-        '''
+        """
         Set Start frequency
 
         Input:
@@ -486,7 +486,7 @@ class Agilent_EXA_N9010A(Instrument):
 
         Output:
             None
-        '''
+        """
         self._visainstrument.write('SENS%i:FREQ:STAR %f' % (self._ci,val))
         self._start = val
         self.get_centerfreq();
@@ -494,7 +494,7 @@ class Agilent_EXA_N9010A(Instrument):
         self.get_span();
 
     def do_get_startfreq(self):
-        '''
+        """
         Get Start frequency
 
         Input:
@@ -502,12 +502,12 @@ class Agilent_EXA_N9010A(Instrument):
 
         Output:
             span (float) : Start Frequency in Hz
-        '''
+        """
         self._start = float(self._visainstrument.ask('SENS%i:FREQ:STAR?' % (self._ci)))
         return  self._start
 
     def do_set_stopfreq(self,val):
-        '''
+        """
         Set STop frequency
 
         Input:
@@ -515,7 +515,7 @@ class Agilent_EXA_N9010A(Instrument):
 
         Output:
             None
-        '''
+        """
         self._visainstrument.write('SENS%i:FREQ:STOP %f' % (self._ci,val))
         self._stop = val
         self.get_startfreq();
@@ -523,7 +523,7 @@ class Agilent_EXA_N9010A(Instrument):
         self.get_span();
 
     def do_get_stopfreq(self):
-        '''
+        """
         Get Stop frequency
 
         Input:
@@ -531,12 +531,12 @@ class Agilent_EXA_N9010A(Instrument):
 
         Output:
             val (float) : Start Frequency in Hz
-        '''
+        """
         self._stop = float(self._visainstrument.ask('SENS%i:FREQ:STOP?' %(self._ci) ))
         return  self._stop
 
     def do_set_bandwidth(self,band):
-        '''
+        """
         Set Bandwidth
 
         Input:
@@ -544,11 +544,11 @@ class Agilent_EXA_N9010A(Instrument):
 
         Output:
             None
-        '''
+        """
         self._visainstrument.write('SENS%i:BWID:RES %i' % (self._ci,band))
 
     def do_get_bandwidth(self):
-        '''
+        """
         Get Bandwidth
 
         Input:
@@ -556,7 +556,7 @@ class Agilent_EXA_N9010A(Instrument):
 
         Output:
             band (float) : Bandwidth in Hz
-        '''
+        """
         # getting value from instrument
         return  float(self._visainstrument.ask('SENS%i:BWID:RES?'%self._ci))
 
@@ -564,7 +564,7 @@ class Agilent_EXA_N9010A(Instrument):
         self._zerospan=val
 
     def do_get_zerospan(self):
-        '''
+        """
         Check weather the virtual zerospan mode is turned on
 
         Input:
@@ -572,11 +572,11 @@ class Agilent_EXA_N9010A(Instrument):
 
         Output:
             val (bool) : True or False
-        '''
+        """
         return self._zerospan
 
     def do_set_trigger_source(self,source):
-        '''
+        """
         Set Trigger Mode
 
         Input:
@@ -584,14 +584,14 @@ class Agilent_EXA_N9010A(Instrument):
 
         Output:
             None
-        '''
+        """
         if source.upper() in [AUTO, MAN, EXT, REM]:
             self._visainstrument.write('TRIG:SOUR %s' % source.upper())
         else:
             raise ValueError('set_trigger_source(): must be AUTO | MANual | EXTernal | REMote')
 
     def do_get_trigger_source(self):
-        '''
+        """
         Get Trigger Mode
 
         Input:
@@ -599,12 +599,12 @@ class Agilent_EXA_N9010A(Instrument):
 
         Output:
             source (string) : AUTO | MANual | EXTernal | REMote
-        '''
+        """
         return self._visainstrument.ask('TRIG:SOUR?')
 
 
     def do_set_channel_index(self,val):
-        '''
+        """
         Set the index of the channel to address.
 
         Input:
@@ -612,7 +612,7 @@ class Agilent_EXA_N9010A(Instrument):
 
         Output:
             None
-        '''
+        """
         nop = self._visainstrument.read('DISP:COUN?')
         if val < nop:
             self._ci = val
@@ -620,7 +620,7 @@ class Agilent_EXA_N9010A(Instrument):
             raise ValueError('set_channel_index(): index must be < nop channels')
 
     def do_get_channel_index(self):
-        '''
+        """
         Get active channel
 
         Input:
@@ -628,7 +628,7 @@ class Agilent_EXA_N9010A(Instrument):
 
         Output:
             channel_index (int) : 1-16
-        '''
+        """
         return self._ci
 
     def make_sweep_get_data(self):

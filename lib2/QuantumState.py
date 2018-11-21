@@ -2,17 +2,19 @@
 from numpy import *
 from scipy.linalg import expm
 
-eye = matrix([[1,0],[0,1]])
-sig_x = matrix([[0,1],[1,0]])
-sig_y = matrix([[0,-1j],[1j,0]], dtype=complex)
-sig_z = matrix([[1,0],[0,-1]])
+eye = matrix([[1, 0], [0, 1]])
+sig_x = matrix([[0, 1], [1, 0]])
+sig_y = matrix([[0, -1j], [1j, 0]], dtype=complex)
+sig_z = matrix([[1, 0], [0, -1]])
 
-operators = {"I":eye, "X":sig_x,"Y":sig_y, "Z":sig_z}
-signs = {"+":1, "-":-1}
+operators = {"I": eye, "X": sig_x, "Y": sig_y, "Z": sig_z}
+signs = {"+": 1, "-": -1}
+
 
 def matrix_from_gate(gate):
-    angle = pi*eval(gate.replace(gate[1],"1"))
-    return expm(-1j*operators[gate[1]]*angle/2)
+    angle = pi * eval(gate.replace(gate[1], "1"))
+    return expm(-1j * operators[gate[1]] * angle / 2)
+
 
 class QuantumState():
     """
@@ -29,7 +31,7 @@ class QuantumState():
                 The method is static.
     """
 
-    def __init__(self, represent='spherical', coords=[1.0,pi/2,0]):
+    def __init__(self, represent='spherical', coords=[1.0, pi / 2, 0]):
         """
         The creation of QuantumState instance.
 
@@ -64,9 +66,9 @@ class QuantumState():
 
     def _calc_norm(self):
         if (self._represent == 'bloch'):
-            self._norm = float(sqrt(sum(array(self._coords)**2)))
+            self._norm = float(sqrt(sum(array(self._coords) ** 2)))
         elif (self._represent == "dens_mat"):
-            self._norm = 2*float((self._coords**2).trace)-1
+            self._norm = 2 * float((self._coords ** 2).trace) - 1
         elif (self._represent == "spherical"):
             self._norm = self._coords[0]
         elif (self._represent == 'pulses'):
@@ -75,17 +77,17 @@ class QuantumState():
         else:
             raise ValueError("Used representation of quantum state is not allowed")
 
-    def _check_norm(self, digit_error = 1e-4):
-        if self._norm > 1.0+digit_error:
+    def _check_norm(self, digit_error=1e-4):
+        if self._norm > 1.0 + digit_error:
             raise ValueError("Your norm is >1.0 for your state. Look for a mistake.")
 
-    def is_on_sphere(self, digit_error = 1e-4):
+    def is_on_sphere(self, digit_error=1e-4):
         """
         Raises an exception if the quantum state is not on the Bloch Sphere (if needed).
         (only needed for bloch and dens_mat representation)
         """
 
-        if  self._norm <= 1.0-digit_error:
+        if self._norm <= 1.0 - digit_error:
             return True
         else:
             return False
@@ -97,10 +99,11 @@ class QuantumState():
         """
 
         """
-        if (new_coords is not None ) and (new_represent is not None):
+        if (new_coords is not None) and (new_represent is not None):
             self._coords = new_coords
             self._represent = new_represent
-        else: pass
+        else:
+            pass
 
     def _check_pulse_axis(self):
         """
@@ -120,11 +123,11 @@ class QuantumState():
         if repr_from == "bloch":
             old_x, old_y, old_z = self._coords
             if repr_to == "dens_mat":
-                new_coords = 0.5*(eye + old_x*sig_x + old_y*sig_y + old_z*sig_z)
+                new_coords = 0.5 * (eye + old_x * sig_x + old_y * sig_y + old_z * sig_z)
             elif repr_to == "spherical":
                 new_r = self._norm
-                new_phi = arctan2(real(old_y),real(old_x))
-                new_theta = arctan2(real(old_z),sqrt(real(old_y)**2+real(old_x)**2))
+                new_phi = arctan2(real(old_y), real(old_x))
+                new_theta = arctan2(real(old_z), sqrt(real(old_y) ** 2 + real(old_x) ** 2))
                 new_coords = [new_r, new_theta, new_phi]
             elif repr_to == "pulses":
                 self.change_represent("spherical")
@@ -135,34 +138,34 @@ class QuantumState():
         if repr_from == "spherical":
             old_r, old_theta, old_phi = self._coords
             if repr_to == "bloch":
-                new_x = old_r*cos(old_theta)*cos(old_phi)
-                new_y = old_r*cos(old_theta)*sin(old_phi)
-                new_z = old_r*sin(old_theta)
+                new_x = old_r * cos(old_theta) * cos(old_phi)
+                new_y = old_r * cos(old_theta) * sin(old_phi)
+                new_z = old_r * sin(old_theta)
                 new_coords = [new_x, new_y, new_z]
             if repr_to == "dens_mat":
-                new_dm = 0.5*(eye + cos(old_phi)*cos(old_theta)*sig_x +\
-                                    sin(old_phi)*cos(old_theta)*sig_y +\
-                                    sin(old_theta)*sig_z)
+                new_dm = 0.5 * (eye + cos(old_phi) * cos(old_theta) * sig_x + \
+                                sin(old_phi) * cos(old_theta) * sig_y + \
+                                sin(old_theta) * sig_z)
                 new_coords = new_dm
             if repr_to == "pulses":
                 if self.is_on_sphere() == False:
                     self.extend_to_sphere()
-                #new_coords = [old_theta,old_theta,('Z',old_phi)]
+                # new_coords = [old_theta,old_theta,('Z',old_phi)]
         if repr_from == "dens_mat":
             old_dm = self._coords
             if repr_to == "bloch":
-                new_x = 2*real(old_dm[0,1])
-                new_y = 2*imag(old_dm[1,0])
-                new_z = old_dm[0,0] - old_dm[1,1]
+                new_x = 2 * real(old_dm[0, 1])
+                new_y = 2 * imag(old_dm[1, 0])
+                new_z = old_dm[0, 0] - old_dm[1, 1]
                 new_coords = [new_x, new_y, new_z]
             if repr_to == "spherical":
                 pass
         if repr_from == "pulses":
             if repr_to == "dens_mat":
-                state = array([[0],[1]])
+                state = array([[0], [1]])
                 for gate in self._coords:
                     state = matrix_from_gate(gate).dot(state)
-                new_coords =  state.dot(state.conj().T)
+                new_coords = state.dot(state.conj().T)
             if repr_to == 'spherical':
                 self.change_represent('dens_mat')
                 self.change_represent('bloch')
@@ -172,8 +175,6 @@ class QuantumState():
             self._change_state(new_coords, repr_to)
             self._represent = new_represent
 
-
-
     def __str__(self):
-        return "A QuantumState object: \""+self._represent+"\" representation: "+\
-            str(self._coords)+"."
+        return "A QuantumState object: \"" + self._represent + "\" representation: " + \
+               str(self._coords) + "."

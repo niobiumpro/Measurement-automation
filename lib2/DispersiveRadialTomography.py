@@ -185,9 +185,9 @@ class DispersiveRadialTomographyResult(VNATimeResolvedDispersiveMeasurementResul
         return theta, r_norm, s_data
 
     def _annotate_axes(self, axes):
-        '''
+        """
         Should be implemented in child classes
-        '''
+        """
         pass
 
 

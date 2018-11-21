@@ -26,10 +26,10 @@ class Znb(instr.Instr):
         self.set_data_format("ASCII")
 
     def get_parameters(self):
-        '''
+        """
         Returns a dictionary containing bandwidth, nop, power, averages and
         freq_limits currently used by the VNA
-        '''
+        """
         return {"bandwidth":self.get_bandwidth(),
                   "nop":self.get_nop(),
                   "power":self.get_power(),
@@ -37,10 +37,10 @@ class Znb(instr.Instr):
                   "freq_limits":self.get_freq_limits()}
 
     def set_parameters(self, parameters_dict):
-        '''
+        """
         Method allowing to set all or some of the VNA parameters at once
         (bandwidth, nop, power, averages, freq_limits and sweep type)
-        '''
+        """
         if "bandwidth" in parameters_dict.keys():
             self.set_bandwidth(parameters_dict["bandwidth"])
         if "averages" in parameters_dict.keys():
@@ -55,7 +55,7 @@ class Znb(instr.Instr):
             self.set_trigger_type(parameters_dict["trigger_type"])
 
     def select_S_param(self, S_param, channel=1):
-        '''
+        """
         Set all active traces to measure S parameter specified in the argument.
 
         Parameters:
@@ -64,7 +64,7 @@ class Znb(instr.Instr):
             name of the coefficient of the S matrix, i.e. "S21" or "S14"
         channel=1: int
             channel number, usually 1
-        '''
+        """
         for tracename in self.list_traces(channel):
             self.write("CALCulate{0}:PARameter:MEASure '{1}', '{2}'".format(1, tracename, S_param))
 
@@ -98,9 +98,9 @@ class Znb(instr.Instr):
         self.write("SENSe{0}:SWEep:POINts {1}".format(self.current_channel, nb_points))
 
     def set_average_mode(self, mode):
-        '''
+        """
         Sets the averaging mode for ZNB. See manual for available modes.
-        '''
+        """
         self.write("SENS:AVER:MODE "+str(mode))
 
     def set_averages(self, nb_averages):

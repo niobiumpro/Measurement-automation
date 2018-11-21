@@ -12,11 +12,11 @@ from scipy.signal import *
 
 class AnticrossingOracle():
 
-    '''
+    """
     This class automatically processes anticrossing spectral data for
     different types of qubits and frequency arrangements between the qubits and
     resonators
-    '''
+    """
 
     qubit_spectra = {"transmon":transmon_spectrum}
 

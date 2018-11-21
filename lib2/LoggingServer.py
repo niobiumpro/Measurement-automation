@@ -5,8 +5,8 @@ import logging
 from logging import Formatter
 from logging.handlers import TimedRotatingFileHandler
 
-class LoggingServer():
 
+class LoggingServer():
     loggingHandler = TimedRotatingFileHandler(
         'log/fulaut.log', when="midnight", backupCount=1)
     loggingFormat = '%(asctime)s.%(msecs)03d [%(levelname)s] %(message)s'

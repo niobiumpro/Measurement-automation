@@ -8,17 +8,17 @@ class MXG(instr.Instr):
         self.set_output_state("ON")
 
     def get_parameters(self):
-        '''
+        """
         Returns a dictionary containing frequency and power currently used
         by the device
-        '''
+        """
         return {"power":self.get_power(), "frequency":self.get_frequency()}
 
     def set_parameters(self, parameters_dict):
-        '''
+        """
         Method allowing to set all of the VNA parameters at once (bandwidth, nop,
         power, averages and freq_limits)
-        '''
+        """
         keys = parameters_dict.keys()
         if "power" in keys:
             self.set_power(parameters_dict["power"])
@@ -32,9 +32,9 @@ class MXG(instr.Instr):
             self.write(":SOURce:ROSCillator:SOURce:AUTO ON")
 
     def set_output_state(self, output_state):
-        '''
+        """
         "ON" of "OFF"
-        '''
+        """
         self.write(":OUTput:STATe "+output_state)
 
     def get_output_state(self):

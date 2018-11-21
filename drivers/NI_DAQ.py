@@ -94,7 +94,7 @@ class NI_DAQ(Instrument):
         self.get(ch_in)
 
     def reset(self):
-        '''Reset device.'''
+        """Reset device."""
         nidaq.reset_device(self._id)
 
     def _get_input_channels(self):
@@ -149,7 +149,7 @@ class NI_DAQ(Instrument):
 
 
 def detect_instruments():
-    '''Refresh NI DAQ instrument list.'''
+    """Refresh NI DAQ instrument list."""
 
     for name in nidaq.get_device_names():
         qt.instruments.create('NI%s' % name, 'NI_DAQ', id=name)

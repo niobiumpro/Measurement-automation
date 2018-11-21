@@ -70,7 +70,7 @@ class IQPulseSequence():
 
 
 class PulseBuilder():
-    '''
+    """
     Build a PulseBuilder instance for single-channel pulse sequences
 
     Parameters:
@@ -78,7 +78,7 @@ class PulseBuilder():
     calibration: CalibrationData
         Calibration data for the pulses that will be used to
         send out the pulse sequence.
-    '''
+    """
 
     def __init__(self, calibration):
         self._calibration = calibration
@@ -87,21 +87,21 @@ class PulseBuilder():
         self._pulse_seq = PulseSequence(self._waveform_resolution)
 
     def add_zero_pulse(self, duration):
-        '''
+        """
         Adds a pulse with zero (calibrated) amplitude to the sequence
 
         Parameters:
         -----------
         duration: float, ns
             Duration of the pulse in nanoseconds
-        '''
+        """
         offset = self._calibration["zero_offset"]
         N_time_steps = int(round(duration / self._waveform_resolution))
         self._pulse_seq.append_pulse(zeros(N_time_steps + 1) + offset)
         return self
 
     def add_rect_pulse(self, duration, offset_voltage, tanh_sigma=0):
-        '''
+        """
         Adds a pulse with offset_voltage with respect
         to the zero-calibrated voltage:
         absolute_voltage = zero_offset + offset_voltage
@@ -115,7 +115,7 @@ class PulseBuilder():
         tanh_sigma: float
             Specifies the smoothing coefficient for tanh window, 0 for no
             smoothing
-        '''
+        """
         offset = self._calibration["zero_offset"] + offset_voltage
         N_time_steps = int(round(duration / self._waveform_resolution))
 
@@ -135,7 +135,7 @@ class PulseBuilder():
         return self
 
     def add_zero_until(self, total_duration):
-        '''
+        """
         Adds a pulse with zero amplitude to the sequence of such length that the
         whole pulse sequence is of specified duration
 
@@ -145,7 +145,7 @@ class PulseBuilder():
         -----------
         total_duration: float, ns
             Duration of the whole sequence
-        '''
+        """
         total_time_steps = round(total_duration / self._waveform_resolution)
         current_time_steps = self._pulse_seq.total_points() - 1
         residual_time_steps = total_time_steps - current_time_steps
@@ -153,9 +153,9 @@ class PulseBuilder():
         return self
 
     def build(self):
-        '''
+        """
 
-        '''
+        """
         to_return = self._pulse_seq
         self._pulse_seq = PulseSequence(self._waveform_resolution)
         return to_return
@@ -164,7 +164,7 @@ class PulseBuilder():
 class IQPulseBuilder():
 
     def __init__(self, iqmx_calibration):
-        '''
+        """
         Build a IQPulseBuilder instance for a previously calibrated IQ mixer.
 
         Parameters:
@@ -172,7 +172,7 @@ class IQPulseBuilder():
         iqmx_calibration: IQCalibrationData
             Calibration data for the IQ mixer that will be used to send out the pulse sequence.
             Make sure that the radiation parameters of this calibration are in match with your actual settings
-        '''
+        """
 
         self._iqmx_calibration = iqmx_calibration
         self._waveform_resolution = \
@@ -181,7 +181,7 @@ class IQPulseBuilder():
         self._pulse_seq_Q = PulseSequence(self._waveform_resolution)
 
     def add_dc_pulse(self, duration, dc_voltage=None):
-        '''
+        """
         Adds a pulse by putting a dc voltage at the I and Q inputs of the mixer
 
         Parameters:
@@ -191,7 +191,7 @@ class IQPulseBuilder():
         dc_voltage: float, volts
             The value of the dc voltage applied at the IQ mixer ports during the
             pulse. If not specified, calibration data will be used
-        '''
+        """
         vdc1, vdc2 = self._iqmx_calibration \
             .get_optimization_results()[0]["dc_offset_open"] \
             if dc_voltage is None else (dc_voltage, dc_voltage)
@@ -201,14 +201,14 @@ class IQPulseBuilder():
         return self
 
     def add_zero_pulse(self, duration):
-        '''
+        """
         Adds a pulse with zero amplitude to the sequence
 
         Parameters:
         -----------
         duration: float, ns
             Duration of the pulse in nanoseconds
-        '''
+        """
         vdc1, vdc2 = self._iqmx_calibration \
             .get_optimization_results()[0]["dc_offsets"]
         N_time_steps = int(round(duration / self._waveform_resolution))
@@ -299,13 +299,13 @@ class IQPulseBuilder():
 
     def add_sine_pulse_from_string(self, pulse_string, pulse_duration,
                                    pulse_amplitude, window='gaussian'):
-        '''
+        """
         pulse_duration is pi_pulse_duraton for rectangular window
         and is arbitrary for gaussian window.
 
         pulse_amplitude is pi_pulse_amplitude for gaussian window and
         is arbitrary for rectangular window.
-        '''
+        """
         global_phase = 0
         pulse_ax = pulse_string[1]
         pulse_angle = eval(pulse_string.replace(pulse_ax, "1"))  # in pi's
@@ -333,7 +333,7 @@ class IQPulseBuilder():
         return self
 
     def add_zero_until(self, total_duration):
-        '''
+        """
         Adds a pulse with zero amplitude to the sequence of such length that the
         whole pulse sequence is of specified duration
 
@@ -343,7 +343,7 @@ class IQPulseBuilder():
         -----------
         total_duration: float, ns
             Duration of the whole sequence
-        '''
+        """
         total_time_steps = round(total_duration / self._waveform_resolution)
         current_time_steps = self._pulse_seq_I.total_points() - 1
         residual_time_steps = total_time_steps - current_time_steps
@@ -351,21 +351,23 @@ class IQPulseBuilder():
         return self
 
     def build(self):
-        '''
+        """
         Returns the IQ sequence containing I and Q pulse sequences and the total
         duration of the pulse sequence in ns
-        '''
+        """
         to_return = IQPulseSequence(self._pulse_seq_I, self._pulse_seq_Q)
         self._pulse_seq_I = PulseSequence(self._waveform_resolution)
         self._pulse_seq_Q = PulseSequence(self._waveform_resolution)
         return to_return
 
     @staticmethod
-    def build_dispersive_rabi_sequences(exc_pb, ro_pb, pulse_sequence_parameters):
-        '''
+    def build_dispersive_rabi_sequences(pulse_sequence_parameters, **pbs):
+        """
         Returns synchronized excitation and readout IQPulseSequences assuming that
         readout AWG is triggered by the excitation AWG
-        '''
+        """
+        exc_pb = pbs['q_pbs'][0]
+        ro_pb = pbs['ro_pbs'][0]
         awg_trigger_reaction_delay = \
             pulse_sequence_parameters["awg_trigger_reaction_delay"]
         readout_duration = \
@@ -389,11 +391,11 @@ class IQPulseBuilder():
             .add_dc_pulse(readout_duration) \
             .add_zero_until(repetition_period)
 
-        return exc_pb.build(), ro_pb.build()
+        return {'q_seqs': [exc_pb.build()],
+                'ro_seqs': [ro_pb.build()]}
 
     @staticmethod
-    def build_dispersive_ramsey_sequences(exc_pb, ro_pb,
-                                          pulse_sequence_parameters):
+    def build_dispersive_ramsey_sequences(pulse_sequence_parameters, **pbs):
 
         awg_trigger_reaction_delay = \
             pulse_sequence_parameters["awg_trigger_reaction_delay"]
@@ -409,6 +411,8 @@ class IQPulseBuilder():
             pulse_sequence_parameters["modulating_window"]
         amplitude = \
             pulse_sequence_parameters["excitation_amplitude"]
+        exc_pb = pbs['q_pbs'][0]
+        ro_pb = pbs['ro_pbs'][0]
 
         exc_pb.add_zero_pulse(awg_trigger_reaction_delay) \
             .add_sine_pulse(half_pi_pulse_duration,
@@ -423,11 +427,11 @@ class IQPulseBuilder():
             .add_dc_pulse(readout_duration) \
             .add_zero_until(repetition_period)
 
-        return exc_pb.build(), ro_pb.build()
+        return {'q_seqs': [exc_pb.build()],
+                'ro_seqs': [ro_pb.build()]}
 
     @staticmethod
-    def build_dispersive_decay_sequences(exc_pb, ro_pb,
-                                         pulse_sequence_parameters):
+    def build_dispersive_decay_sequences(pulse_sequence_parameters, **pbs):
         awg_trigger_reaction_delay = \
             pulse_sequence_parameters["awg_trigger_reaction_delay"]
         readout_duration = \
@@ -438,6 +442,8 @@ class IQPulseBuilder():
             pulse_sequence_parameters["pi_pulse_duration"]
         readout_delay = \
             pulse_sequence_parameters["readout_delay"]
+        exc_pb = pbs['q_pbs'][0]
+        ro_pb = pbs['ro_pbs'][0]
 
         exc_pb.add_zero_pulse(awg_trigger_reaction_delay) \
             .add_sine_pulse(pi_pulse_duration, 0) \
@@ -448,11 +454,11 @@ class IQPulseBuilder():
             .add_dc_pulse(readout_duration) \
             .add_zero_until(repetition_period)
 
-        return exc_pb.build(), ro_pb.build()
+        return {'q_seqs': [exc_pb.build()],
+                'ro_seqs': [ro_pb.build()]}
 
     @staticmethod
-    def build_dispersive_hahn_echo_sequences(exc_pb, ro_pb,
-                                             pulse_sequence_parameters):
+    def build_dispersive_hahn_echo_sequences(pulse_sequence_parameters, **pbs):
 
         awg_trigger_reaction_delay = \
             pulse_sequence_parameters["awg_trigger_reaction_delay"]
@@ -464,7 +470,8 @@ class IQPulseBuilder():
             pulse_sequence_parameters["half_pi_pulse_duration"]
         echo_delay = \
             pulse_sequence_parameters["echo_delay"]
-
+        exc_pb = pbs['q_pbs'][0]
+        ro_pb = pbs['ro_pbs'][0]
         exc_pb.add_zero_pulse(awg_trigger_reaction_delay) \
             .add_sine_pulse(half_pi_pulse_duration, 0) \
             .add_zero_pulse(echo_delay / 2) \
@@ -478,11 +485,12 @@ class IQPulseBuilder():
             .add_dc_pulse(readout_duration) \
             .add_zero_until(repetition_period)
 
-        return exc_pb.build(), ro_pb.build()
+        return {'q_seqs': [exc_pb.build()],
+                'ro_seqs': [ro_pb.build()]}
+
 
     @staticmethod
-    def build_radial_tomography_pulse_sequences(exc_pb, z_pb, ro_pb,
-                                                pulse_sequence_parameters):
+    def build_radial_tomography_pulse_sequences(pulse_sequence_parameters, **pbs):
         awg_trigger_reaction_delay = \
             pulse_sequence_parameters["awg_trigger_reaction_delay"]
         readout_duration = \
@@ -511,6 +519,11 @@ class IQPulseBuilder():
             pulse_sequence_parameters["tomo_pulse_amplitude"]
         window = \
             pulse_sequence_parameters["modulating_window"]
+
+        exc_pb = pbs['q_pbs'][0]
+        ro_pb = pbs['ro_pbs'][0]
+        z_pb = pbs['q_z_pbs'][0]
+
         try:
             hd_amplitude = \
                 pulse_sequence_parameters["hd_amplitude"]
@@ -545,11 +558,12 @@ class IQPulseBuilder():
 
         z_pb.add_zero_until(repetition_period)
 
-        return exc_pb.build(), z_pb.build(), ro_pb.build()
+        return {'q_seqs': [exc_pb.build()],
+                'q_z_seq': [z_pb.build()],
+                'ro_seqs': [ro_pb.build()]}
 
     @staticmethod
-    def build_dispersive_APE_sequences(exc_pb, ro_pb,
-                                       pulse_sequence_parameters):
+    def build_dispersive_APE_sequences(pulse_sequence_parameters, **pbs):
 
         awg_trigger_reaction_delay = \
             pulse_sequence_parameters["awg_trigger_reaction_delay"]
@@ -571,6 +585,8 @@ class IQPulseBuilder():
             pulse_sequence_parameters["padding"]
         max_pseudo_I_pulses_count = \
             pulse_sequence_parameters["max_pseudo_I_pulses_count"]
+        exc_pb = pbs['q_pbs'][0]
+        ro_pb = pbs['ro_pbs'][0]
         try:
             hd_amplitude = \
                 pulse_sequence_parameters["hd_amplitude"]
@@ -603,11 +619,11 @@ class IQPulseBuilder():
             .add_zero_pulse(padding).add_dc_pulse(readout_duration) \
             .add_zero_until(repetition_period)
 
-        return exc_pb.build(), ro_pb.build()
+        return {'q_seqs': [exc_pb.build()],
+                'ro_seqs': [ro_pb.build()]}
 
     @staticmethod
-    def build_dispersive_pi_half_calibration_sequences(exc_pb, ro_pb,
-                                                       pulse_sequence_parameters):
+    def build_dispersive_pi_half_calibration_sequences(pulse_sequence_parameters, **pbs):
         awg_trigger_reaction_delay = \
             pulse_sequence_parameters["awg_trigger_reaction_delay"]
         readout_duration = \
@@ -624,6 +640,8 @@ class IQPulseBuilder():
             pulse_sequence_parameters["excitation_amplitude"]
         padding = \
             pulse_sequence_parameters["padding"]
+        exc_pb = pbs['q_pbs'][0]
+        ro_pb = pbs['ro_pbs'][0]
         try:
             hd_amplitude = \
                 pulse_sequence_parameters["hd_amplitude"]
@@ -647,11 +665,11 @@ class IQPulseBuilder():
         ro_pb.add_zero_pulse((half_pi_pulse_duration + padding) * (1 + 2 * twice_pi_half_pulses_count)) \
             .add_dc_pulse(readout_duration).add_zero_until(repetition_period)
 
-        return exc_pb.build(), ro_pb.build()
+        return {'q_seqs': [exc_pb.build()],
+                'ro_seqs': [ro_pb.build()]}
 
     @staticmethod
-    def build_interleaved_benchmarking_sequence(exc_pb, ro_pb, \
-                                                pulse_sequence_parameters):
+    def build_interleaved_benchmarking_sequence(pulse_sequence_parameters, **pbs):
         awg_trigger_reaction_delay = \
             pulse_sequence_parameters["awg_trigger_reaction_delay"]
         window = \
@@ -669,7 +687,8 @@ class IQPulseBuilder():
             pulse_sequence_parameters["padding"]
         benchmarking_sequence = \
             pulse_sequence_parameters["benchmarking_sequence"]
-
+        exc_pb = pbs['q_pbs'][0]
+        ro_pb = pbs['ro_pbs'][0]
         try:
             hd_amplitude = \
                 pulse_sequence_parameters["hd_amplitude"]
@@ -689,15 +708,15 @@ class IQPulseBuilder():
             .add_dc_pulse(readout_duration) \
             .add_zero_until(repetition_period)
 
-        return exc_pb.build(), ro_pb.build()
+        return {'q_seqs': [exc_pb.build()],
+                'ro_seqs': [ro_pb.build()]}
 
     @staticmethod
-    def build_z_pulse_profile_scan_sequence(exc_pb, z_pb, ro_pb,
-                                            pulse_sequence_parameters):
-        '''
+    def build_z_pulse_profile_scan_sequence(pulse_sequence_parameters, **pbs):
+        """
         Returns synchronized excitation and readout IQPulseSequences assuming that
         readout AWG is triggered by the excitation AWG
-        '''
+        """
         awg_trigger_reaction_delay = \
             pulse_sequence_parameters["awg_trigger_reaction_delay"]
         readout_duration = \
@@ -718,6 +737,9 @@ class IQPulseBuilder():
             pulse_sequence_parameters["excitation_amplitude"]
         z_smoothing_coefficient = \
             pulse_sequence_parameters["z_smoothing_coefficient"]
+        exc_pb = pbs['q_pbs'][0]
+        ro_pb = pbs['ro_pbs'][0]
+        z_pb = pbs['q_z_pbs'][0]
 
         z_wait = abs(pi_pulse_delay) if pi_pulse_delay < 0 else 0
         exc_wait = abs(pi_pulse_delay) if pi_pulse_delay > 0 else 0
@@ -738,11 +760,12 @@ class IQPulseBuilder():
             .add_dc_pulse(readout_duration) \
             .add_zero_until(repetition_period)
 
-        return exc_pb.build(), z_pb.build(), ro_pb.build()
+        return {'q_seqs': [exc_pb.build()],
+                'q_z_seq': [z_pb.build()],
+                'ro_seqs': [ro_pb.build()]}
 
     @staticmethod
-    def build_z_pulse_ramsey_sequences(exc_pb, z_pb, ro_pb,
-                                       pulse_sequence_parameters):
+    def build_z_pulse_ramsey_sequences(pulse_sequence_parameters, **pbs):
         awg_trigger_reaction_delay = \
             pulse_sequence_parameters["awg_trigger_reaction_delay"]
         readout_duration = \
@@ -763,6 +786,9 @@ class IQPulseBuilder():
             pulse_sequence_parameters["excitation_amplitude"]
         z_smoothing_coefficient = \
             pulse_sequence_parameters["z_smoothing_coefficient"]
+        exc_pb = pbs['q_pbs'][0]
+        ro_pb = pbs['ro_pbs'][0]
+        z_pb = pbs['q_z_pbs'][0]
 
         exc_pb.add_zero_pulse(awg_trigger_reaction_delay) \
             .add_sine_pulse(0.5 * pi_pulse_duration, 0,
@@ -781,16 +807,16 @@ class IQPulseBuilder():
             .add_dc_pulse(readout_duration) \
             .add_zero_until(repetition_period)
 
-        return exc_pb.build(), z_pb.build(), ro_pb.build()
+        return {'q_seqs': [exc_pb.build()],
+                'q_z_seq': [z_pb.build()],
+                'ro_seqs': [ro_pb.build()]}
 
     @staticmethod
-    def build_vacuum_rabi_oscillations_sequences(exc_pb, z_pb, ro_pb,
-                                                 pulse_sequence_parameters):
+    def build_vacuum_rabi_oscillations_sequences(pulse_sequence_parameters, **pbs):
         pulse_sequence_parameters["z_pulse_duration"] = \
             pulse_sequence_parameters["interaction_duration"]
 
-        return IQPulseBuilder.build_z_pulse_profile_scan_sequence(exc_pb, z_pb,
-                                                                  ro_pb, pulse_sequence_parameters)
+        return IQPulseBuilder.build_z_pulse_profile_scan_sequence(pulse_sequence_parameters, **pbs)
 
     @staticmethod
     def build_dispersive_rabi_2qubit_sequences(pulse_sequence_parameters, **pbs):  # TODO

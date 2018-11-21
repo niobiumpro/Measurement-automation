@@ -39,7 +39,7 @@ class WaveformType(Enum):
 class KeysightAWG(Instrument):
 
 	def __init__(self, address):
-		'''Create a default Keysight AWG instrument'''
+		"""Create a default Keysight AWG instrument"""
 		Instrument.__init__(self, 'AWG', tags=['physical'])
 		self._address = address
 		rm = visa.ResourceManager()
@@ -77,7 +77,7 @@ class KeysightAWG(Instrument):
 	# High-level functions
 
 	def output_arbitrary_waveform(self, waveform, repetition_rate, channel, blocking=True):
-		'''
+		"""
 		Prepare and output an arbitrary waveform repeated at some repetition_rate
 
 		Parameters:
@@ -88,7 +88,7 @@ class KeysightAWG(Instrument):
 			frequency at which the waveform will be repeated
 		channel: 1 or 2
 			channel which will output the waveform
-		'''
+		"""
 
 		self.load_arbitrary_waveform_to_volatile_memory(waveform[:-1], channel)
 		self.prepare_waveform(WaveformType.arbitrary, repetition_rate, 2, 0, channel)
@@ -96,7 +96,7 @@ class KeysightAWG(Instrument):
 
 
 	def output_continuous_wave(self, frequency=100e6, amplitude=0.1, phase=0, offset=0, waveform_resolution=1,  channel=1):
-		'''
+		"""
 		Prepare and output a sine wave of the form: y = A*sin(2*pi*frequency + phase) + offset
 
 		Parameters:
@@ -113,7 +113,7 @@ class KeysightAWG(Instrument):
 			resolution in time of the arbitrary waveform representing one period of the wave
 		chanel:1 or 2
 			channel which witll output the wave
-		'''
+		"""
 
 		N_points = 1/frequency/waveform_resolution*1e9+1 if frequency !=0 else 3
 		waveform = amplitude*sin(2*pi*linspace(0,1,N_points)+phase) + offset
@@ -127,7 +127,7 @@ class KeysightAWG(Instrument):
 
 
 	def apply_waveform(self, waveform, freq, amp, offset, channel=1):
-		'''
+		"""
 		Set one of the pre-loaded waveforms as output and output it.
 		This function will turn on both + and - outputs of the channel. If you
 		don't want this behaviour, you may use the prepare_waveform fucntion.
@@ -145,7 +145,7 @@ class KeysightAWG(Instrument):
 		channel = 1: int
 			channel which will be set to ON and used as output, 1 or 2
 
-		'''
+		"""
 
 		self._visainstrument.write("*OPC")
 		self._visainstrument.write(":APPL%i:%s %f, %f, %f"%(channel, waveform.value,
@@ -153,7 +153,7 @@ class KeysightAWG(Instrument):
 		self._visainstrument.query("*OPC?")
 
 	def prepare_waveform(self, waveform, freq, amp, offset, channel=1, blocking=True):
-		'''
+		"""
 		Set one of the pre-loaded waveforms as output, but do not output anything.
 
 		Parameters:
@@ -169,14 +169,14 @@ class KeysightAWG(Instrument):
 		channel = 1: int
 			channel which will be set to ON and used as output, 1 or 2
 
-		'''
+		"""
 		self._visainstrument.write("*OPC")
 		self._visainstrument.write(":FUNC{0} {1}; :FREQ{0} {2}; :VOLT{0} {3};\
 		 	:VOLT{0}:OFFS {4}".format(channel, waveform.value, freq, amp, offset))
 		self._visainstrument.write("*OPC?")
 
 	def list_arbitrary_waveforms(self, channel=1):
-		'''
+		"""
 		Get all waveform names currently loaded in the permanent memory of the
 		specified channel.
 
@@ -185,13 +185,13 @@ class KeysightAWG(Instrument):
 			channel=1: 1 or 2
 				The channel for shich the waveforms will be listed
 
-		'''
+		"""
 		return self._visainstrument.query(":DATA%d:CAT?"%channel)\
 								.replace('"', "").replace('\n', "").split(",")
 
 
 	def select_arbitary_waveform(self, waveform_name, channel=1):
-		'''
+		"""
 		Select one of the seven built-in arbitrary waveforms,
 		one of the four userdefined waveforms, or the waveform currently
 		downloaded to volatile memory.
@@ -207,7 +207,7 @@ class KeysightAWG(Instrument):
 		channel=1: int
 			channel for which the waveform will be selected, 1 or 2
 
-		'''
+		"""
 		if waveform_name in self.list_arbitrary_waveforms():
 			self._visainstrument.write(":FUNC%i:USER %s"%(channel, waveform_name))
 		else:
@@ -216,7 +216,7 @@ class KeysightAWG(Instrument):
 
 
 	def get_arbitary_waveform(self, channel=1):
-		'''
+		"""
 		Get the name of the currently selected arbitrary waveform.
 
 		Parameters:
@@ -224,13 +224,13 @@ class KeysightAWG(Instrument):
 		channel=1: int
 			channel for which the waveform name will aquired, 1 or 2
 
-		'''
+		"""
 		return self._visainstrument.query(":FUNC%i:USER?"%channel)
 
 
 
 	def load_arbitrary_waveform_to_volatile_memory(self, waveform_array, channel=1):
-		'''
+		"""
 		Load an arbitrary waveform as an array into volatile memory.
 		It then will be available in select_arbitrary_waveform method.
 
@@ -246,7 +246,7 @@ class KeysightAWG(Instrument):
 		channel : 1 or 2
 			channel index where the waveform will be stored
 
-		'''
+		"""
 		waveform_array = around(waveform_array*8191).astype(int)
 		self._visainstrument.write("*OPC")
 		# self._visainstrument.write(":DATA%d VOLATILE, "%channel+array_string)
@@ -256,10 +256,10 @@ class KeysightAWG(Instrument):
 
 
 
-	'''Output switches'''
+	"""Output switches"""
 
 	def set_output(self, channel, status):
-		'''
+		"""
 		Control the output on a channel
 
 		Parameters:
@@ -269,11 +269,11 @@ class KeysightAWG(Instrument):
 		status: int
 			1 for ON and 0 for OFF
 
-		'''
+		"""
 		self._visainstrument.write("OUTP%i %i"%(channel, status))
 
 	def do_set_outp1(self, status):
-		'''
+		"""
 		Turn first output channnel on and off.
 
 		Parameters:
@@ -281,15 +281,15 @@ class KeysightAWG(Instrument):
 		status: int
 			1 for ON and 0 for OFF
 
-		'''
+		"""
 		self._visainstrument.write("OUTP1 %i"%status)
 
 	def do_get_outp1(self):
-		'''Check if first output channnel is turned on'''
+		"""Check if first output channnel is turned on"""
 		return self._visainstrument.query("OUTP1?")
 
 	def do_set_outp2(self, status):
-		'''
+		"""
 		Turn second output channnel on and off.
 
 		Parameters:
@@ -297,15 +297,15 @@ class KeysightAWG(Instrument):
 		status: int
 			1 for ON and 0 for OFF
 
-		'''
+		"""
 		self._visainstrument.write("OUTP2 %i"%status)
 
 	def do_get_outp2(self):
-		'''Check if second output channnel is turned on'''
+		"""Check if second output channnel is turned on"""
 		return self._visainstrument.query("OUTP2?")
 
 	def do_set_outp1_compl(self, status):
-		'''
+		"""
 		Turn first output complement channnel on and off.
 
 		Parameters:
@@ -313,15 +313,15 @@ class KeysightAWG(Instrument):
 		status: int
 			1 for ON and 0 for OFF
 
-		'''
+		"""
 		self._visainstrument.write("OUTP1:COMP %i"%status)
 
 	def do_get_outp1_compl(self):
-		'''Check if first output complement channnel is turned on'''
+		"""Check if first output complement channnel is turned on"""
 		return self._visainstrument.query("OUTP1:COMP?")
 
 	def do_set_outp2_compl(self, status):
-		'''
+		"""
 		Turn second output complement channnel on and off.
 
 		Parameters:
@@ -329,15 +329,15 @@ class KeysightAWG(Instrument):
 		status: int
 			1 for ON and 0 for OFF
 
-		'''
+		"""
 		self._visainstrument.write("OUTP2:COMP %i"%status)
 
 	def do_get_outp2_compl(self):
-		'''Check if second output complement channel is turned on'''
+		"""Check if second output complement channel is turned on"""
 		return self._visainstrument.query("OUTP2:COMP?")
 
 	def do_set_2nd_delay(self,delay):
-		'''
+		"""
 		Set a delay to the second puls.
 
 		Parameters:
@@ -345,17 +345,17 @@ class KeysightAWG(Instrument):
 		channel: int (1,2)
 		delay: float in ns
 
-		'''
+		"""
 		return self._visainstrument.write("PULS:DEL2 %.1fNS"%delay)
 
 	def do_get_2nd_delay(self):
-		'''
+		"""
 		Get a delay from 2nd channel
-		'''
+		"""
 		return self._visainstrument.query("PULS:DEL2?")
 
 	def do_set_1st_delay(self,delay):
-		'''
+		"""
 		Set a delay to the first puls.
 
 		Parameters:
@@ -363,17 +363,17 @@ class KeysightAWG(Instrument):
 		channel: int (1,2)
 		delay: float in ns
 
-		'''
+		"""
 		return self._visainstrument.write("PULS:DEL1 %.1fNS"%delay)
 
 	def do_get_1st_delay(self):
-		'''
+		"""
 		Get a delay from 2nd channel
-		'''
+		"""
 		return self._visainstrument.query("PULS:DEL1?")
 
 	def do_set_2nd_width(self,width):
-		'''
+		"""
 		Set a width to the second puls.
 
 		Parameters:
@@ -381,17 +381,17 @@ class KeysightAWG(Instrument):
 		channel: int (1,2)
 		delay: float in ns
 
-		'''
+		"""
 		return self._visainstrument.write("FUNC2:PULS:WIDT %.1fNS"%width)
 
 	def do_get_2nd_width(self):
-		'''
+		"""
 		Get a delay from 2nd channel
-		'''
+		"""
 		return self._visainstrument.query("FUNC2:PULS:WIDT?")
 
 	def do_set_1st_width(self,width):
-		'''
+		"""
 		Set a width to the first puls.
 
 		Parameters:
@@ -399,11 +399,11 @@ class KeysightAWG(Instrument):
 		channel: int (1,2)
 		delay: float in ns
 
-		'''
+		"""
 		return self._visainstrument.write("FUNC1:PULS:WIDT %.1fNS"%width)
 
 	def do_get_1st_width(self):
-		'''
+		"""
 		Get a delay from 2nd channel
-		'''
+		"""
 		return self._visainstrument.query("FUNC1:PULS:WIDT?")

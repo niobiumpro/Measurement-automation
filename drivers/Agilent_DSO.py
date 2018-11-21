@@ -14,18 +14,18 @@ double     = 3
 big_endian = 4
 
 class Agilent_DSO(Instrument):
-	'''
+	"""
 	This driver is for Agilent digital storage oscilloscopes, in particular the
 	DSO81204B 12GHz 40GS/s 4ch oscilloscope
-	'''
+	"""
 	
 	def __init__(self, name, address):
-		'''
+		"""
 		
 		Input:
 			name (string)
 			address (string): VISA address of the device
-		'''
+		"""
 		
 		Instrument.__init__(self, name, tags=['physical'])
 		self._address = address
@@ -137,9 +137,9 @@ class Agilent_DSO(Instrument):
 		if value in [0,inf] : value = 'AUTO'   ##((value == 0) || (value == inf))
 		self._visainstrument.write(':ACQ:BAND %s'%string(value))
 	def do_get_acqmode(self):
-		'''
+		"""
 			acquisition mode may be RTIM, PDET, HRES, SEGM
-		'''
+		"""
 		return self._visainstrument.ask(':ACQ:MODE?')
 	def acqmode_realtime(self):
 		self._visainstrument.write(':ACQ:MODE RTIM')
@@ -155,23 +155,23 @@ class Agilent_DSO(Instrument):
 	
 	# timebase functions
 	def do_get_xoffset(self,):
-		'''
+		"""
 			return the delay between trigger event and the delay reference point
-		'''
+		"""
 		return float(self._visainstrument.ask(':TIM:POS?'))
 	def do_set_xrange(self, value):
 		return self._visainstrument.write(':TIM:POS %d'%value)
 	def do_get_xrange(self,):
-		'''
+		"""
 			return the delay between trigger event and the delay reference point
-		'''
+		"""
 		return float(self._visainstrument.ask(':TIM:RANG?'))
 	def do_set_xrange(self, value):
 		return self._visainstrument.write(':TIM:RANG %d'%value)	
 	def do_get_refclock(self):
-		'''
+		"""
 			use external 10MHz reference?
-		'''
+		"""
 		return '1' == self._visainstrument.ask(':TIM:REFC?')
 	def do_set_refclock(self, value):
 		return self._visainstrument.write(':TIM:REFC %d'%int(value))
@@ -194,62 +194,62 @@ class Agilent_DSO(Instrument):
 	def autoscale(self):
 		self._visainstrument.write(':AUT')
 	def clear_status(self):
-		'''
+		"""
 			clear status bits and empty error queue
-		'''
+		"""
 		self._visainstrument.write('*CLS')
 	def get_error(self):
-		'''
+		"""
 			return error code and message of the next error in the queue
 			if the queue is empty or the last entry was reached, returns a 0 error code
 			
 			Returns:
 				(int) error code, (string) error message
-		'''
+		"""
 		reply = self._visainstrument.ask(':SYST:ERR? STR')
 		errno, null, errmsg = str.partition(reply)
 		return int(errno), errmsg[1:-1]
 	def message(self, value):
-		'''
+		"""
 			display a message on the advisory line
-		'''
+		"""
 		self._visainstrument.write(':SYST:DSP %s'%str(value))
 	def acq_digitize(self, channels = None, functions = None):
-		'''
+		"""
 			runs the instument in digitizer mode
 			measurement and math operations will not be executed
 			(see chapter 6 of the programming manual for an example)
 			Input:
 				channels/functions - numbers of the channels or functions to acquire
-		'''
+		"""
 		channels = ['CHAN%d'%x for x in channels]
 		functions = ['FUNC%d'%x for x in functions]
 		parameter = ', '.join(channels + functions)
 		self._visainstrument.write(':DIG %s'%parameter)
 	def acq_run(self):
-		'''
+		"""
 			runs the instrument in standard mode
-		'''
+		"""
 		self._visainstrument.write('*TRG')
 	def acq_single(self):
-		'''
+		"""
 			runs the instrument in single acquisition mode
-		'''
+		"""
 		self._visainstrument.write(':SING')
 	def acq_stop(self):
-		'''
+		"""
 			stops the instrument
-		'''
+		"""
 		self._visainstrument.write(':STOP')
 	def get_triggered(self):
-		'''
+		"""
 			returns True if the instrument was triggered since the last call
-		'''
+		"""
 		return '1' == self._visainstrument.ask(':TER?')
 	def get_done(self):
-		'''
+		"""
 			returns True if the acquisition has finished
-		'''
+		"""
 		return 1 == self._visainstrument.ask(':ADER?')
 	def get_completedpercent(self):
 		return float(self._visainstrument.ask(':WAV:COMP?'))
@@ -257,7 +257,7 @@ class Agilent_DSO(Instrument):
 		return int(self._visainstrument.ask(':WAV:COUN?'))
 		
 	def get_data(self, channel):
-		'''
+		"""
 			retrieve waveform data from the oscilloscope
 			
 			Input:
@@ -265,7 +265,7 @@ class Agilent_DSO(Instrument):
 			Returns:
 				data as a numpy array of floats
 				preamble sent by the device
-		'''
+		"""
 		# retrieve data preamble
 		#self._visainstrument.write(':WAV:VIEW ALL; :WAV:FORM ASCII')
 		self._visainstrument.write(':WAV:FORM ASCII')

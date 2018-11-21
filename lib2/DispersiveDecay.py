@@ -4,12 +4,10 @@ from lib2.VNATimeResolvedDispersiveMeasurement1D import *
 
 class DispersiveDecay(VNATimeResolvedDispersiveMeasurement1D):
 
-    def __init__(self, name, sample_name, line_attenuation_db = 60, **devs_aliases_map):
-        devs_aliases_map["q_z_awg"] = None
-        super().__init__(name, sample_name, devs_aliases_map, line_attenuation_db)
+    def __init__(self, name, sample_name, **devs_aliases_map):
+        super().__init__(name, sample_name, devs_aliases_map)
 
-        self._measurement_result = DispersiveDecayResult(name,
-                    sample_name)
+        self._measurement_result = DispersiveDecayResult(name, sample_name)
         self._sequence_generator = IQPulseBuilder.build_dispersive_decay_sequences
         self._swept_parameter_name = "readout_delay"
 

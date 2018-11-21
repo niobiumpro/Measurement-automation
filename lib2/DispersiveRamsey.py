@@ -1,15 +1,13 @@
 
 from lib2.VNATimeResolvedDispersiveMeasurement1D import *
 
+
 class DispersiveRamsey(VNATimeResolvedDispersiveMeasurement1D):
 
-    def __init__(self, name, sample_name,line_attenuation_db = 60, plot_update_interval=1,
-     **devs_aliases_map):
-        devs_aliases_map["q_z_awg"] = None
-        super().__init__(name, sample_name, devs_aliases_map, line_attenuation_db,
-         plot_update_interval)
-        self._measurement_result = DispersiveRamseyResult(name,
-                    sample_name)
+    def __init__(self, name, sample_name, plot_update_interval=1,
+                 **devs_aliases_map):
+        super().__init__(name, sample_name, devs_aliases_map, plot_update_interval)
+        self._measurement_result = DispersiveRamseyResult(name, sample_name)
         self._sequence_generator = IQPulseBuilder.build_dispersive_ramsey_sequences
         self._swept_parameter_name = "ramsey_delay"
 
@@ -20,7 +18,7 @@ class DispersiveRamsey(VNATimeResolvedDispersiveMeasurement1D):
 class DispersiveRamseyResult(VNATimeResolvedDispersiveMeasurement1DResult):
 
     def _model(self, t, A_r, A_i, T_2_ast, Delta_Omega, offset_r,
-        offset_i, phase):
+               offset_i, phase):
         return (A_r+1j*A_i)*exp(-1/T_2_ast*t)*cos(Delta_Omega*t+phase)\
                                                     +offset_r+1j*offset_i
 
