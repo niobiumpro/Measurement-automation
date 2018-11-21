@@ -32,6 +32,7 @@ class MeasurementRunner():
         self._res_limits = {}
         self._sts_runners = {}
         self._sts_fit_params = {}
+        self._tts_runners = {}
         self._tts_results = {}
         self._tts_fit_params = {}
         self._exact_qubit_freqs = {}
@@ -92,6 +93,7 @@ class MeasurementRunner():
                                  self._sts_fit_params[qubit_name],
                                  awgs =  {"q_awg":self._q_awg,
                                           "ro_awg":self._ro_awg})
+                self._tts_runners[qubit_name] = TTSR
                 self._tts_fit_params[qubit_name] = TTSR.run()
 
             self._exact_qubit_freqs[qubit_name] = self._tts_fit_params[qubit_name][2]
@@ -257,23 +259,24 @@ class MeasurementRunner():
         ro_resonator_frequency = round(ro_resonator_frequency/1e9, 2)*1e9
         if_frequency = 0e6
         lo_power=0
-        ssb_power=-50
+        ssb_power=-60
         waveform_resolution=1
 
         db = load_IQMX_calibration_database("CHGRO", 0)
-        ro_cal =\
-            db.get(frozenset(dict(lo_power=lo_power,
-                                  ssb_power=ssb_power,
-                                  lo_frequency=ro_resonator_frequency,
-                                  if_frequency=if_frequency,
-                                  waveform_resolution=waveform_resolution)\
-                                  .items()))
-        if ro_cal is not None:
-            return ro_cal
+        if db is not None:
+            ro_cal =\
+                db.get(frozenset(dict(lo_power=lo_power,
+                                      ssb_power=ssb_power,
+                                      lo_frequency=ro_resonator_frequency,
+                                      if_frequency=if_frequency,
+                                      waveform_resolution=waveform_resolution)\
+                                      .items()))
+            if ro_cal is not None:
+                return ro_cal
 
         self._set_vna_to_ro_lo()
 
-        ig = {"dc_offsets":(0.1, +0.1), "dc_offset_open":0.5}
+        ig = {"dc_offsets":(0.1, +0.1), "dc_offset_open":0.3}
         cal = IQCalibrator(self._ro_awg,
                            self._sa,
                            self._vna,
