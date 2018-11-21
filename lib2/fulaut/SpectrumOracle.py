@@ -41,9 +41,9 @@ class SpectrumOracle():
         sweet_spot_cur += shift
 
         period_grid = period, period, 1
-        sws_grid = sweet_spot_cur - 0.05 * period, sweet_spot_cur + 0.05 * period, 11
+        sws_grid = sweet_spot_cur - 0.05 * period, sweet_spot_cur + 0.05 * period, 10
         freq_grid = q_freq * 0.7, q_freq * 1.3, 50
-        d_grid = .1, .9, 10
+        d_grid = .1, .9, 8
         alpha_grid = 100e-3, 150e-3, 10
 
         slices = []
@@ -97,6 +97,10 @@ class SpectrumOracle():
                        self._coarse_brute_candidates),
                    key=itemgetter(0, 1))[0]
 
+        self._opt_params_very_coarse = opt_params_very_coarse
+        sws_slice = slice(opt_params_very_coarse[1] - 0.02 * opt_params_very_coarse[0],
+                          opt_params_very_coarse[1] + 0.021 * opt_params_very_coarse[0],
+                          0.002 * opt_params_very_coarse[0])
         freq_slice = slice(opt_params_very_coarse[2] - 100e-3,
                            opt_params_very_coarse[2] + 101e-3,
                            10e-3)
