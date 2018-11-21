@@ -96,7 +96,7 @@ class SpectrumOracle():
                        self._coarse_brute_distance_ranking,
                        self._coarse_brute_candidates),
                    key=itemgetter(0, 1))[0]
-
+        # return
         freq_slice = slice(opt_params_very_coarse[2] - 100e-3,
                            opt_params_very_coarse[2] + 101e-3,
                            10e-3)
@@ -223,7 +223,10 @@ class SpectrumOracle():
             parameter_name = self._tts_result._parameter_names[0]
         except:
             parameter_name = "Current [A]"
-        data = self._tts_result.get_data()
+        try:
+            data = self._tts_result.get_data()
+        except AttributeError:
+            data = self._tts_result
         self._parameter_values = data[parameter_name]
         try:
             self._frequencies = data["Frequency [Hz]"][:] / 1e9
@@ -290,12 +293,19 @@ class SpectrumOracle():
         chosen_points = points[chosen]
 
         d = params[3]
-        if len(chosen_points) < len(self._parameter_values) / 3 or d > 0.9:
+        if len(chosen_points) < len(self._parameter_values) / 10 or d > 0.9:
             mean_distance = sum(distances) ** 2 / len(distances)
             total_nop = 0.1
+            # if self._counter % 1 == 0:
+            #     print("\rDone: %.2f%%, %.d/%d" % (
+            #         percentage_done, self._counter, self._iterations), end="")
+            #     print(", [" + (("{:.2e}, " * len(params))[:-2]).format(
+            #         *params) + "]", end="")
+            #     print(", mean_dist:", "%.2e" % mean_distance,
+            #           ", chosen points:", total_nop)
         else:
             mean_distance = distances_chosen.sum() ** 2 / len(chosen_points)
-            bin = round(len(self._parameter_values) * 0.1, 0)
+            # bin = round(len(self._parameter_values) * 0.1, 0)
             total_nop = round(len(distances_chosen) / 1, 0) * 1
 
             self._coarse_brute_candidates.append(params)
@@ -374,7 +384,7 @@ class SpectrumOracle():
             lines_chosen_distances.append(chosen_distances)
             lines_chosen_points.append(chosen_points)
 
-        if len(lines_chosen_distances[0]) < 0.5 * len(self._parameter_values):
+        if len(lines_chosen_distances[0]) < 0.1 * len(self._parameter_values):
             mean_distance = sum(lines_distances[0]) ** 2 / len(
                 lines_distances[0])
             total_nop = 0.1
@@ -395,7 +405,7 @@ class SpectrumOracle():
                 print(", dist:%.2e" % sqrt(mean_distance),
                       ", chosen points: %d" % total_nop,
                       ", bin: %d" % bin)
-                # clear_output(wait=True)
+                clear_output(wait=True)
 
         loss_value = sqrt(mean_distance) + 1 / total_nop
 
