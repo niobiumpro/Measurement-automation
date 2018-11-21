@@ -3,7 +3,6 @@ Paramatric single-tone spectroscopy is perfomed with a Vector Network Analyzer
 (VNA) for each parameter value which is set by a specific function that must be
 passed to the SingleToneSpectroscopy class when it is created.
 """
-
 from numpy import *
 from lib2.MeasurementResult import *
 from datetime import datetime as dt
@@ -68,12 +67,13 @@ class SingleToneSpectroscopy(Measurement):
         vna.avg_clear()
         vna.prepare_for_stb()
         vna.sweep_single()
+
         vna.wait_for_stb()
         return vna.get_sdata()
 
     def _prepare_measurement_result_data(self, parameter_names, parameters_values):
         measurement_data = super()._prepare_measurement_result_data(parameter_names, parameters_values)
-        measurement_data["frequency"] = self._frequencies
+        measurement_data["Frequency [Hz]"] = self._frequencies
         return measurement_data
 
 
@@ -90,6 +90,11 @@ class SingleToneSpectroscopyResult(MeasurementResult):
         self.max_abs = 1
         self.min_abs = 0
         self._unwrap_phase = False
+        self._amps_map = None
+        self._phas_map = None
+        self._amp_cb = None
+        self._phas_cb = None
+
         self._amps_map = None
         self._phas_map = None
         self._amp_cb = None
@@ -191,13 +196,13 @@ class SingleToneSpectroscopyResult(MeasurementResult):
         self.min_abs = min_abs
 
     def _prepare_data_for_plot(self, data):
-        s_data = self._remove_delay(data["frequency"], data["data"])
+        s_data = self._remove_delay(data["Frequency [Hz]"], data["data"])
         parameter_list = data[self._parameter_names[0]]
         if parameter_list[0] > parameter_list[-1]:
             parameter_list = parameter_list[::-1]
             s_data = s_data[::-1, :]
         # s_data = self.remove_background('avg_cur')
-        return parameter_list, data["frequency"] / 1e9, s_data
+        return parameter_list, data["Frequency [Hz]"] / 1e9, s_data
 
     def remove_delay(self):
         copy = self.copy()

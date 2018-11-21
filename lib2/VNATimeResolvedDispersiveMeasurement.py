@@ -117,7 +117,8 @@ class VNATimeResolvedDispersiveMeasurement(Measurement):
         self._q_lo[0].set_output_state("OFF")
         print("Detecting a resonator within provided frequency range of the VNA %s\
                     " % (str(vna_parameters["freq_limits"])))
-        self._vna[0].set_nop(201)
+
+        self._vna[0].set_nop(vna_parameters["res_find_nop"])
         self._vna[0].set_freq_limits(*vna_parameters["freq_limits"])
         self._vna[0].set_power(vna_parameters["power"])
         self._vna[0].set_bandwidth(vna_parameters["bandwidth"] * 10)
@@ -131,6 +132,7 @@ class VNATimeResolvedDispersiveMeasurement(Measurement):
         self._ro_awg[0].output_pulse_sequence(ro_pb \
                                               .add_dc_pulse(ro_duration).add_zero_until(rep_period).build())
         self._q_awg[0].output_pulse_sequence(q_pb.add_zero_until(rep_period).build())
+
         if self._q_z_awg[0] is not None:
             q_z_pb = PulseBuilder(q_z_calibration)
             self._q_z_awg[0].output_pulse_sequence(q_z_pb.add_zero_until(rep_period).build())

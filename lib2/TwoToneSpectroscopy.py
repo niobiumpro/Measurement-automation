@@ -46,9 +46,20 @@ class FluxTwoToneSpectroscopy(TwoToneSpectroscopyBase):
 
         self._mw_src[0].set_output_state("OFF")
         print("\rDetecting a resonator within provided frequency range of the VNA %s\
-                    " % (str(vna_parameters["freq_limits"])), flush=True, end="")
-        res_freq, res_amp, res_phase = self._detect_resonator(vna_parameters, plot=False,
-                                                              bandwidth_factor=2)
+                    "%(str(vna_parameters["freq_limits"])), flush=True, end="")
+        res_result = self._detect_resonator(vna_parameters, plot=False)
+
+        if (res_result is None):
+            print("Failed to fit resonator, trying to use last successful fit, power = ", power, " A")
+            if (self._last_resonator_result is None):
+                print("no successful fit is present, terminating")
+                return None
+            else:
+                res_result = self._last_resonator_result
+        else:
+            self._last_resonator_result = res_result
+
+        res_freq, res_amp, res_phase = self._last_resonator_result
         print("\rDetected frequency is %.5f GHz, at %.2f mU and %.2f \
                     degrees" % (res_freq / 1e9, res_amp * 1e3, res_phase / pi * 180), end="")
         self._mw_src[0].set_output_state("ON")

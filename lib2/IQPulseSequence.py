@@ -30,6 +30,9 @@ class PulseSequence():
     def get_waveform(self):
         return self._waveform
 
+    def get_waveform_resolution(self):
+        return self._waveform_resolution
+
     def plot(self, **kwargs):
 
         times = linspace(0, self.get_duration(), len(self._waveform))
@@ -62,6 +65,9 @@ class IQPulseSequence():
 
     def get_duration(self):
         return self._i.get_duration()
+
+    def get_waveform_resolution(self):
+        return self._i.get_waveform_resolution()
 
     def plot(self, **kwargs):
         self._i.plot(label="I", **kwargs)

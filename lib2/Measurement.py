@@ -53,8 +53,7 @@ from functools import reduce
 from operator import mul
 import traceback
 
-
-# from lib2.LoggingServer import LoggingServer
+from lib2.LoggingServer import LoggingServer
 
 
 class Measurement:
@@ -122,14 +121,14 @@ class Measurement:
 
         self._devs_aliases_map = devs_aliases_map
         self._list = ""
-        # rm = pyvisa.ResourceManager()
-        # temp_list = list(rm.list_resources_info().values())
-        # Measurement._logger.debug("Measurement "+ name + " init")
-        # Measurement._logger.debug("Measurement "+ name+" devs:" + str(devs_aliases_map))
-        # self._devs_info = [item[4] for item in list(temp_list)]
-        #         # returns list of tuples: (IP Address string, alias) for all
-        #         # devices present in VISA
-        # self._write_to_log()
+        rm = pyvisa.ResourceManager()
+        temp_list = list(rm.list_resources_info().values())
+        Measurement._logger.debug("Measurement "+ name + " init")
+        Measurement._logger.debug("Measurement "+ name+" devs:" + str(devs_aliases_map))
+        self._devs_info = [item[4] for item in list(temp_list)]
+                # returns list of tuples: (IP Address string, alias) for all
+                # devices present in VISA
+        self._write_to_log()
         for field_name, dev_list in self._devs_aliases_map.items():
             atr_name = "_" + field_name
             self.__setattr__(atr_name, [None] * len(dev_list))
@@ -199,19 +198,6 @@ class Measurement:
                 self._last_swept_pars_values[name] = value
                 self._swept_pars[name][0](value)  # this is setter call, look carefully
 
-    @staticmethod
-    def testi():
-        def plot2(i):
-            print('Test plot2', '\n')
-            return plt.plot(range(i), range(i))
-
-        print('Test vis dyn \n')
-        # print(next(self._yield_data()), '\n')
-        fig, ax = plt.subplots()
-        return animation.FuncAnimation(fig, plot2, frames=20,
-                                       # , frames=self._yield_data
-                                       repeat=False)
-
     def launch(self):
 
         self._measurement_result.set_start_datetime(dt.now())
@@ -223,19 +209,6 @@ class Measurement:
         t.start()
 
         self._measurement_result._visualize_dynamic()
-
-        # try:
-        #     while not self._measurement_result.is_finished():
-        #         self._measurement_result._visualize_dynamic()
-        #         for i in range(0,10):
-        #             plt.pause(self._plot_update_interval/10)
-        #         # plt.gcf().canvas.start_event_loop(self._plot_update_interval)
-        # except KeyboardInterrupt:
-        #     self._interrupted = True
-        # except Exception as e:
-        #     self._interrupted = True
-        #     traceback.print_exc()
-        # self._measurement_result._visualize_dynamic()
 
         return self._measurement_result
 
@@ -325,12 +298,11 @@ class Measurement:
         measurement_data["data"] = self._raw_data
         return measurement_data
 
-    def _detect_resonator(self, plot=False):
+    def _detect_resonator(self, plot=False, tries_number=3):
         """
         Finds frequency of the resonator visible on the VNA screen
         """
         vna = self._vna[0]
-        tries_number = 10
         for i in range(0, tries_number):
             vna.avg_clear();
             vna.prepare_for_stb();
@@ -346,8 +318,8 @@ class Measurement:
                 break
             else:
                 print("\rFit was inaccurate (try #%d), retrying" % i, end="")
-        if result is None:
-            print(frequencies, sdata)
+        #if result is None:
+            #print(frequencies, sdata)
         return result
 
     def _detect_qubit(self):

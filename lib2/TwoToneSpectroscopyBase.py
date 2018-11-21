@@ -1,5 +1,5 @@
 """
-Paramatric single-tone spectroscopy is perfomed with a Vector Network Analyzer
+Parametric single-tone spectroscopy is perfomed with a Vector Network Analyzer
 (VNA) for each parameter value which is set by a specific function that must be
 passed to the SingleToneSpectroscopy class when it is created.
 """
@@ -142,5 +142,5 @@ class TwoToneSpectroscopyResult(SingleToneSpectroscopyResult):
         except Exception as e:
             print("Could not find transmon spectral line" + str(e))
 
-    def _prepare_data_for_plot(self, data):
+    def _prepare_measurement_result_data(self, data):
         return data[self._parameter_names[0]], data["Frequency [Hz]"] / 1e9, data["data"]

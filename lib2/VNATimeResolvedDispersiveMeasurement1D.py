@@ -175,7 +175,6 @@ class VNATimeResolvedDispersiveMeasurement1DResult( \
             ax = axes[name]
             opt_params = self._fit_params
             err = self._fit_errors
-
             X = self._prepare_data_for_plot(self.get_data())[0]
             Y = self._data_formats[name][0](self._model(X, *opt_params))
             if self._fit_lines[idx] is None or not self._dynamic:

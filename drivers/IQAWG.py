@@ -76,8 +76,9 @@ class CalibratedAWG():
 
 class IQAWG():
 
-    def __init__(self, channel_I, channel_Q):
+    def __init__(self, channel_I, channel_Q, triggered=False):
         self._channels = [channel_I, channel_Q]
+        self._triggered = triggered
 
     def set_parameters(self, parameters):
         """
@@ -96,10 +97,10 @@ class IQAWG():
         return self._calibration
 
     # def set_channel_coupling(self, state):
-    #     """
+    #     '''
     #     Assuming that user knows what he is doing here. Make sure your channels
     #     are synchronized!
-    #     """
+    #     '''
     #     pass
 
     def get_pulse_builder(self):
@@ -171,11 +172,19 @@ class IQAWG():
         -----------
         pulse_sequence: IQPulseSequence instance
         """
-        frequency = 1/pulse_sequence.get_duration()*1e9
+        resolution = pulse_sequence.get_waveform_resolution()
+        length = len(pulse_sequence.get_I_waveform())
+        if self._triggered:
+            duration = pulse_sequence.get_duration()-1000*resolution
+            end_idx = length - 1000
+        else:
+            duration = pulse_sequence.get_duration()
+            end_idx = length
 
+        frequency = 1/duration*1e9
         self._channels[0].output_arbitrary_waveform(pulse_sequence\
-                                            .get_I_waveform(), frequency,
+                                            .get_I_waveform()[:end_idx], frequency,
                                             asynchronous=True)
         self._channels[1].output_arbitrary_waveform(pulse_sequence
-                                            .get_Q_waveform(), frequency,
+                                            .get_Q_waveform()[:end_idx], frequency,
                                             asynchronous=asynchronous)

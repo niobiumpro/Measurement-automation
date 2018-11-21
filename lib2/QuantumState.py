@@ -65,13 +65,13 @@ class QuantumState():
         self._check_norm()
 
     def _calc_norm(self):
-        if (self._represent == 'bloch'):
+        if self._represent == 'bloch':
             self._norm = float(sqrt(sum(array(self._coords) ** 2)))
-        elif (self._represent == "dens_mat"):
+        elif self._represent == "dens_mat":
             self._norm = 2 * float((self._coords ** 2).trace) - 1
-        elif (self._represent == "spherical"):
+        elif self._represent == "spherical":
             self._norm = self._coords[0]
-        elif (self._represent == 'pulses'):
+        elif self._represent == 'pulses':
             self._norm = 1.0
             self._check_pulse_axis()
         else:
