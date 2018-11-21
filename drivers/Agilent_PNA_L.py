@@ -1,4 +1,4 @@
-    # Agilent_PNA_L.py
+# Agilent_PNA_L.py
 # Gleb Fedorov <vdrhtc@gmail.com>
 # Derived from Agilent PNA X made by Marcus Jerger, 2012
 # Derived from Anritsu_VNA.py hacked by Hannes Rotzinger hannes.rotzinger@kit.edu, 2011
@@ -126,20 +126,20 @@ class Agilent_PNA_L(Instrument):
 
         # output trigger stuff by Elena
         self.add_parameter('aux_num', type=int,
-            flags=Instrument.FLAG_GETSET)
+                           flags=Instrument.FLAG_GETSET)
 
         self.add_parameter('trig_per_point', type=bool,
-            flags=Instrument.FLAG_GETSET)
+                           flags=Instrument.FLAG_GETSET)
 
         self.add_parameter('pos', type=bool,
-            flags=Instrument.FLAG_GETSET)
+                           flags=Instrument.FLAG_GETSET)
 
         self.add_parameter('bef', type=bool,
-            flags=Instrument.FLAG_GETSET)
+                           flags=Instrument.FLAG_GETSET)
 
         self.add_parameter('trig_dur', type=float,
-            flags=Instrument.FLAG_GETSET,
-            minval=2e-3, units='s')
+                           flags=Instrument.FLAG_GETSET,
+                           minval=2e-3, units='s')
 
 
         # sets the S21 setting in the PNA X
@@ -270,7 +270,7 @@ class Agilent_PNA_L(Instrument):
 
     def avg_status(self):
         # this does not work the same way than the VNA:
-        #return int(self._visainstrument.query(':SENS%i:AVER:COUN?' %(self._ci))
+        # return int(self._visainstrument.query(':SENS%i:AVER:COUN?' %(self._ci))
         pass
 
     def get_avg_status(self):
@@ -446,7 +446,7 @@ class Agilent_PNA_L(Instrument):
         Asking for CW freq
         """
         self.logger.debug(__name__ + ' : getting CW freq')
-        return float(self._visainstrument.query('SENS%i:FOM:RANG:FREQ:CW?' %(self._ci)) )
+        return float(self._visainstrument.query('SENS%i:FOM:RANG:FREQ:CW?' % (self._ci)))
 
     def get_sweep_time(self):
         """
@@ -456,7 +456,7 @@ class Agilent_PNA_L(Instrument):
             out: float
                 time in ms
         """
-        return float(self._visainstrument.query(':SENS%i:SWE:TIME?' %(self._ci)))*1e3
+        return float(self._visainstrument.query(':SENS%i:SWE:TIME?' % (self._ci))) * 1e3
     ###
     # SET and GET functions
     ###
@@ -489,7 +489,7 @@ class Agilent_PNA_L(Instrument):
         if self._zerospan:
           return 1
         else:
-            self._nop = int(self._visainstrument.query(':SENS%i:SWE:POIN?' %(self._ci)))
+            self._nop = int(self._visainstrument.query(':SENS%i:SWE:POIN?' % (self._ci)))
         return self._nop
 
     def do_set_average(self, status):
@@ -523,7 +523,7 @@ class Agilent_PNA_L(Instrument):
             Status of Averaging ('on' or 'off) (string)
         """
         self.logger.debug(__name__ + ' : getting average status')
-        return bool(int(self._visainstrument.query('SENS%i:AVER:STAT?' %(self._ci))))
+        return bool(int(self._visainstrument.query('SENS%i:AVER:STAT?' % (self._ci))))
 
     def do_set_averages(self, av):
         """
@@ -556,9 +556,9 @@ class Agilent_PNA_L(Instrument):
         """
         self.logger.debug(__name__ + ' : getting Number of Averages')
         if self._zerospan:
-          return int(self._visainstrument.query('SWE%i:POIN?' % self._ci))
+            return int(self._visainstrument.query('SWE%i:POIN?' % self._ci))
         else:
-          return int(self._visainstrument.query('SENS%i:AVER:COUN?' % self._ci))
+            return int(self._visainstrument.query('SENS%i:AVER:COUN?' % self._ci))
 
     def set_sweep_type(self,sweep_type = "LIN"):
         self._visainstrument.write("SENS:SWE:TYPE "+sweep_type)
@@ -621,7 +621,7 @@ class Agilent_PNA_L(Instrument):
             cf (float) :Center Frequency in Hz
         """
         self.logger.debug(__name__ + ' : getting center frequency')
-        return  float(self._visainstrument.query('SENS%i:FREQ:CENT?'%(self._ci)))
+        return float(self._visainstrument.query('SENS%i:FREQ:CENT?' % (self._ci)))
 
     def do_set_span(self,span):
         """
@@ -649,7 +649,8 @@ class Agilent_PNA_L(Instrument):
             span (float) : Span in Hz
         """
         #self.logger.debug(__name__ + ' : getting center frequency')
-        span = self._visainstrument.query('SENS%i:FREQ:SPAN?' % (self._ci) ) #float( self.query('SENS1:FREQ:SPAN?'))
+        span = self._visainstrument.query(
+            'SENS%i:FREQ:SPAN?' % (self._ci))  # float( self.query('SENS1:FREQ:SPAN?'))
         return span
 
     def sweep_hold(self):
@@ -721,7 +722,7 @@ class Agilent_PNA_L(Instrument):
             val (float) : Start Frequency in Hz
         """
         self.logger.debug(__name__ + ' : getting stop frequency')
-        self._stop = float(self._visainstrument.query('SENS%i:FREQ:STOP?' %(self._ci) ))
+        self._stop = float(self._visainstrument.query('SENS%i:FREQ:STOP?' % (self._ci)))
         return  self._stop
 
     def do_set_bandwidth(self,band):
@@ -748,7 +749,7 @@ class Agilent_PNA_L(Instrument):
         """
         self.logger.debug(__name__ + ' : getting bandwidth')
         # getting value from instrument
-        return  float(self._visainstrument.query('SENS%i:BWID:RES?'%self._ci))
+        return float(self._visainstrument.query('SENS%i:BWID:RES?' % self._ci))
 
     def do_set_zerospan(self,val):
         """
@@ -891,18 +892,18 @@ class Agilent_PNA_L(Instrument):
         return self._visainstrument.read()
     def write(self,msg):
         return self._visainstrument.write(msg)
-    def query(self,msg):
+
+    def query(self, msg):
         return self._visainstrument.query(msg)
 
-
     def do_set_aux_num(self, aux_num):
-        self._visainstrument.write("TRIG:CHAN:AUX %i"%(aux_num))
+        self._visainstrument.write("TRIG:CHAN:AUX %i" % (aux_num))
 
     def do_get_aux_num(self):
         raise NotImplemented
 
     def do_set_trig_per_point(self, trig_per_point):
-        if trig_per_point==True:
+        if trig_per_point == True:
             self._visainstrument.write("TRIG:CHAN:AUX:INT POIN")
         else:
             self._visainstrument.write("TRIG:CHAN:AUX:INT SWE")
@@ -911,13 +912,13 @@ class Agilent_PNA_L(Instrument):
         raise NotImplemented
 
     def do_set_pos(self, pos):
-        if pos==True:
+        if pos == True:
             self._visainstrument.write("TRIG:CHAN:AUX:OPOL POS")
         else:
             self._visainstrument.write("TRIG:CHAN:AUX:OPOL NEG")
 
     def do_get_pos(self):
-            raise NotImplemented
+        raise NotImplemented
 
     def do_set_bef(self, bef):
         if bef == True:
@@ -926,10 +927,10 @@ class Agilent_PNA_L(Instrument):
             self._visainstrument.write("TRIG:CHAN:AUX:POS AFT")
 
     def do_get_bef(self):
-            raise NotImplemented
+        raise NotImplemented
 
-    def do_set_trig_dur(self, trig_dur): # > 2e-3 sec (EXG restriction)
-        self._visainstrument.write("TRIG:CHAN:AUX:DUR %f"%trig_dur)
+    def do_set_trig_dur(self, trig_dur):  # > 2e-3 sec (EXG restriction)
+        self._visainstrument.write("TRIG:CHAN:AUX:DUR %f" % trig_dur)
 
     def do_get_trig_dur(self):
-            raise NotImplemented
+        raise NotImplemented

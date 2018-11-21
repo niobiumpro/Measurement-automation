@@ -175,16 +175,16 @@ class IQAWG():
         resolution = pulse_sequence.get_waveform_resolution()
         length = len(pulse_sequence.get_I_waveform())
         if self._triggered:
-            duration = pulse_sequence.get_duration()-1000*resolution
+            duration = pulse_sequence.get_duration() - 1000 * resolution
             end_idx = length - 1000
         else:
             duration = pulse_sequence.get_duration()
             end_idx = length
 
-        frequency = 1/duration*1e9
-        self._channels[0].output_arbitrary_waveform(pulse_sequence\
-                                            .get_I_waveform()[:end_idx], frequency,
-                                            asynchronous=True)
+        frequency = 1 / duration * 1e9
+        self._channels[0].output_arbitrary_waveform(pulse_sequence \
+                                                    .get_I_waveform()[:end_idx], frequency,
+                                                    asynchronous=True)
         self._channels[1].output_arbitrary_waveform(pulse_sequence
-                                            .get_Q_waveform()[:end_idx], frequency,
-                                            asynchronous=asynchronous)
+                                                    .get_Q_waveform()[:end_idx], frequency,
+                                                    asynchronous=asynchronous)

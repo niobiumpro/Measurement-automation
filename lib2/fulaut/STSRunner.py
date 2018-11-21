@@ -104,11 +104,11 @@ class STSRunner():
         ao = AnticrossingOracle("transmon", self._sts_result, plot=True)
         period = ao._find_period()
 
-        N_periods = ptp(self._currents)/period
-        self._logger.debug("Periods: %.2f"%N_periods)
+        N_periods = ptp(self._currents) / period
+        self._logger.debug("Periods: %.2f" % N_periods)
 
         if N_periods > 2:
-            self._currents = self._currents/N_periods
+            self._currents = self._currents / N_periods
             self._perform_STS()
         elif N_periods < 2:
             if max(abs(self._currents)) > 1e-3:
@@ -140,6 +140,8 @@ class STSRunner():
 
     def _open_only_readout_mixer(self):
         self._ro_awg.output_continuous_IQ_waves(frequency=0, amplitudes=(0, 0),
-                                                relative_phase=0, offsets=(1, 1), waveform_resolution=1)
+                                                relative_phase=0, offsets=(1, 1),
+                                                waveform_resolution=1)
         self._q_awg.output_continuous_IQ_waves(frequency=0, amplitudes=(0, 0),
-                                               relative_phase=0, offsets=(0, 0), waveform_resolution=1)
+                                               relative_phase=0, offsets=(0, 0),
+                                               waveform_resolution=1)

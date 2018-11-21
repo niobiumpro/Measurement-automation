@@ -209,9 +209,9 @@ class AnticrossingOracle():
         try:
             period = peaks[argmax(corr[peaks])]
             print(peaks, period)
-            return self._curs[period]-self._curs[0]
+            return self._curs[period] - self._curs[0]
         except ValueError:
-            return 1.5*ptp(self._curs)
+            return 1.5 * ptp(self._curs)
 
 
     def _model_square(self, duty, phase, x):

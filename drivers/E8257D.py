@@ -7,6 +7,7 @@ import logging
 from time import sleep
 import numpy
 
+
 class MXG(Instrument):
 
     def __init__(self, address):
@@ -17,29 +18,31 @@ class MXG(Instrument):
 
         self._address = address
         rm = visa.ResourceManager()
-        self._visainstrument = rm.open_resource(self._address)# no term_chars for GPIB!!!!!
+        self._visainstrument = rm.open_resource(self._address)  # no term_chars for GPIB!!!!!
 
         self.set_output_state("ON")
 
         self.add_parameter('nop', type=int,
-            flags=Instrument.FLAG_GETSET, minval=1, maxval=10**6,
-            tags=['sweep'])
+                           flags=Instrument.FLAG_GETSET, minval=1, maxval=10 ** 6,
+                           tags=['sweep'])
 
         # external triggering parameters
         self.add_parameter('ext_trig_channel', type=bytes,
-            flags=Instrument.FLAG_GETSET)
+                           flags=Instrument.FLAG_GETSET)
 
         self.add_parameter('InSweep_trg_src', type=bytes,
-            flags=Instrument.FLAG_GETSET)
+                           flags=Instrument.FLAG_GETSET)
 
         self.add_parameter('sweep_trg_src', type=bytes,
-            flags=Instrument.FLAG_GETSET)
+                           flags=Instrument.FLAG_GETSET)
 
     def read(self):
         return self._visainstrument.read()
-    def write(self,msg):
+
+    def write(self, msg):
         return self._visainstrument.write(msg)
-    def query(self,msg):
+
+    def query(self, msg):
         return self._visainstrument.query(msg)
 
     def get_parameters(self):
@@ -113,7 +116,7 @@ class MXG(Instrument):
         self.write(":SOURce:FREQuency:CW {0}HZ".format(freq))
 
     def get_frequency(self):
-        bla = 0#self.read(":SOURce:FREQuency:CW?")
+        bla = 0  # self.read(":SOURce:FREQuency:CW?")
         try:
             output = float(bla)
         except:
@@ -138,16 +141,15 @@ class MXG(Instrument):
 
     # def set_frequency_sweep(self):
 
-
     def do_set_ext_trig_channel(self, ext_trig_channel):
-        self.write(":LIST:TRIG:EXT:SOUR %s"%(ext_trig_channel)) # choose external trigger channel
+        self.write(":LIST:TRIG:EXT:SOUR %s" % (ext_trig_channel))  # choose external trigger channel
 
     def do_get_ext_trig_channel(self):
         raise NotImplemented
 
     def set_freq_sweep(self):
         # LIST, CW OR FIXED
-        #(CW and FIXED is the same and refers to the fixed frequency)
+        # (CW and FIXED is the same and refers to the fixed frequency)
         self.write(":FREQuency:MODE LIST")
 
     def set_single_point(self):
@@ -158,19 +160,19 @@ class MXG(Instrument):
         self.write(":LIST:TYPE STEP")
 
     def set_freq_limits(self, freq_limits):
-        self.write(":FREQuency:STARt %f%s"%(freq_limits[0],"Hz"))
-        self.write(":FREQuency:STOP %f%s"%(freq_limits[1],"Hz"))
+        self.write(":FREQuency:STARt %f%s" % (freq_limits[0], "Hz"))
+        self.write(":FREQuency:STOP %f%s" % (freq_limits[1], "Hz"))
 
     def do_set_nop(self, nop):
-        self.write(":SWEep:POINts %i"%(nop))
+        self.write(":SWEep:POINts %i" % (nop))
 
     def do_get_nop(self):
         raise NotImplemented
 
     def do_set_InSweep_trg_src(self, InSweep_trg_src):
         # sweep event trigger source
-        #(BUS is equivalent to GPIB source "*TRG" signal)
-        self.write(":LIST:TRIG:SOUR %s"%(InSweep_trg_src))
+        # (BUS is equivalent to GPIB source "*TRG" signal)
+        self.write(":LIST:TRIG:SOUR %s" % (InSweep_trg_src))
 
     def do_get_InSweep_trg_src(self):
         raise NotImplemented
@@ -181,7 +183,7 @@ class MXG(Instrument):
 
     def do_set_sweep_trg_src(self, sweep_trg_src):
         # This command sets the sweep trigger source for a list or step sweep.
-        self.write(":TRIG:SOUR %s"%(sweep_trg_src))
+        self.write(":TRIG:SOUR %s" % (sweep_trg_src))
 
     def do_get_sweep_trg_src(self):
         raise NotImplemented

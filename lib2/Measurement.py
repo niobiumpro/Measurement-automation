@@ -123,11 +123,11 @@ class Measurement:
         self._list = ""
         rm = pyvisa.ResourceManager()
         temp_list = list(rm.list_resources_info().values())
-        Measurement._logger.debug("Measurement "+ name + " init")
-        Measurement._logger.debug("Measurement "+ name+" devs:" + str(devs_aliases_map))
+        Measurement._logger.debug("Measurement " + name + " init")
+        Measurement._logger.debug("Measurement " + name + " devs:" + str(devs_aliases_map))
         self._devs_info = [item[4] for item in list(temp_list)]
-                # returns list of tuples: (IP Address string, alias) for all
-                # devices present in VISA
+        # returns list of tuples: (IP Address string, alias) for all
+        # devices present in VISA
         self._write_to_log()
         for field_name, dev_list in self._devs_aliases_map.items():
             atr_name = "_" + field_name
@@ -318,8 +318,8 @@ class Measurement:
                 break
             else:
                 print("\rFit was inaccurate (try #%d), retrying" % i, end="")
-        #if result is None:
-            #print(frequencies, sdata)
+        # if result is None:
+        # print(frequencies, sdata)
         return result
 
     def _detect_qubit(self):
