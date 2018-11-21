@@ -5,7 +5,6 @@ from scipy.signal import *
 from scipy.optimize import *
 from IPython.display import clear_output
 from operator import itemgetter
-from skimage.filters import threshold_otsu
 
 from lib2.fulaut.qubit_spectra import *
 

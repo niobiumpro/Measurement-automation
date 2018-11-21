@@ -124,16 +124,22 @@ class AnticrossingOracle():
             # maybe we have raw dict
             data = self._sts_result
         try:
-            curs, freqs, self._data =\
-                data["Current [A]"], data["frequency"], data["data"]
+            curs = data["Current [A]"]
         except:
-            curs, freqs, self._data =\
-                data["current"], data["frequency"], data["data"]
+            curs = data["current"]
+
+        try:
+            freqs = data["frequency"]
+        except:
+            freqs = data["Frequency [Hz]"]
+
+        self._data = data["data"]
+
         data = self._data
         res_freqs = []
 
         def comlex_ptp_estimation(Z):
-            point0 = Z[0,0]
+            point0 = Z[0, 0]
             point1 = Z.ravel()[argmax(abs(Z-point0))]
             point2 = Z.ravel()[argmax(abs(Z-point1))]
             point3 = Z.ravel()[argmax(abs(Z-point2))]
