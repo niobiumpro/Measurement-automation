@@ -5,6 +5,8 @@ from lib2.fulaut.qubit_spectra import *
 
 from datetime import datetime
 
+from lib2.LoggingServer import *
+
 class TTSRunner():
 
     def __init__(self, sample_name, qubit_name, res_limits, fit_p0, awgs = None):
@@ -14,7 +16,7 @@ class TTSRunner():
         self._res_limits = res_limits
         self._tts_name ="%s-two-tone"%qubit_name
         self._fit_p0 = fit_p0
-
+        self._logger = LoggingServer.getInstance()
         self._which_sweet_spot = GlobalParameters.which_sweet_spot[qubit_name]
 
         if awgs is not None:
@@ -31,7 +33,7 @@ class TTSRunner():
                                 "power":self._vna_power,
                                 "averages":1}
 
-        self._mw_src_parameters = {"power":-10}
+        self._mw_src_parameters = {"power":14}
 
         res_freq, g, period, sweet_spot, max_q_freq, d = self._fit_p0
 
@@ -56,7 +58,7 @@ class TTSRunner():
         # else:
         #     mw_limits = (res_freq-0.1e9, expected_q_freq+1e9)
 
-        mw_limits = (expected_q_freq-0.5e9, expected_q_freq+1e9)
+        mw_limits = (expected_q_freq-1e9, expected_q_freq+1e9)
 
         self._mw_src_frequencies = linspace(*mw_limits, 201)
 
@@ -66,7 +68,7 @@ class TTSRunner():
 
     def run(self):
 
-        #Check if today's anticrossing is present
+        #Check if today's spectrum is present
 
         known_results =\
             MeasurementResult.load(self._sample_name,
@@ -81,9 +83,9 @@ class TTSRunner():
 
         so = SpectrumOracle("transmon",
                             self._tts_result,
-                            self._fit_p0[2:])
-        params = so.launch(plot=True)
-
+                            self._fit_p0[2:], plot=True)
+        params = so.launch()
+        self._logger.debug("Two-tone fit: %s"%str(params))
         if known_results is None:
             print("Saving...", end="")
             self._tts_result.save()
