@@ -94,12 +94,12 @@ class KeysightAWG(Instrument):
             # Crest data out of range KOSTYL FUCK YOU KEYSIGHT look carefully.
             waveform = waveform[:3]
 
+
         self.load_arbitrary_waveform_to_volatile_memory(waveform[:-1], channel)
         self.prepare_waveform(WaveformType.arbitrary, repetition_rate, 2, 0, channel)
         self.set_output(channel, 1)
 
-    def output_continuous_wave(self, frequency=100e6, amplitude=0.1, phase=0, offset=0,
-                               waveform_resolution=1,
+    def output_continuous_wave(self, frequency=100e6, amplitude=0.1, phase=0, offset=0, waveform_resolution=1,
                                channel=1):
         '''
         Prepare and output a sine wave of the form: y = A*sin(2*pi*frequency + phase) + offset
@@ -214,8 +214,7 @@ class KeysightAWG(Instrument):
         if waveform_name in self.list_arbitrary_waveforms():
             self._visainstrument.write(":FUNC%i:USER %s" % (channel, waveform_name))
         else:
-            raise Value(
-                "No such waveform, check available waveforms with list_arbitrary_waveforms method")
+            raise Value("No such waveform, check available waveforms with list_arbitrary_waveforms method")
 
     def get_arbitary_waveform(self, channel=1):
         '''

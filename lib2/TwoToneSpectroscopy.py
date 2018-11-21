@@ -53,8 +53,7 @@ class FluxTwoToneSpectroscopy(TwoToneSpectroscopyBase):
         res_result = self._detect_resonator(vna_parameters, plot=False)
 
         if (res_result is None):
-            print("Failed to fit resonator, trying to use last successful fit, power = ", power,
-                  " A")
+            print("Failed to fit resonator, trying to use last successful fit, power = ", power, " A")
             if (self._last_resonator_result is None):
                 print("no successful fit is present, terminating")
                 return None

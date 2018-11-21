@@ -145,7 +145,7 @@ class SingleToneSpectroscopyResult(MeasurementResult):
         '''
         self._unwrap_phase = unwrap_phase
 
-    def _plot(self, axes, caxes, dynamic=False):
+    def _plot(self, axes, caxes, dynamic = False):
 
         ax_amps, ax_phas = axes
         cax_amps, cax_phas = caxes

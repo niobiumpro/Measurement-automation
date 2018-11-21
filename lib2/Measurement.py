@@ -320,8 +320,8 @@ class Measurement():
                 break
             else:
                 print("\rFit was inaccurate (try #%d), retrying"%i, end = "")
-        # if result is None:
-        # print(frequencies, sdata)
+        #if result is None:
+            #print(frequencies, sdata)
         return result
 
     def _detect_qubit(self):

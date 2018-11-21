@@ -40,9 +40,9 @@ class SpectrumOracle():
         sweet_spot_cur += shift
 
         period_grid = period, period, 1
-        sws_grid = sweet_spot_cur - 0.05 * period, sweet_spot_cur + 0.05 * period, 10
+        sws_grid = sweet_spot_cur - 0.05 * period, sweet_spot_cur + 0.05 * period, 11
         freq_grid = q_freq * 0.7, q_freq * 1.3, 50
-        d_grid = .1, .9, 8
+        d_grid = .1, .9, 10
         alpha_grid = 100e-3, 150e-3, 10
 
         slices = []
@@ -95,11 +95,7 @@ class SpectrumOracle():
                        self._coarse_brute_distance_ranking,
                        self._coarse_brute_candidates),
                    key=itemgetter(0, 1))[0]
-
-        self._opt_params_very_coarse = opt_params_very_coarse
-        sws_slice = slice(opt_params_very_coarse[1] - 0.02 * opt_params_very_coarse[0],
-                          opt_params_very_coarse[1] + 0.021 * opt_params_very_coarse[0],
-                          0.002 * opt_params_very_coarse[0])
+        # return
         freq_slice = slice(opt_params_very_coarse[2] - 100e-3,
                            opt_params_very_coarse[2] + 101e-3,
                            10e-3)
@@ -299,6 +295,13 @@ class SpectrumOracle():
         if len(chosen_points) < len(self._parameter_values) / 10 or d > 0.9:
             mean_distance = sum(distances) ** 2 / len(distances)
             total_nop = 0.1
+            # if self._counter % 1 == 0:
+            #     print("\rDone: %.2f%%, %.d/%d" % (
+            #         percentage_done, self._counter, self._iterations), end="")
+            #     print(", [" + (("{:.2e}, " * len(params))[:-2]).format(
+            #         *params) + "]", end="")
+            #     print(", mean_dist:", "%.2e" % mean_distance,
+            #           ", chosen points:", total_nop)
         else:
             mean_distance = distances_chosen.sum() ** 2 / len(chosen_points)
             # bin = round(len(self._parameter_values) * 0.1, 0)

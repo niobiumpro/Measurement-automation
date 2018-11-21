@@ -62,8 +62,7 @@ class VNATimeResolvedDispersiveMeasurement1DResult( \
         try:
             # print(p0, end=" -> ")
             p0, err = curve_fit(lambda x, *params: real(self._model(x, *params)) \
-                                                   + imag(self._model(x, *params)), X,
-                                real(data) + imag(data),
+                                                   + imag(self._model(x, *params)), X, real(data) + imag(data),
                                 p0=p0, bounds=bounds)
             # print(p0)
         finally:

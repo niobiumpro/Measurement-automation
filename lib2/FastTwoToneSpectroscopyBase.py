@@ -68,7 +68,7 @@ class FastTwoToneSpectroscopyBase(Measurement):
             print(msg + msg1, flush=True)
             res_freq, res_amp, res_phase = self._detect_resonator(vna_parameters, plot=True)
             print("Detected frequency is %.5f GHz, at %.2f mU and %.2f degrees" % (
-                res_freq / 1e9, res_amp * 1e3, res_phase / pi * 180))
+            res_freq / 1e9, res_amp * 1e3, res_phase / pi * 180))
             vna_parameters["freq_limits"] = (res_freq, res_freq)
             self._measurement_result.get_context() \
                 .get_equipment()["vna"] = vna_parameters
@@ -107,8 +107,7 @@ class FastTwoToneSpectroscopyBase(Measurement):
         parameters_idxs = \
             [list(range(len(self._swept_pars[parameter_name][1]))) for parameter_name in par_names]
 
-        cycle_par_idxs = [list(range(len(self._swept_pars[parameter_name][1]))) for parameter_name
-                          in par_names if
+        cycle_par_idxs = [list(range(len(self._swept_pars[parameter_name][1]))) for parameter_name in par_names if
                           parameter_name != "Frequency [Hz]"]
         cycle_par_vals = [self._swept_pars[parameter_name][1] for parameter_name in par_names if
                           parameter_name != "Frequency [Hz]"]
@@ -181,8 +180,7 @@ class FastTwoToneSpectroscopyBase(Measurement):
         res_result = self._detect_resonator(vna_parameters, plot=False)
 
         if res_result is None:
-            print("Failed to fit resonator, trying to use last successful fit, current = ", value,
-                  " A")
+            print("Failed to fit resonator, trying to use last successful fit, current = ", value, " A")
             if self._last_resonator_result is None:
                 print("no successful fit is present, terminating")
                 return None
@@ -215,8 +213,7 @@ class TwoToneSpectroscopyResult(SingleToneSpectroscopyResult):
         return frequency * sqrt(cos((parameter_value - parameter_value_at_sweet_spot) / period))
 
     def _lorentzian_peak(self, frequency, amplitude, offset, res_frequency, width):
-        return amplitude * (0.5 * width) ** 2 / (
-                    (frequency - res_frequency) ** 2 + (0.5 * width) ** 2) + offset
+        return amplitude * (0.5 * width) ** 2 / ((frequency - res_frequency) ** 2 + (0.5 * width) ** 2) + offset
 
     def _find_peaks(self, freqs, data):
         peaks = []
@@ -270,4 +267,4 @@ class TwoToneSpectroscopyResult(SingleToneSpectroscopyResult):
     def _prepare_data_for_plot(self, data):
         s_data = data["data"]
         parameter_list = data[self._parameter_names[0]]
-        return parameter_list, data["Frequency [Hz]"] / 1e9, s_data
+        return parameter_list, data["Frequency [Hz]"]/1e9, s_data

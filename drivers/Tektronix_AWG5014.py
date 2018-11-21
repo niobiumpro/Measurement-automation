@@ -164,8 +164,8 @@ class Tektronix_AWG5014(Instrument):
                 else:
                     host_channel_waveform = np.zeros((len(marker_waveform)))
 
-                self.set_waveform(host_channel_waveform * 2, \
-                                  repetition_rate, host_channel)
+                self.set_waveform(host_channel_waveform*2, \
+                                            repetition_rate, host_channel)
                 self.set_output(1, host_channel)
                 self.run()
                 self._visainstrument.query("*OPC?")

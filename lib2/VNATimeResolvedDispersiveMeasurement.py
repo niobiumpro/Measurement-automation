@@ -129,8 +129,7 @@ class VNATimeResolvedDispersiveMeasurement(Measurement):
         ro_pb = IQPulseBuilder(ro_calibration)
         q_pb = IQPulseBuilder(q_calibration)
         self._ro_awg.output_pulse_sequence(ro_pb \
-                                           .add_dc_pulse(ro_duration).add_zero_until(
-            rep_period).build())
+                                           .add_dc_pulse(ro_duration).add_zero_until(rep_period).build())
         self._q_awg.output_pulse_sequence(q_pb.add_zero_until(rep_period).build())
 
         if self._q_z_awg is not None:
