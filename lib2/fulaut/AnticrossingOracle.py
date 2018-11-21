@@ -200,9 +200,12 @@ class AnticrossingOracle():
 
         self._corr = corr = correlate(data, data, "full")[data.size-1:]
         peaks = argrelextrema(corr, greater, order=10)[0]
-        period = peaks[argmax(corr[peaks])]
-        print(peaks, period)
-        return self._curs[period]-self._curs[0]
+        try:
+            period = peaks[argmax(corr[peaks])]
+            print(peaks, period)
+            return self._curs[period]-self._curs[0]
+        except ValueError:
+            return 1.5*ptp(self._curs)
 
 
     def _model_square(self, duty, phase, x):
@@ -386,4 +389,4 @@ class AnticrossingOracle():
         return sum(cost)
 
     def get_res_points(self):
-        return self._res_points*1e9
+        return self._res_points
