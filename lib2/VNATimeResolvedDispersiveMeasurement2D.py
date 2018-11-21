@@ -1,19 +1,19 @@
-
 from matplotlib import pyplot as plt, colorbar
 from lib2.VNATimeResolvedDispersiveMeasurement import *
+
 
 class VNATimeResolvedDispersiveMeasurement2D(VNATimeResolvedDispersiveMeasurement):
 
     def __init__(self, name, sample_name, devs_aliases_map):
         super().__init__(name, sample_name, devs_aliases_map,
-            plot_update_interval=5)
+                         plot_update_interval=5)
 
     def set_fixed_parameters(self, pulse_sequence_parameters,
-        detect_resonator=True, **dev_params):
-        dev_params['vna']["power"] = dev_params['ro_awg']["calibration"]\
+                             detect_resonator=True, **dev_params):
+        dev_params['vna']["power"] = dev_params['ro_awg']["calibration"] \
             .get_radiation_parameters()["lo_power"]
 
-        dev_params['q_lo'][0]["power"] = dev_params['q_awg'][0]["calibration"]\
+        dev_params['q_lo'][0]["power"] = dev_params['q_awg'][0]["calibration"] \
             .get_radiation_parameters()["lo_power"]
 
         super().set_fixed_parameters(pulse_sequence_parameters,
@@ -21,8 +21,7 @@ class VNATimeResolvedDispersiveMeasurement2D(VNATimeResolvedDispersiveMeasuremen
                                      **dev_params)
 
 
-class VNATimeResolvedDispersiveMeasurement2DResult(
-                VNATimeResolvedDispersiveMeasurementResult):
+class VNATimeResolvedDispersiveMeasurement2DResult(VNATimeResolvedDispersiveMeasurementResult):
 
     def _prepare_figure(self):
         fig, axes, caxes = super()._prepare_figure()
@@ -33,20 +32,21 @@ class VNATimeResolvedDispersiveMeasurement2DResult(
         return fig, axes, caxes
 
     def _prepare_data_for_plot(self, data):
-        '''
+        """
         Should be implemented in child classes
-        '''
+        """
         pass
 
     def _annotate_axes(self, axes):
-        '''
+        """
         Should be implemented in child classes
-        '''
+        """
         pass
 
-    def _plot(self, axes, caxes):
+    def _plot(self, data):
 
-        data = self.get_data()
+        axes = self._axes
+        caxes = self._caxes
         if "data" not in data.keys():
             return
 
@@ -59,15 +59,15 @@ class VNATimeResolvedDispersiveMeasurement2DResult(
             ax.clear()
 
             Z = self._data_formats[name][0](Z_raw)
-            max_Z = max(Z[Z!=0])
-            min_Z = min(Z[Z!=0])
-            Z_map = ax.imshow(Z, origin='lower', aspect = 'auto',
-                cmap="RdBu_r", vmin=min_Z, vmax=max_Z, extent=extent)
-            cb = plt.colorbar(Z_map, cax = caxes[idx])
+            max_Z = max(Z[Z != 0])
+            min_Z = min(Z[Z != 0])
+            Z_map = ax.imshow(Z, origin='lower', aspect='auto',
+                              cmap="RdBu_r", vmin=min_Z, vmax=max_Z, extent=extent)
+            cb = plt.colorbar(Z_map, cax=caxes[idx])
             cb.set_label(self._data_formats[name][1])
             ax.grid()
             cb.formatter.set_scientific(True)
-            cb.formatter.set_powerlimits((0,4))
+            cb.formatter.set_powerlimits((0, 4))
             cb.update_ticks()
 
         self._annotate_axes(axes)

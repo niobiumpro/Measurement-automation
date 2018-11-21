@@ -31,12 +31,12 @@ class IQCalibrationData():
         self._end_date = end_date
 
     def get_optimization_results(self):
-        '''
+        """
         Get the optimal paramters and the resulting spectral component values
 
         Returns:
             parameters, results: tuple
-        '''
+        """
         return dict(dc_offsets=self._dc_offsets, dc_offset_open=self._dc_offsets_open,
             if_offsets=self._if_offsets, if_amplitudes=self._if_amplitudes,
                 if_phase=self._if_phase), self._spectral_values
@@ -63,10 +63,10 @@ class IQCalibrator():
     def __init__(self, awg, sa, lo, mixer_id, iq_attenuation,
                  sideband_to_maintain="left", sidebands_to_suppress=6,
                  optimized_awg_calls = True):
-        '''
+        """
         IQCalibrator is a class that allows you to calibrate automatically an IQ mixer to obtain a Single Sideband (SSB)
         with desired parameters.
-        '''
+        """
         self._awg = awg
         self._sa = sa
         self._lo = lo
@@ -79,7 +79,7 @@ class IQCalibrator():
 
     def calibrate(self, lo_frequency, if_frequency, lo_power, ssb_power, waveform_resolution=1, initial_guess=None,
                 sa_res_bandwidth=500, iterations=5, minimize_iterlimit=20):
-        '''
+        """
         Perform the calibration routine to suppress LO and upper sideband LO+IF
          while maintaining the lower sideband at ssb_power.
 
@@ -111,7 +111,7 @@ class IQCalibrator():
         Returns:
         iqmx_calibration: IQCalibrationData
             Object containing the parameters and results of the optimization
-        '''
+        """
 
         def loss_function_dc_offsets(dc_offsets):
             self._awg.output_continuous_IQ_waves(frequency=0,

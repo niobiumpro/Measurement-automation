@@ -87,12 +87,12 @@ class Instrument():
         return "Instrument '%s'" % (self.get_name())
 
     def get_name(self):
-        '''
+        """
         Returns the name of the instrument as a string
 
         Input: None
         Output: name of instrument (string)
-        '''
+        """
 
         return self._name
 
@@ -102,33 +102,33 @@ class Instrument():
         return modname
 
     def get_options(self):
-        '''Return instrument options.'''
+        """Return instrument options."""
         return self._options
 
     def get_tags(self):
-        '''
+        """
         Returns array of tags
 
         Input: None
         Output: array of strings
-        '''
+        """
 
         return self._options['tags']
 
     def add_tag(self, tag):
-        '''
+        """
         Add tag to the tag list
 
         Input: tag (string)
         Output: None
-        '''
+        """
 
         self._options['tags'].append(tag)
 
     def has_tag(self, tags):
-        '''
+        """
         Return whether instrument has any tag in 'tags'
-        '''
+        """
 
         if type(tags) is list:
             for tag in tags:
@@ -143,34 +143,34 @@ class Instrument():
         return False
 
     def initialize(self):
-        '''
+        """
         Currently unsupported; might be used in the future to perform
         extra initialization in sub-classed Instruments.
 
         Input: None
         Output: None
-        '''
+        """
         self._initialized = True
 
     def remove(self):
-        '''
+        """
         Notify the instrument collection that this instrument should be
         removed. Override this in a sub-classed Instrument to perform
         cleanup.
 
         Input: None
         Output: None
-        '''
+        """
 
         self._remove_parameters()
 
     def is_initialized(self):
-        '''
+        """
         Return whether Instrument is initialized.
 
         Input: None
         Output: Boolean
-        '''
+        """
         return self._initialized
 
     def _add_options_to_doc(self, options):
@@ -189,7 +189,7 @@ class Instrument():
             options['doc'] = doc
 
     def add_parameter(self, name, **kwargs):
-        '''
+        """
         Create an instrument 'parameter' that is known by the whole
         environment (gui etc).
 
@@ -223,7 +223,7 @@ class Instrument():
                     (or more) other parameters.
 
         Output: None
-        '''
+        """
 
         if name in self._parameters:
             logging.error('Parameter %s already exists.', name)
@@ -363,10 +363,10 @@ class Instrument():
 
 
     def _remove_parameters(self):
-        '''
+        """
         Remove remaining references to bound methods so that the Instrument
         object can be garbage collected.
-        '''
+        """
 
         for name, opts in self._parameters.items():
             for fname in ('get_%s' % name, 'set_%s' % name):
@@ -385,30 +385,30 @@ class Instrument():
         del self._parameters[name]
 
     def has_parameter(self, name):
-        '''
+        """
         Return whether instrument has a parameter called 'name'
-        '''
+        """
         return (name in self._parameters)
 
     def get_parameter_options(self, name):
-        '''
+        """
         Return list of options for paramter.
 
         Input: name (string)
         Output: dictionary of options
-        '''
+        """
         if name in self._parameters:
             return self._parameters[name]
         else:
             return None
 
     def get_shared_parameter_options(self, name):
-        '''
+        """
         Return list of options for paramter.
 
         Input: name (string)
         Output: dictionary of options
-        '''
+        """
         if name in self._parameters:
             options = dict(self._parameters[name])
             for i in ('get_func', 'set_func'):
@@ -421,12 +421,12 @@ class Instrument():
             return None
 
     def set_parameter_options(self, name, **kwargs):
-        '''
+        """
         Change parameter options.
 
         Input:  name of parameter (string)
         Ouput:  None
-        '''
+        """
         if name not in self._parameters:
             print('Parameter %s not defined' % name)
             return None
@@ -436,12 +436,12 @@ class Instrument():
 
 
     def get_parameter_tags(self, name):
-        '''
+        """
         Return tags for parameter 'name'.
 
         Input:  name of parameter (string)
         Ouput:  array of tags
-        '''
+        """
 
         if name not in self._parameters:
             return []
@@ -449,13 +449,13 @@ class Instrument():
         return self._parameters[name]['tags']
 
     def add_parameter_tag(self, name, tag):
-        '''
+        """
         Add tag to list of tags for parameter 'name'.
 
         Input:  (1) name of parameter (string)
                 (2) tag (string)
         Ouput:  None
-        '''
+        """
 
         if name not in self._parameters:
             return
@@ -463,18 +463,18 @@ class Instrument():
         self._parameters[name]['tags'].append(tag)
 
     def set_parameter_bounds(self, name, minval, maxval):
-        '''
+        """
         Change the bounds for a parameter.
 
         Input:  (1) name of parameter (string)
                 (2) minimum value
                 (3) maximum value
         Output: None
-        '''
+        """
         self.set_parameter_options(name, minval=minval, maxval=maxval)
 
     def set_channel_bounds(self, name, channel, minval, maxval):
-        '''
+        """
         Change the bounds for a channel.
 
         Input:  (1) name of parameter (string)
@@ -482,7 +482,7 @@ class Instrument():
                 (3) minimum value
                 (4) maximum value
         Output: None
-        '''
+        """
 
         opts = self.get_parameter_options(name)
         if 'channel_prefix' in opts:
@@ -493,7 +493,7 @@ class Instrument():
         self.set_parameter_options(var_name, minval=minval, maxval=maxval)
 
     def set_parameter_rate(self, name, stepsize, stepdelay):
-        '''
+        """
         Change the rate properties for a channel.
 
         Input:
@@ -501,34 +501,34 @@ class Instrument():
             stepdelay (float): the delay after each step
         Output:
             None
-        '''
+        """
         self.set_parameter_options(name, maxstep=stepsize, stepdelay=stepdelay)
 
     def get_parameter_names(self):
-        '''
+        """
         Returns a list of parameter names.
 
         Input: None
         Output: all the paramter names (list of strings)
-        '''
+        """
         return list(self._parameters.keys())
 
     def get_parameters(self):
-        '''
+        """
         Return the parameter dictionary.
 
         Input: None
         Ouput: Dictionary, keys are parameter names, values are the options.
-        '''
+        """
         return self._parameters
 
     def get_shared_parameters(self):
-        '''
+        """
         Return the parameter dictionary, with non-shareable items stripped.
 
         Input: None
         Ouput: Dictionary, keys are parameter names, values are the options.
-        '''
+        """
 
         params = {}
         for key in self._parameters:
@@ -536,9 +536,9 @@ class Instrument():
         return params
 
     def get_parameter_groups(self):
-        '''
+        """
         Return a dictionary with parameter group name -> group members.
-        '''
+        """
         return self._parameter_groups
 
     def format_parameter_value(self, param, val):
@@ -586,9 +586,9 @@ class Instrument():
         return '%s%s' % (valstr, unitstr)
 
     def format_range(self, param):
-        '''
+        """
         Format the range allowed for parameter <param>
-        '''
+        """
 
         popts = self.get_parameter_options(param)
         text = ''
@@ -610,9 +610,9 @@ class Instrument():
         return text
 
     def format_rate(self, param):
-        '''
+        """
         Format the rate allowed for parameter <param>
-        '''
+        """
 
         popts = self.get_parameter_options(param)
         text = ''
@@ -626,14 +626,14 @@ class Instrument():
         return text
 
     def _get_value(self, name, query=True, **kwargs):
-        '''
+        """
         Private wrapper function to get a value.
 
         Input:  (1) name of parameter (string)
                 (2) query the instrument or return stored value (Boolean)
                 (3) optional list of extra options
         Output: value of parameter (whatever type the instrument driver returns)
-        '''
+        """
 
         try:
             p = self._parameters[name]
@@ -688,7 +688,7 @@ class Instrument():
         return value
 
     def get(self, name, query=True, fast=False, **kwargs):
-        '''
+        """
         Get one or more Instrument parameter values.
 
         Input:
@@ -701,7 +701,7 @@ class Instrument():
 
         Output: Single value, or dictionary of parameter -> values
                 Type is whatever the instrument driver returns.
-        '''
+        """
 
         if Instrument.USE_ACCESS_LOCK:
             if not self._access_lock.acquire():
@@ -733,10 +733,10 @@ class Instrument():
         return result
 
     def get_threaded(self, *args, **kwargs):
-        '''
+        """
         Perform a get in a separate thread. Run gobject main loop while
         executing and return when the get finishes.
-        '''
+        """
 
 
         # In python 2.6 the function is called is_alive
@@ -826,7 +826,7 @@ class Instrument():
         return value
 
     def _set_value(self, name, value, **kwargs):
-        '''
+        """
         Private wrapper function to set a value.
 
         Input:  (1) name of parameter (string)
@@ -835,7 +835,7 @@ class Instrument():
                 (3) Optional keyword args that will be passed on.
         Output: Value returned by the _do_set_<name> function,
                 or result of get in FLAG_GET_AFTER_SET specified.
-        '''
+        """
         if name in self._parameters:
             p = self._parameters[name]
         else:
@@ -927,7 +927,7 @@ class Instrument():
         return value
 
     def set(self, name, value=None, fast=False, **kwargs):
-        '''
+        """
         Set one or more Instrument parameter values.
 
         Checks whether the Instrument is locked and checks value bounds,
@@ -943,7 +943,7 @@ class Instrument():
 
         Output: True or False whether the operation succeeded.
                 For multiple sets return False if any of the parameters failed.
-        '''
+        """
 
         if self._locked:
             logging.warning('Trying to set value of locked instrument (%s)',
@@ -979,11 +979,11 @@ class Instrument():
         return result
 
     def update_value(self, name, value):
-        '''
+        """
         Update a parameter value if new information is obtained.
         Barely any checking is performed and no type conversions,
         so use with caution.
-        '''
+        """
 
         if name in self._parameters:
             p = self._parameters[name]
@@ -996,13 +996,13 @@ class Instrument():
         return dict(args=a[0], varargs=a[1], keywords=a[2], defaults=a[3])
 
     def add_function(self, name, **options):
-        '''
+        """
         Inform the Instrument wrapper class to expose a function.
 
         Input:  (1) name of function (string)
                 (2) dictionary of extra options
         Output: None
-        '''
+        """
 
         if not hasattr(self, name):
             logging.warning('Instrument does not implement function %s', name)
@@ -1016,90 +1016,90 @@ class Instrument():
         self._functions[name] = options
 
     def get_function_options(self, name):
-        '''
+        """
         Return options for an Instrument function.
 
         Input:  name of function (string)
         Output: dictionary of options for function 'name'
-        '''
+        """
         if name in self._functions:
             return self._functions[name]
         else:
             return None
 
     def get_function_parameters(self, name):
-        '''
+        """
         Return info about parameters for function.
-        '''
+        """
         if name in self._functions:
             if 'parameters' in self._functions[name]:
                 return self._functions[name]['parameters']
         return None
 
     def get_function_names(self):
-        '''
+        """
         Return the list of exposed Instrument function names.
 
         Input: None
         Output: list of function names (list of strings)
-        '''
+        """
         return list(self._functions.keys())
 
     def get_functions(self):
-        '''
+        """
         Return the exposed functions dictionary.
 
         Input: None
         Ouput: Dictionary, keys are function  names, values are the options.
-        '''
+        """
         return self._functions
 
     def call(self, funcname, **kwargs):
-        '''
+        """
         Call the exposed function 'funcname'.
 
         Input:  (1) function name (string)
                 (2) Optional keyword args that will be passed on.
         Output: None
-        '''
+        """
         f = getattr(self, funcname)
         f(**kwargs)
 
     def lock(self):
-        '''
+        """
         Lock the instrument; no parameters can be changed until the Instrument
         is unlocked.
 
         Input: None
         Output: None
-        '''
+        """
         self._locked = True
 
     def unlock(self):
-        '''
+        """
         Unlock the instrument; parameters can be changed.
 
         Input: None
         Output: None
-        '''
+        """
         self._locked = False
 
     def set_default_read_var(self, name):
-        '''
+        """
         For future use.
 
         Input: name of variable (string)
         Output: None
-        '''
+        """
         self._default_read_var = name
 
     def set_default_write_var(self, name):
-        '''
+        """
         For future use.
 
         Input: name of variable (string)
         Output: None
-        '''
+        """
         self._default_write_var = name
 
 
@@ -1123,10 +1123,10 @@ class Instrument():
     
 
 class InvalidInstrument(Instrument):
-    '''
+    """
     Placeholder class for instruments that fail to load, mainly to support
     reloading.
-    '''
+    """
 
     def __init__(self, name, instype, **kwargs):
         self._instype = instype

@@ -66,19 +66,19 @@ class K2400(instr.Instr):
     #OUTPut [:STAT]?
 
     def set_mode(self, mode):
-        '''
+        """
         Sets the mode of the device.
 
         Parameters:
         mode : string
             VOLT for V-source or CURR for I-source
-        '''
+        """
         self.write("SOUR:FUNC %s"%mode)
 
     def get_mode(self):
-        '''
+        """
         Gets the mode of the device.
-        '''
+        """
         return self.query("SOUR:FUNC?")
 
     def set_current(self, current):

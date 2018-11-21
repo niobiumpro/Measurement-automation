@@ -23,12 +23,12 @@ def update_2D_plot(X, Y, data, ax_amps, ax_phas, cax_amps, cax_phas):
 	ax_phas.axis("tight")
 	ax_phas.set_title("Phase")
 	ax_amps.set_title("Amplitude")
-	plt.pause(0.01)
+	#plt.pause(0.01)
 
 
 def sweep2D(vna, param1_vals, param1_setter, param2_vals, param2_setter, filename=None, center_freqs = None, averages=None):
 
-	plt.ion()
+	# plt.ion()
 
 	fig, axes = plt.subplots(1,2,figsize=(15,7))
 	ax_amps, ax_phas = axes
@@ -121,7 +121,7 @@ def sweep2D(vna, param1_vals, param1_setter, param2_vals, param2_setter, filenam
 
 def sweep1D(vna, param_vals, param_setter, filename=None):
 
-	plt.ion()
+	# plt.ion()
 
 	fig, axes = plt.subplots(1,2,figsize=(15,7))
 	ax_amps, ax_phas = axes

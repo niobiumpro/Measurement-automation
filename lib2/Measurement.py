@@ -32,8 +32,8 @@ some other bullshit:
 from numpy import *
 import copy
 import pyvisa
-#import sys.stdout.flush
-#from sys.stdout import flush
+# import sys.stdout.flush
+# from sys.stdout import flush
 import os, fnmatch
 import pickle
 from drivers import *
@@ -43,7 +43,7 @@ from drivers import *
 # from drivers.KeysightAWG import *
 # from drivers.E8257D import MXG,EXG
 # from drivers.Agilent_DSO import *
-from matplotlib import pyplot as plt
+from matplotlib import pyplot as plt, animation
 from datetime import datetime as dt
 from threading import Thread
 from resonator_tools import circuit
@@ -53,40 +53,40 @@ from functools import reduce
 from operator import mul
 import traceback
 
-from lib2.LoggingServer import LoggingServer
+
+# from lib2.LoggingServer import LoggingServer
 
 
 class Measurement:
-
     """
     Any inheritance?
     The class contains methods to help with the implementation of measurement classes.
 
     """
-    _logger = LoggingServer.getInstance()
+    # _logger = LoggingServer.getInstance()
     _actual_devices = {}
     _log = []
     _devs_dict = \
-        {'vna1':  [["PNA-L", "PNA-L1"], [Agilent_PNA_L, "Agilent_PNA_L"]],
-         'vna2':  [["PNA-L-2", "PNA-L2"], [Agilent_PNA_L, "Agilent_PNA_L"]],
-         'vna3':  [["pna"], [Agilent_PNA_L, "Agilent_PNA_L"]],
-         'vna4':  [["ZNB"], [znb, "Znb"]],
-         'exa' :  [["EXA"], [Agilent_EXA, "Agilent_EXA_N9010A"]],
-         'exg' :  [["EXG"], [E8257D, "EXG"]],
-         'psg2':  [['PSG'], [E8257D, "EXG"]],
-         'mxg' :  [["MXG"], [E8257D, "MXG"]],
-         'psg1':  [["psg1"], [E8257D, "EXG"]],
-         'awg1':  [["AWG", "AWG1"], [KeysightAWG, "KeysightAWG"]],
-         'awg2':  [["AWG_Vadik", "AWG2"], [KeysightAWG, "KeysightAWG"]],
-         'awg3':  [["AWG3"], [KeysightAWG, "KeysightAWG"]],
-         'awg4':  [["TEK1"], [Tektronix_AWG5014, "Tektronix_AWG5014"]],
-         'dso':   [["DSO"], [Keysight_DSOX2014, "Keysight_DSOX2014"]],
-         'yok1':  [["GS210_1"], [Yokogawa_GS200, "Yokogawa_GS210"]],
-         'yok2':  [["GS210_2"], [Yokogawa_GS200, "Yokogawa_GS210"]],
-         'yok3':  [["GS210_3"], [Yokogawa_GS200, "Yokogawa_GS210"]],
-         'yok4':  [["gs210"], [Yokogawa_GS200, "Yokogawa_GS210"]],
-         'yok5':  [["GS_210_3"], [Yokogawa_GS200, "Yokogawa_GS210"]],
-         'yok6':  [["YOK1"], [Yokogawa_GS200, "Yokogawa_GS210"]],
+        {'vna1': [["PNA-L", "PNA-L1"], [Agilent_PNA_L, "Agilent_PNA_L"]],
+         'vna2': [["PNA-L-2", "PNA-L2"], [Agilent_PNA_L, "Agilent_PNA_L"]],
+         'vna3': [["pna"], [Agilent_PNA_L, "Agilent_PNA_L"]],
+         'vna4': [["ZNB"], [znb, "Znb"]],
+         'exa': [["EXA"], [Agilent_EXA, "Agilent_EXA_N9010A"]],
+         'exg': [["EXG"], [E8257D, "EXG"]],
+         'psg2': [['PSG'], [E8257D, "EXG"]],
+         'mxg': [["MXG"], [E8257D, "MXG"]],
+         'psg1': [["psg1"], [E8257D, "EXG"]],
+         'awg1': [["AWG", "AWG1"], [KeysightAWG, "KeysightAWG"]],
+         'awg2': [["AWG_Vadik", "AWG2"], [KeysightAWG, "KeysightAWG"]],
+         'awg3': [["AWG3"], [KeysightAWG, "KeysightAWG"]],
+         'awg4': [["TEK1"], [Tektronix_AWG5014, "Tektronix_AWG5014"]],
+         'dso': [["DSO"], [Keysight_DSOX2014, "Keysight_DSOX2014"]],
+         'yok1': [["GS210_1"], [Yokogawa_GS200, "Yokogawa_GS210"]],
+         'yok2': [["GS210_2"], [Yokogawa_GS200, "Yokogawa_GS210"]],
+         'yok3': [["GS210_3"], [Yokogawa_GS200, "Yokogawa_GS210"]],
+         'yok4': [["gs210"], [Yokogawa_GS200, "Yokogawa_GS210"]],
+         'yok5': [["GS_210_3"], [Yokogawa_GS200, "Yokogawa_GS210"]],
+         'yok6': [["YOK1"], [Yokogawa_GS200, "Yokogawa_GS210"]],
          'k6220': [["k6220"], [k6220, "K6220"]]
          }
 
@@ -118,20 +118,21 @@ class Measurement:
         self._name = name
         self._sample_name = sample_name
         self._plot_update_interval = plot_update_interval
+        self._resonator_detector = ResonatorDetector()
 
         self._devs_aliases_map = devs_aliases_map
         self._list = ""
-        rm = pyvisa.ResourceManager()
-        temp_list = list(rm.list_resources_info().values())
-        Measurement._logger.debug("Measurement "+ name + " init")
-        Measurement._logger.debug("Measurement "+ name+" devs:" + str(devs_aliases_map))
-        self._devs_info = [item[4] for item in list(temp_list)]
-                # returns list of tuples: (IP Address string, alias) for all
-                # devices present in VISA
-        self._write_to_log()
+        # rm = pyvisa.ResourceManager()
+        # temp_list = list(rm.list_resources_info().values())
+        # Measurement._logger.debug("Measurement "+ name + " init")
+        # Measurement._logger.debug("Measurement "+ name+" devs:" + str(devs_aliases_map))
+        # self._devs_info = [item[4] for item in list(temp_list)]
+        #         # returns list of tuples: (IP Address string, alias) for all
+        #         # devices present in VISA
+        # self._write_to_log()
         for field_name, dev_list in self._devs_aliases_map.items():
-            atr_name = "_" + field_name + '_list'
-            self.__setattr__(atr_name, [None]*len(dev_list))
+            atr_name = "_" + field_name
+            self.__setattr__(atr_name, [None] * len(dev_list))
             for index, value in enumerate(dev_list):
                 if isinstance(value, str):
                     name = value
@@ -152,7 +153,7 @@ class Measurement:
                     else:
                         print("Device", name, "is unknown!")
                 else:
-                    self.atr_name[index] = value
+                    self.__getattribute__(atr_name)[index] = value
 
     @staticmethod
     def close_devs(devs_to_close):
@@ -167,8 +168,9 @@ class Measurement:
                      'dev2': {par1: value1, par2: ...}...}
         """
         for dev_name in self._fixed_pars.keys():
-            dev = getattr(self, '_' + dev_name)
-            dev.set_parameters(self._fixed_pars[dev_name])
+            dev_list = getattr(self, '_' + dev_name)
+            for pars, dev in zip(self._fixed_pars[dev_name], dev_list):
+                dev.set_parameters(pars)
 
     def set_fixed_parameters(self, **fixed_pars):
         """
@@ -195,10 +197,22 @@ class Measurement:
         for name, value in zip(self._swept_pars_names, values_group):
             if self._last_swept_pars_values[name] != value:
                 self._last_swept_pars_values[name] = value
-                self._swept_pars[name][0](value) # this is setter call, look carefully
+                self._swept_pars[name][0](value)  # this is setter call, look carefully
+
+    @staticmethod
+    def testi():
+        def plot2(i):
+            print('Test plot2', '\n')
+            return plt.plot(range(i), range(i))
+
+        print('Test vis dyn \n')
+        # print(next(self._yield_data()), '\n')
+        fig, ax = plt.subplots()
+        return animation.FuncAnimation(fig, plot2, frames=20,
+                                       # , frames=self._yield_data
+                                       repeat=False)
 
     def launch(self):
-        plt.ion()
 
         self._measurement_result.set_start_datetime(dt.now())
         if self._measurement_result.is_finished():
@@ -207,20 +221,28 @@ class Measurement:
         print("Started at: ", self._measurement_result.get_start_datetime())
         t = Thread(target=self._record_data)
         t.start()
-        try:
-            while not self._measurement_result.is_finished():
-                self._measurement_result._visualize_dynamic()
-                for i in range(0,10):
-                    plt.pause(self._plot_update_interval/10)
-                # plt.gcf().canvas.start_event_loop(self._plot_update_interval)
-        except KeyboardInterrupt:
-            self._interrupted = True
-        except Exception as e:
-            self._interrupted = True
-            traceback.print_exc()
 
-        self._measurement_result.finalize()
+        self._measurement_result._visualize_dynamic()
+
+        # try:
+        #     while not self._measurement_result.is_finished():
+        #         self._measurement_result._visualize_dynamic()
+        #         for i in range(0,10):
+        #             plt.pause(self._plot_update_interval/10)
+        #         # plt.gcf().canvas.start_event_loop(self._plot_update_interval)
+        # except KeyboardInterrupt:
+        #     self._interrupted = True
+        # except Exception as e:
+        #     self._interrupted = True
+        #     traceback.print_exc()
+        # self._measurement_result._visualize_dynamic()
+
         return self._measurement_result
+
+    def stop(self):
+        print('Measurement was interrupted! \n')
+        self._interrupted = True
+        self._measurement_result.set_is_finished(True)
 
     def _record_data(self):
 
@@ -231,11 +253,11 @@ class Measurement:
         start_time = self._measurement_result.get_start_datetime()
 
         parameters_values = \
-                [self._swept_pars[parameter_name][1] for parameter_name in par_names]
+            [self._swept_pars[parameter_name][1] for parameter_name in par_names]
         parameters_idxs = \
-                [list(range(len(self._swept_pars[parameter_name][1]))) for parameter_name in par_names]
+            [list(range(len(self._swept_pars[parameter_name][1]))) for parameter_name in par_names]
         raw_data_shape = \
-                [len(indices) for indices in parameters_idxs]
+            [len(indices) for indices in parameters_idxs]
         total_iterations = reduce(mul, raw_data_shape, 1)
 
         for idx_group, values_group in zip(product(*parameters_idxs), product(*parameters_values)):
@@ -247,57 +269,57 @@ class Measurement:
 
             if done_iterations == 0:
                 try:
-                    self._raw_data = zeros(raw_data_shape+[len(data)], dtype=complex_)
-                except TypeError: # data has no __len__ attribute
+                    self._raw_data = zeros(raw_data_shape + [len(data)], dtype=complex_)
+                except TypeError:  # data has no __len__ attribute
                     self._raw_data = zeros(raw_data_shape, dtype=complex_)
             self._raw_data[idx_group] = data
 
             # This may need to be extended in child classes:
-            measurement_data =\
+            measurement_data = \
                 self._prepare_measurement_result_data(par_names, parameters_values)
             self._measurement_result.set_data(measurement_data)
 
             done_iterations += 1
 
-            avg_time = (dt.now() - start_time).total_seconds()/done_iterations
-            time_left = self._format_time_delta(avg_time*(total_iterations-done_iterations))
+            avg_time = (dt.now() - start_time).total_seconds() / done_iterations
+            time_left = self._format_time_delta(avg_time * (total_iterations - done_iterations))
 
             formatted_values_group = \
-                        '['+"".join(["%s: %.2e, "%(par_names[idx], value)\
-                         for idx, value in enumerate(values_group)])[:-2]+']'
+                '[' + "".join(["%s: %.2e, " % (par_names[idx], value) \
+                               for idx, value in enumerate(values_group)])[:-2] + ']'
 
-            print("\rTime left: "+time_left+", %s"%formatted_values_group+\
-                    ", average cycle time: "+str(round(avg_time, 2))+" s       ",
-                    end="", flush=True)
+            print("\rTime left: " + time_left + ", %s" % formatted_values_group + \
+                  ", average cycle time: " + str(round(avg_time, 2)) + " s       ",
+                  end="", flush=True)
 
             if self._interrupted:
                 self._interrupted = False
                 return
-        self._measurement_result.set_recording_time(dt.now()-start_time)
-        print("\nElapsed time: %s"%\
-                    self._format_time_delta((dt.now()-start_time)\
-                                                            .total_seconds()))
+        self._measurement_result.set_recording_time(dt.now() - start_time)
+        print("\nElapsed time: %s" % \
+              self._format_time_delta((dt.now() - start_time) \
+                                      .total_seconds()))
         self._measurement_result.set_is_finished(True)
 
     def _recording_iteration(self):
-        '''
+        """
         This method must be overridden for each new measurement type.
 
         Should contain the recording logic and set the data of the
         corresponding MeasurementResult object.
         See lib2.SingleToneSpectroscopy.py as an example implementation
-        '''
+        """
         pass
 
     def _prepare_measurement_result_data(self, parameter_names, parameter_values):
-        '''
+        """
         This method MAY be overridden for a new measurement type.
 
         An override is needed if you have _recording_iteration(...) that returns
         an array, so effectively you have an additional parameter that is swept
         automatically. You will be able to pass its values and name in the
         overridden method (see lib2.SingleToneSpectroscopy.py).
-        '''
+        """
         measurement_data = self._measurement_result.get_data()
         measurement_data.update(zip(parameter_names, parameter_values))
         measurement_data["data"] = self._raw_data
@@ -307,40 +329,44 @@ class Measurement:
         """
         Finds frequency of the resonator visible on the VNA screen
         """
-        vna = self._vna
+        vna = self._vna[0]
         tries_number = 10
         for i in range(0, tries_number):
-            vna.avg_clear(); vna.prepare_for_stb(); vna.sweep_single(); vna.wait_for_stb()
+            vna.avg_clear();
+            vna.prepare_for_stb();
+            vna.sweep_single();
+            vna.wait_for_stb()
             frequencies, sdata = vna.get_frequencies(), vna.get_sdata()
             vna.autoscale_all()
-            RD = ResonatorDetector(frequencies, sdata, plot=plot)
+            self._resonator_detector.set_data(frequencies, sdata)
+            self._resonator_detector.set_plot(plot)
+            result = self._resonator_detector.detect()
 
-            result = RD.detect()
             if result is not None:
                 break
             else:
-                print("\rFit was inaccurate (try #%d), retrying"%i, end = "")
+                print("\rFit was inaccurate (try #%d), retrying" % i, end="")
         if result is None:
             print(frequencies, sdata)
         return result
 
     def _detect_qubit(self):
-        '''
+        """
         To find a peak/dip from a qubit in line automatically (to be implemented)
-        '''
+        """
         pass
 
-    def _write_to_log(self, line = 'Unknown measurement', parameters = ''):
-        '''
+    def _write_to_log(self, line='Unknown measurement', parameters=''):
+        """
         A method writes line with the name of measurement
         (probably with formatted parameters) to log list
-        '''
+        """
         self._log += str(dt.now().replace(microsecond=0)) + "  " + line + parameters + '\n'
 
     def return_log(self):
-        '''
+        """
         Returns string of log containing all adressed measurements in chronological order.
-        '''
+        """
         return self._log
 
     def _construct_fixed_parameters(self):
@@ -351,11 +377,12 @@ class Measurement:
 
         if yn == 'yes':
             while True:
-                dev_name  = input('Enter name of device : "exa", "vna", etc.\n'+'If finished enter whatever else you want \n')
+                dev_name = input(
+                    'Enter name of device : "exa", "vna", etc.\n' + 'If finished enter whatever else you want \n')
                 if dev_name in self._actual_devices.keys():
                     self._fixed_params[dev_name] = {}
                     print('Enter parameter and value as: "frequency 5e9" and press Enter)\n' + \
-                            'If finished with this device enter "stop next"\n')
+                          'If finished with this device enter "stop next"\n')
                     while True:
                         par_name, vs = input().split()
                         if par_name == 'stop':

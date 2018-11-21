@@ -12,20 +12,20 @@ from lib2.fulaut.qubit_spectra import *
 
 class SpectrumOracle():
 
-    '''
+    """
     This class automatically processes spectral data for different types of qubits
-    '''
+    """
 
     qubit_spectra = {"transmon":transmon_spectrum}
 
     def __init__(self, qubit_type, tts_result, initial_guess_qubit_params):
-        '''
+        """
         parameter_period_grid = grids[0]
         parameter_at_sweet_spot_grid = grids[1]
         frequency_grid = grids[2]
         d_grid = grids[3]
         alpha_grid = grids[4]
-        '''
+        """
         self._tts_result = tts_result
         self._qubit_spectrum = SpectrumOracle.qubit_spectra[qubit_type]
 

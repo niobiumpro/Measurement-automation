@@ -1,18 +1,17 @@
 from lib2.IQPulseSequence import *
 from lib2.VNATimeResolvedDispersiveMeasurement1D import *
-from math import exp, cos, sin, sqrt, pi
+from numpy import exp, cos, sin, sqrt, pi
 
 
 class DispersiveRabiOscillationsJoint(VNATimeResolvedDispersiveMeasurement1D):                      # TODO Any changes?
 
-    def __init__(self, name, sample_name, line_attenuation_db=60, plot_update_interval=1, two_qubits=True,
+    def __init__(self, name, sample_name, plot_update_interval=1, two_qubits=True,
                                                                                                 **devs_aliases_map):
-        devs_aliases_map["q_z_awg"] = None
-        super().__init__(name, sample_name, devs_aliases_map, line_attenuation_db, plot_update_interval)
-        self._measurement_result = DispersiveRabiOscillationsJointResult(name, sample_name)
+        super().__init__(name, sample_name, devs_aliases_map, plot_update_interval)
         self._sequence_generator = IQPulseBuilder.build_dispersive_rabi_2qubit_sequences
         self._swept_parameter_name = "excitation_duration"
         self._two_qubits = two_qubits
+        self._measurement_result = DispersiveRabiOscillationsJointResult(name, sample_name, two_qubits=two_qubits)
 
     def set_fixed_parameters(self, pulse_sequence_parameters,
                              **dev_params):
@@ -20,17 +19,9 @@ class DispersiveRabiOscillationsJoint(VNATimeResolvedDispersiveMeasurement1D):  
         :param dev_params:
             Minimum expected keys and elements expected in each:
                 'vna'
-                'q_frequency': 0,1
                 'q_awg': 0,1
                 'ro_awg'
         """
-        q2_if_frequency = dev_params['q_awg'][1]["calibration"] \
-            .get_radiation_parameters()["if_frequency"]
-
-        q2_lo_parameters = {"power": dev_params['q_awg'][1]["calibration"].get_radiation_parameters()["lo_power"],
-                            "frequency": dev_params['q_frequency'][1] + q2_if_frequency}
-
-        dev_params['q_lo'] = [None, q2_lo_parameters]
 
         super().set_fixed_parameters(pulse_sequence_parameters,
                                      **dev_params)
@@ -40,6 +31,10 @@ class DispersiveRabiOscillationsJoint(VNATimeResolvedDispersiveMeasurement1D):  
 
 
 class DispersiveRabiOscillationsJointResult(VNATimeResolvedDispersiveMeasurement1DResult):
+
+    def __init__(self, name, sample_name, two_qubits=True):
+        self._two_qubits = two_qubits
+        super().__init__(name, sample_name)
 
     @staticmethod
     def rabi_z_av(t, gamma_1, gamma_2, omega_r):
@@ -67,22 +62,25 @@ class DispersiveRabiOscillationsJointResult(VNATimeResolvedDispersiveMeasurement
         if not self._two_qubits:
             print('Warning: One qubit regime. Fit may suffer.')                                     # TODO
 
-        return (b_II_r+1j*b_II_i) + \
-               (b_XI_r+1j*b_XI_i)*self.rabi_x_av(t, g_1_q1, g_2_q1, omega_r_q1) + \
-               (b_ZI_r+1j*b_ZI_i)*self.rabi_z_av(t, g_1_q1, g_2_q1, omega_r_q1) + \
-               (b_IX_r+1j*b_IX_i)*self.rabi_x_av(t, g_1_q2, g_2_q2, omega_r_q2) + \
-               (b_IZ_r+1j*b_IZ_i)*self.rabi_z_av(t, g_1_q2, g_2_q2, omega_r_q2) + \
-               (b_XX_r+1j*b_XX_i)*self.rabi_x_av(t, g_1_q1, g_2_q1, omega_r_q1)*self.rabi_x_av(t, g_1_q2, g_2_q2, omega_r_q2) + \
-               (b_ZX_r+1j*b_ZX_i)*self.rabi_z_av(t, g_1_q1, g_2_q1, omega_r_q1)*self.rabi_x_av(t, g_1_q2, g_2_q2, omega_r_q2) + \
-               (b_XZ_r+1j*b_XZ_i)*self.rabi_x_av(t, g_1_q1, g_2_q1, omega_r_q1)*self.rabi_z_av(t, g_1_q2, g_2_q2, omega_r_q2) + \
-               (b_ZZ_r+1j*b_ZZ_i)*self.rabi_z_av(t, g_1_q1, g_2_q1, omega_r_q1)*self.rabi_z_av(t, g_1_q2, g_2_q2, omega_r_q2)
+        return ((b_II_r+1j*b_II_i) +
+                (b_XI_r+1j*b_XI_i)*self.rabi_x_av(t, g_1_q1, g_2_q1, omega_r_q1) +
+                (b_ZI_r+1j*b_ZI_i)*self.rabi_z_av(t, g_1_q1, g_2_q1, omega_r_q1) +
+                (b_IX_r+1j*b_IX_i)*self.rabi_x_av(t, g_1_q2, g_2_q2, omega_r_q2) +
+                (b_IZ_r+1j*b_IZ_i)*self.rabi_z_av(t, g_1_q2, g_2_q2, omega_r_q2) +
+                (b_XX_r+1j*b_XX_i)*self.rabi_x_av(t, g_1_q1, g_2_q1, omega_r_q1)*self.rabi_x_av(t, g_1_q2, g_2_q2, omega_r_q2) +
+                (b_ZX_r+1j*b_ZX_i)*self.rabi_z_av(t, g_1_q1, g_2_q1, omega_r_q1)*self.rabi_x_av(t, g_1_q2, g_2_q2, omega_r_q2) +
+                (b_XZ_r+1j*b_XZ_i)*self.rabi_x_av(t, g_1_q1, g_2_q1, omega_r_q1)*self.rabi_z_av(t, g_1_q2, g_2_q2, omega_r_q2) +
+                (b_ZZ_r+1j*b_ZZ_i)*self.rabi_z_av(t, g_1_q1, g_2_q1, omega_r_q1)*self.rabi_z_av(t, g_1_q2, g_2_q2, omega_r_q2))
 
     def _generate_fit_arguments(self, x, data):                                                 # TODO bounds
-        amp_r, amp_i = ptp(real(data))/2, ptp(imag(data))/2
+        amp_r, amp_i = ptp(real(data))/2 + 0.01, ptp(imag(data))/2 + 0.01
         time_step = x[1]-x[0]
         max_frequency = 1/time_step/2/5
-        min_frequency = 0.1
-        frequency = random.random(1)*(max_frequency-.1)+.1
+        min_frequency = 1e-6
+        frequency = random.random()*(max_frequency-min_frequency)+min_frequency
+        g_min = min_frequency / 10
+        g_max = max_frequency / 10
+        g = frequency / 10
         p0 = [amp_r, amp_i,                 # b_II
               amp_r, amp_i,                 # b_ZI
               amp_r, amp_i,                 # b_IZ
@@ -92,8 +90,8 @@ class DispersiveRabiOscillationsJointResult(VNATimeResolvedDispersiveMeasurement
               0, 0,                         # b_XX
               0, 0,                         # b_XZ
               0, 0,                         # b_ZX
-              1, 1, frequency * 2 * pi,     # Qubit 1, g_1, g_2, omega
-              1, 1, frequency * 2 * pi]     # Qubit 2, g_1, g_2, omega
+              g, g, frequency * 2 * pi,     # Qubit 1, g_1, g_2, omega
+              g, g, frequency * 2 * pi]     # Qubit 2, g_1, g_2, omega
         bounds = ([- amp_r * 2, - amp_i * 2,
                    - amp_r * 2, - amp_i * 2,
                    - amp_r * 2, - amp_i * 2,
@@ -103,8 +101,8 @@ class DispersiveRabiOscillationsJointResult(VNATimeResolvedDispersiveMeasurement
                    - amp_r * 2, - amp_i * 2,
                    - amp_r * 2, - amp_i * 2,
                    - amp_r * 2, - amp_i * 2,
-                   0.1, 0.1, min_frequency * 2 * pi,
-                   0.1, 0.1, min_frequency * 2 * pi],
+                   g_min, g_min, min_frequency * 2 * pi,
+                   g_min, g_min, min_frequency * 2 * pi],
                   [amp_r * 2, amp_i * 2,
                    amp_r * 2, amp_i * 2,
                    amp_r * 2, amp_i * 2,
@@ -114,14 +112,14 @@ class DispersiveRabiOscillationsJointResult(VNATimeResolvedDispersiveMeasurement
                    amp_r * 2, amp_i * 2,
                    amp_r * 2, amp_i * 2,
                    amp_r * 2, amp_i * 2,
-                   10, 10, max_frequency * 2 * pi,
-                   10, 10, max_frequency * 2 * pi])
+                   g_max, g_max, max_frequency * 2 * pi,
+                   g_max, g_max, max_frequency * 2 * pi])
         return p0, bounds
 
     def _generate_annotation_string(self, opt_params, err):                                     # TODO
         return 0
         # return "$T_R=%.2f \pm %.2f \mu$s\n$\Omega_R/2\pi = %.2f \pm %.2f$ MHz"%\
-        #        (opt_params[2], err[2], opt_params[3]/2/pi, err[3]/2/pi)
+         #       (opt_params[2], err[2], opt_params[3]/2/pi, err[3]/2/pi)
 
     def get_betas(self):
         return (self._fit_params[0],

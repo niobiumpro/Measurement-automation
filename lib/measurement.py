@@ -1,4 +1,4 @@
-'''
+"""
 Possible types are:
 pna-p1D-2D : 1D parameter set with 1 point sweep of PNA ---------------------------------------- 1
 pna-p2D-2D : 2D parameter set with 1 point sweep of PNA and 1 point of one of the parameters --- 4
@@ -6,7 +6,7 @@ pna-p1D-3D : 1D parameter set with many-point sweep of PNA ---------------------
 pna-p2D-3D : 2D parameter set with 1 point sweep of PNA ---------------------------------------- 3
 
 Numbers needed for backwards compatibility with Python 3 pickle and because of lack of enum class
-'''
+"""
 
 class Measurement():
 
@@ -55,21 +55,21 @@ class Measurement():
         self.__type__ = type
 
     def set_context(self, context):
-        '''
+        """
         Sets the measurement's context, i.e. power, averages and bandwidth
-        '''
+        """
         self.__context__ = context
 
     def get_context(self):
-        '''
+        """
         Returns the measurement's context, i.e. power, averages and bandwidth
-        '''
+        """
         return self.__context__
 
     def copy(self):
-        '''
+        """
         Returns a shallow copy!
-        '''
+        """
         copy = Measurement()
         copy.set_data(self.__data__)
         copy.set_type(self.__type__)
@@ -78,13 +78,13 @@ class Measurement():
         return copy
 
     def normalize(self):
-        '''
+        """
         For each value on y axis divides each z value for that y value by the average of all
         z values for that y value (in absolute scale)
 
         Returns: measurement : Measurement
                                     normalized measurement
-        '''
+        """
         new = self.copy()
         if self.__type__ in [2,3]:
             new_amps = new.get_data()[2].copy()
@@ -98,7 +98,7 @@ class Measurement():
             print("Measurement type is not supported")
 
     def remove_background(self, sweep_number, axis="y"):
-        '''
+        """
         Subtracts a specified sweep from every sweep and returns a measurement with new data
         WARNING Now it works only for NxM plots where N!=M
 
@@ -109,7 +109,7 @@ class Measurement():
 				                    the axis subtracted sweep is parallel to, "x" or "y"
         Returns:    measurement : Measurement
                                     measurement with no background
-        '''
+        """
         new = self.copy()
 
         if self.__type__ == 2:
