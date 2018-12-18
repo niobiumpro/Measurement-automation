@@ -24,19 +24,19 @@ class DispersiveRandomizedInterleavedBenchmarking(VNATimeResolvedDispersiveMeasu
         self._max_sequence_length = pulse_sequence_parameters["max_sequence_length"]
         self._gate_to_benchmark = pulse_sequence_parameters["gate_to_benchmark"]
         self._rb_sequence_generator = \
-            InterleavedBenchmarkingSequenceGenerator(self._number_of_sequences, \
+            InterleavedBenchmarkingSequenceGenerator(self._number_of_sequences,
                                                      self._max_sequence_length, self._gate_to_benchmark)
         self._rb_sequence_generator.generate_full_sequences()
         self._basis = basis
 
     def set_swept_parameters(self, subsequence_lengths):
-        swept_pars = {"subsequence_length": \
+        swept_pars = {"subsequence_length":
                           (self._set_sequence_length,
                            subsequence_lengths),
-                      "random_sequence_idx": \
+                      "random_sequence_idx":
                           (self._set_random_sequence_idx,
                            range(0, self._number_of_sequences)),
-                      "is_interleaved": \
+                      "is_interleaved":
                           (self._output_pulse_sequence,
                            [False, True])}
         super().set_swept_parameters(**swept_pars)
@@ -79,10 +79,10 @@ class DispersiveRandomizedInterleavedBenchmarkingResult(VNATimeResolvedDispersiv
     def _prepare_data_for_plot(self, data):
         return data[self._parameter_names[0]], data["data"]
 
-    def _plot(self, axes, caxes):
+    def _plot(self, data):
+        axes = self._axes
         axes = dict(zip(self._data_formats.keys(), axes))
 
-        data = self.get_data()
         if "data" not in data.keys():
             return
 

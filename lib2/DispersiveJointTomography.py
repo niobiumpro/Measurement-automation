@@ -1,3 +1,5 @@
+from time import sleep
+
 from lib2.VNATimeResolvedDispersiveMeasurement import *
 import numpy as np
 from qutip import *
@@ -194,6 +196,9 @@ class DispersiveJointTomographyResult(VNATimeResolvedDispersiveMeasurementResult
         fig, axes = plt.subplots(1, 2, figsize=(15, 7), sharex=True)
         fig.canvas.set_window_title(self._name)
         axes = ravel(axes)
+        for ax in axes:
+            ax.set_xlabel('Qubit 2 local rotations')
+            ax.set_ylabel('Qubit 1 local rotations')
         cax_amps, kw = colorbar.make_axes(axes[0], aspect=40)
         cax_phas, kw = colorbar.make_axes(axes[1], aspect=40)
         cax_amps.set_title("$|S_{21}|$", position=(0.5, -0.05))
@@ -202,7 +207,6 @@ class DispersiveJointTomographyResult(VNATimeResolvedDispersiveMeasurementResult
         return fig, axes, (cax_amps, cax_phas)
 
     def _plot(self, data):
-
         axes = self._axes
         caxes = self._caxes
         if "data" not in data.keys():
@@ -227,13 +231,11 @@ class DispersiveJointTomographyResult(VNATimeResolvedDispersiveMeasurementResult
         # axes[0].set_title('Real')
         # axes[1].set_title('Imag')
         for (ax, cax) in zip(axes, caxes):
-            ax.set_xlabel('Qubit 1 local rotations')
-            ax.set_ylabel('Qubit 2 local rotations')
-            ax.set_xticks(range(len(keys1)))
-            ax.set_yticks(range(len(keys2)))
-            ax.set_xticklabels(keys1)
+            ax.set_xticks(range(len(keys2)))
+            ax.set_yticks(range(len(keys1)))
+            ax.set_xticklabels(keys2)
             ax.set_yticklabels(keys1)
             for i in range(len(keys1)):
-                for j in range(len(keys1)):
+                for j in range(len(keys2)):
                     if data_dict[keys1[i]][keys2[j]] is None:
                         ax.text(j, i, 'No data', ha="center", va="center", color="w")
