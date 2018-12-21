@@ -91,7 +91,7 @@ class FastTwoToneSpectroscopyBase(Measurement):
         self._vna.set_averages(vna_parameters["averages"])
         result = super()._detect_resonator(plot)
         self._vna.do_set_power(vna_parameters["power"])
-        self._vna.do_set_power(vna_parameters["nop"])
+        self._vna.set_nop(vna_parameters["nop"])
         return result
 
     def _record_data(self):
