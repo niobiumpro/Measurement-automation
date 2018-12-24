@@ -81,8 +81,7 @@ class Tektronix_AWG5014(Instrument):
         for i in range(1,5):
             self.set_amplitude(2, i)
 
-    def output_arbitrary_waveform(self, waveform, repetition_rate,
-        channel, async=True):
+    def output_arbitrary_waveform(self, waveform, repetition_rate, channel, asynchronous = True):
         '''
         Prepare and output an arbitrary waveform repeated at some repetition_rate
 
@@ -119,7 +118,7 @@ class Tektronix_AWG5014(Instrument):
             self.set_waveform(waveform/norm, repetition_rate, channel)
             self.set_output(1, channel)
             self.run()
-            if not async:
+            if not asynchronous:
                 self._visainstrument.query("*OPC?")
 
         else: # we have a waveform for a marker
@@ -151,7 +150,7 @@ class Tektronix_AWG5014(Instrument):
 
             self._markers[marker_id-1] = marker_waveform
 
-            if not async:
+            if not asynchronous:
                 # Use existing or create a zero waveform for the host channel
                 # and output both host channel and it's marker
 
