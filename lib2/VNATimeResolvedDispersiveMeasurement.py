@@ -150,14 +150,14 @@ class VNATimeResolvedDispersiveMeasurement(Measurement):
             q_seq, q_z_seq, ro_seq = \
                 self._sequence_generator(q_pb, q_z_pb, ro_pb,
                                          self._pulse_sequence_parameters)
-            self._q_z_awg.output_pulse_sequence(q_z_seq, async=True)
-            self._ro_awg.output_pulse_sequence(ro_seq, async=True)
+            self._q_z_awg.output_pulse_sequence(q_z_seq, asynchronous=True)
+            self._ro_awg.output_pulse_sequence(ro_seq, asynchronous=True)
             self._q_awg.output_pulse_sequence(q_seq)
         else:
             q_seq, ro_seq = self._sequence_generator(q_pb, ro_pb,
                                                      self._pulse_sequence_parameters)
-            self._ro_awg.output_pulse_sequence(ro_seq, async=True)
-            self._q_awg.output_pulse_sequence(q_seq, async=False)
+            self._ro_awg.output_pulse_sequence(ro_seq, asynchronous=True)
+            self._q_awg.output_pulse_sequence(q_seq, asynchronous=False)
 
 
 class VNATimeResolvedDispersiveMeasurementResult(MeasurementResult):

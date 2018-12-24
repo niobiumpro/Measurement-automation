@@ -76,7 +76,7 @@ class KeysightAWG(Instrument):
 
     # High-level functions
 
-    def output_arbitrary_waveform(self, waveform, repetition_rate, channel, async=False):
+    def output_arbitrary_waveform(self, waveform, repetition_rate, channel, asynchronous=False):
         '''
         Prepare and output an arbitrary waveform repeated at some repetition_rate
 
