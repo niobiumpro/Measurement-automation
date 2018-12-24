@@ -44,10 +44,32 @@ class DispersiveRabiFromFrequency(Measurement):
         # class that is responsible for rabi measurements
         self._DRO = DispersiveRabiOscillations(name, sample_name, **kwargs)
 
+    def set_swept_parameters(self, **swept_pars):
+        raise NotImplemented
+
 
 class RabiFromFrequencyResult(MeasurementResult):
     def __init__(self, name, sample_name):
         super().__init__(name, sample_name)
+        self._graph_curve = None
+
+    def _prepare_figure(self):
+        import matplotlib.pyplot as plt
+        fig, ax = plt.subplots(1,1)
+        ax.set_xlabel( "$\delta\nu$, MHz")
+        ax.set_ylabel( "$T_R, \; \mu s$")
+        ax.grid()
+        self._graph_curve, = ax.scatter()
+        ax.set_xlimit(self.)
+        return fig, [ax], None
+
+    def _plot(self, axes, caxes):
+        '''
+        caxes is None
+        '''
+        ax = axes[0]
+        line = ax.get_lines()[0] # the only line of this class is T_R( f - f0 )
+        line.set_data()
 
 
 
