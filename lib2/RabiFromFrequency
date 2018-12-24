@@ -1,0 +1,54 @@
+from lib2.Measurement import Measurement
+from lib2.MeasurementResult import MeasurementResult
+from lib2.DispersiveRabiOscillations import DispersiveRabiOscillations
+
+class DispersiveRabiFromFrequency(Measurement):
+    '''
+    @brief: class is used to measure qubit lifetimes from the flux/qubit frequency
+            displacement from the sweet-spot.
+
+            Measurement setup is the same as for the any other dispersive measurements
+
+            class constructor must be provided with the following dictionary key;val pairs
+                vna;"vector_network_analyzer_name"
+                    vector analyzer that performs resonator readout
+                q_lo;"microwave_source_device_name"
+                    microwave source that performs qubit excitation
+                current_source;"current_source_name"
+                    current source that controls flux through the qubit
+                ro_awg;IQAWG class instance
+                    vna mixer object, responsible for readout pulses
+                q_awg;IQAWG class instance
+                    mw_src mixer object, responsible for qubit excitation pulses
+
+                tts_result; TwoToneSpectroscopyResult class instance
+                    contains lust successful TTS result performed around sweet spot
+                ss_current: sweet_spot current, detected manually from the tts_result
+                ss_freq: sweet_spot frequency, detected manually from the tts_result
+    '''
+    def __init__(self, name, sample_name, plot_update_interval=5, **kwargs):
+        ## Equipment variables declaration section START ##
+        self._vna = None
+        self._mw_src = None
+        self._current_source = None
+        self._ro_awg = None
+        self._q_awg = None
+        ## Equipment variables declaration section END ##
+
+        # last successful two tone spectroscopy result
+        self._tts_result = kwargs["tts_result"]
+
+        # constructor initializes devices from kwargs.keys() with '_' appended
+        super().__init__(name, sample_name, kwargs, plot_update_interval)
+
+        # class that is responsible for rabi measurements
+        self._DRO = DispersiveRabiOscillations(name, sample_name, **kwargs)
+
+
+class RabiFromFrequencyResult(MeasurementResult):
+    def __init__(self, name, sample_name):
+        super().__init__(name, sample_name)
+
+
+
+

@@ -56,15 +56,72 @@ import traceback
 from lib2.LoggingServer import LoggingServer
 
 class Measurement():
-
     '''
-    Any inheritance?
-    The class contains methods to help with the implementation of measurement classes.
+    @brief: Purely virtual class that serves as a base to all measurements.
+            Handles devices initialization and OS task management.
+            Child classes implementation is aimed at measurement process directrly.
 
+            MeasurementResult class is used alongside with Measurement class
+            and responsible for data save/load and visualization operations
+    @desc:
+            purely virtual methods
+                self._recording_iteration() -> iterable (data received during iteration)
+
+            public methods:
+                self.set_fixed_parameters( **kwargs )
+                    loads fixed parameters into devices
+                self.set_swept_parameters( **kwargs )
+                    prepares parameters iterator that will vary with the iteration number
+                self.launch()
+                    starts measurement process
+
+            methods that could be overwritten:
+                self._prepare_measurement_result_data
+
+            Usage:
+            1. create a class instance using needed devices names
+            2. set fixed parameters
+            3. set sweep parameters that vary with iteration number
+            4. call self.launch() to start measurement
+
+            see self.launch() for detailed operation description
     '''
+
     _logger = LoggingServer.getInstance()
-    _actual_devices = {}
     _log = []
+
+    '''
+    @desc: _actual_devices
+            static dict attribute of the Measurement class
+            Contains pairs key:val
+                key - device's internal alias name (see Measurement._actual_devices for desc)
+                val - relevant driver class instance that is shared by all Measuremnt class
+                      child classes. 
+    '''
+
+    _actual_devices = {}
+    '''
+    @desc: _devs_dict
+            static const dict attribute of the Measurement class
+            Contains internal API aliases for devices that are connected
+            with this particular PC. This dictionary is filled manually
+            due to its dependency on the particular devices setup of your 
+            measurement system.
+            
+            structure:
+                key - internal alias name that is used to initialize the device
+                val - [ devs_addresses_list, [DriverClass,"DriverClass] ]
+                    devs_addresses_list - list that contains NI-VISA aliases for
+                        device's physical addresses. This address is used by PyVisa
+                        in order establish connection in case if this devices is present
+                        in a network.
+                    DriverClass - class type that will be used to create 
+                        an instance of the device required. The only argument
+                        of the driver class is a string, that contains a member of the
+                        devs_addresses_list
+                    "DriverClass" - DriverClass name as a string
+                
+    '''
     _devs_dict = \
         {'vna1' : [ ["PNA-L","PNA-L1"], [Agilent_PNA_L,"Agilent_PNA_L"] ],\
          'vna2': [ ["PNA-L-2","PNA-L2"], [Agilent_PNA_L,"Agilent_PNA_L"] ],\
@@ -92,32 +149,45 @@ class Measurement():
 
     def __init__(self, name, sample_name, devs_aliases_map, plot_update_interval=5):
         '''
-        Parameters:
-        --------------------
-        name: string
-            name of the measurement
-        sample_name: string
-            the name of the sample that is measured
-        devs_aliases_map: dictionary
-            with devices' standard names(if it`s not virtual device) or
-             object from a device class. A key is a string that will be an object field
-        --------------------
+        @desc: Constructor creates variables for devices passed to it and initialises all devices.
 
-        Constructor creates variables for devices passed to it and initialises all devices.
+                Standard names of devices within this driver are:
+                    'vna1',vna2','exa','exg','mxg','awg1','awg2','awg3','dso','yok1','yok2','yok3'
+                with _ added in front for a variable of a class
 
-        Standard names of devices within this driver are:
+                if key is not recognised doesn't returns an error yet
+                prints appropriate message
 
-            'vna1',vna2','exa','exg','mxg','awg1','awg2','awg3','dso','yok1','yok2','yok3'
+                if the devices is already initialized: prints appropriate message
+                and creates
 
-        with _ added in front for a variable of a class
-
-        if key is not recognised doesn't returns a mistake
+        @params
+            name: string
+                name of the measurement
+            sample_name: string
+                the name of the sample that is measured
+            devs_aliases_map: dictionary with key:value pairs
+                 key    key is a string that will be prepended with '_'
+                        and become a class attribute assigned with
+                        the relevant driver class instance
+                        see self.__setattr('_' + key, obj)
+                 value
+                        if 'str':
+                            value - device's internal alias string that is used to identify the device and
+                            create appropriate driver class instance that will be assigned
+                            to the device's attribute. (see Measurement._devs_dict)
+                        else:
+                            assigns value to the self._key
 
         '''
         self._interrupted = False
         self._name = name
         self._sample_name = sample_name
         self._plot_update_interval = plot_update_interval
+
+        self._fixed_par = None
+
+        self._measurement_result = None # declaration of the measurement result attribute
 
         self._devs_aliases_map = devs_aliases_map
         self._list = ""
@@ -161,9 +231,10 @@ class Measurement():
 
     def _load_fixed_parameters_into_devices(self):
         '''
-        exa_parameters
-        fixed_pars: {'dev1': {'par1': value1, 'par2': value2},
-                     'dev2': {par1: value1, par2: ...}...}
+        @brief: Loads self.fixed_pars dictionary
+                into devices
+        @params: None
+        @return: None
         '''
         for dev_name in self._fixed_pars.keys():
             dev = getattr(self, '_' + dev_name)
@@ -171,8 +242,17 @@ class Measurement():
 
     def set_fixed_parameters(self, **fixed_pars):
         '''
-        fixed_pars: {'dev1': {'par1': value1, 'par2': value2},
-                     'dev2': {par1: value1, par2: ...},...}
+        @brief: Calls 'set_params' method for every device
+                which alias name is in fixed_pars.keys()
+                Stores parameters par:val pairs dictionary as a value
+                in the self._measurement_result._context._equipment dict
+                and in self._fixed_pars
+        @params:
+                fixed_pars: {'dev1': {'par1': value1, 'par2': value2,...},
+                             'dev2': {'par1': value1, 'par2': ...},...}
+                key - device's internal alias name
+                value - dictionary of the "parameter_name":parameter_value pairs
+        @return: None
         '''
         self._fixed_pars = fixed_pars
         for dev_name in self._fixed_pars.keys():
@@ -198,6 +278,9 @@ class Measurement():
                 self._swept_pars[name][0](value) # this is setter call, look carefully
 
     def launch(self):
+        '''
+        TODO: write human-readable description
+        '''
         plt.ion()
 
         self._measurement_result.set_start_datetime(dt.now())
@@ -223,7 +306,9 @@ class Measurement():
         return self._measurement_result
 
     def _record_data(self):
-
+        '''
+        TODO: write descrioption
+        '''
         par_names = self._swept_pars_names
         parameters_values = []
         parameters_idxs = []
@@ -255,7 +340,7 @@ class Measurement():
             # This may need to be extended in child classes:
             measurement_data =\
                 self._prepare_measurement_result_data(par_names, parameters_values)
-            self._measurement_result.set_data(measurement_data)
+            self._measurement_result.set_data(measurement_data) # TODO: calls deepcopy of the whole measurement data
 
             done_iterations += 1
 
@@ -287,10 +372,11 @@ class Measurement():
         corresponding MeasurementResult object.
         See lib2.SingleToneSpectroscopy.py as an example implementation
         '''
-        pass
+        raise NotImplementedError
 
     def _prepare_measurement_result_data(self, parameter_names, parameter_values):
         '''
+        TODO:OPT look at the implementation, it uses deepcopy for all the data
         This method MAY be overridden for a new measurement type.
 
         An override is needed if you have _recording_iteration(...) that returns
@@ -326,9 +412,9 @@ class Measurement():
 
     def _detect_qubit(self):
         '''
-        To find a peak/dip from a qubit in line automatically (to be implemented)
+        TODO: To find a peak/dip from a qubit in line automatically (to be implemented)
         '''
-        pass
+        raise NotImplemented
 
     def _write_to_log(self, line = 'Unknown measurement', parameters = ''):
         '''
@@ -339,10 +425,12 @@ class Measurement():
 
     def return_log(self):
         '''
-        Returns string of log containing all adressed measurements in chronological order.
+        Returns string of log containing all addressed measurements in chronological order.
         '''
         return self._log
 
+    '''
+    @desc: outdated method. Proposal to delete
     def _construct_fixed_parameters(self):
 
         self._fixed_params = {}
@@ -371,6 +459,7 @@ class Measurement():
 
         else:
             return self._fixed_params
+    '''
 
     def _format_time_delta(self, delta):
         hours, remainder = divmod(delta, 3600)

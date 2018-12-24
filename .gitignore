@@ -11,3 +11,5 @@ log/
 *.pdf
 *.png
 *.log
+Git token/
+tools/
