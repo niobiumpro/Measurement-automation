@@ -7,7 +7,7 @@ data*
 qubit-measurements*
 log/
 *.pkl
-.idea/*
+.idea/
 *.pdf
 *.png
 *.log
