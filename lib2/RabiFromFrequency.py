@@ -2,6 +2,8 @@ from lib2.Measurement import Measurement
 from lib2.MeasurementResult import MeasurementResult
 from lib2.DispersiveRabiOscillations import DispersiveRabiOscillations
 
+from copy import deepcopy
+
 class DispersiveRabiFromFrequency(Measurement):
     '''
     @brief: class is used to measure qubit lifetimes from the flux/qubit frequency
@@ -26,10 +28,30 @@ class DispersiveRabiFromFrequency(Measurement):
                 ss_current: sweet_spot current, detected manually from the tts_result
                 ss_freq: sweet_spot frequency, detected manually from the tts_result
     '''
-    def __init__(self, name, sample_name, plot_update_interval=5, **kwargs):
+    def __init__(self, name, sample_name,
+                 vna=None, q_lo=None, current_source=None,
+                 ro_awg=None, q_awg=None, tts_result=None,
+                 plot_update_interval=5):
+        '''
+        @params:
+            name: string.
+            sample_name: string.
+            vna: alias address string or driver class
+                vector network analyzer.
+            q_lo: alias address string or driver class
+                qubit frequency generator for lo input of the mixer.
+            current_source: alias address string or driver class
+                            current source used to tune qubit frequency
+            ro_awg: alias address string or driver class
+                    AWG used to control readout pulse generation mixer
+            q_awg: alias address string or driver class
+                    AWG used to control qubit excitation pulse generation mixer
+            plot_update_interval: float
+                                sleep milliseconds between plot updates
+        '''
         ## Equipment variables declaration section START ##
         self._vna = None
-        self._mw_src = None
+        self._q_lo = None
         self._current_source = None
         self._ro_awg = None
         self._q_awg = None
@@ -37,15 +59,17 @@ class DispersiveRabiFromFrequency(Measurement):
 
         # last successful two tone spectroscopy result
         # that contains sweet-spot
-        self._tts_result = None
-        if( "tts_result" in kwargs ):
-            self._tts_result = kwargs["tts_result"]
+        self._tts_result = tts_result
 
         # constructor initializes devices from kwargs.keys() with '_' appended
-        super().__init__(name, sample_name, kwargs, plot_update_interval)
+        devs_alias_map = {"vna":vna, "q_lo":q_lo, "current_source":current_source,
+                 "ro_awg":ro_awg, "q_awg":q_awg}
+        super().__init__(name, sample_name, devs_alias_map, plot_update_interval)
 
         # class that is responsible for rabi measurements
-        self._DRO = DispersiveRabiOscillations(name, sample_name, **kwargs)
+        self._DRO = DispersiveRabiOscillations(name, sample_name, **devs_alias_map)
+        # self._DRO.launch().data will be stored in the following list
+        self._DRO_results = []
 
     def set_fixed_parameters(self, vna_parameters, ro_awg_parameters,
                              q_awg_parameters, qubit_frequency, pulse_sequence_parameters,
@@ -62,18 +86,35 @@ class DispersiveRabiFromFrequency(Measurement):
         '''
         self._DRO.set_swept_parameters(excitation_durations)
 
-        super().set_swept_parameters( ss_shifts=(self._ss_shift_setter,ss_shifts) )
+        super().set_swept_parameters(ss_shifts=(self._ss_shift_setter, ss_shifts))
 
     def _ss_shift_setter(self, new_ss_shift):
-        self._DRO.set_fixed_parameters()
-        raise NotImplemented
+        # setting new current
+        self._current_source.set_current(new_ss_shift)
+        # TODO:detecting new qubit frequency
+        qubit_frequency = 0.0
+
+        device_params = self._DRO._measurement_result.get_context()
+        q_z_awg_params = None if "q_z_awg" not in device_params else device_params["q_z_awg"]
+
+        # TODO: detecting and setting a new resonator point is not optimized.
+        # TODO: propose to collect all neccessary code from the call chain of\
+        # TODO: self._DRO.set_fixed_parameters
+        # detecting and setting a new resonator point
+        self._DRO.set_fixed_parameters(device_params["vna"],
+                                       device_params["ro_awg"],device_params["q_awg"],
+                                       qubit_frequency,device_params.get_pulse_sequence_parameters(),
+                                       q_z_awg_params)
 
     def _recording_iteration(self):
-        # _DRO will detect resonator during the call of
+        # _DRO will detect resonator and new qubit frequency current
+        # during the call of
         # self._ss_shift_setter()
         rabi_result = self._DRO.launch()
+        self._DRO_results.append( deepcopy(rabi_result.data) ) # deepcopy of data is stored
         T_R = rabi_result._fit_params[2] # see DispersiveRabiOscillationsResult._model
         T_R_error = rabi_result._fit_errors[2]
+        return T_R, T_R_error # Rabi decay time and its RMS is stored in self._raw_data
 
 
 class RabiFromFrequencyResult(MeasurementResult):
@@ -88,7 +129,10 @@ class RabiFromFrequencyResult(MeasurementResult):
         ax.set_ylabel( "$T_R, \; \mu s$")
         ax.grid()
         self._line_scatter, = ax.scatter()
-        ax.set_xlimit(self.)
+
+        # setting x limit for graph
+        ss_shifts = self._measurement._swept_params
+        self._line_scatter.set_xlimit(min(ss_shifts),max(ss_shifts))
         return fig, [ax], None
 
     def _plot(self, axes, caxes):

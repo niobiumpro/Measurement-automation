@@ -194,7 +194,7 @@ class Measurement():
 
         ## data structures declaration section START ##
         '''
-        NOTE_1: ON ITERATING PROCESS OVER DATA STRUCTURES
+        NOTE_1: ACCESS AND ITERATING PROCESS OVER DATA STRUCTURES
         
         self._swept_pars_names is needed to ensure that order of the iteration over dictionaries is
         preserved over different iteration cycles throughout the program.
@@ -210,7 +210,7 @@ class Measurement():
         was introduced.
         Also the self._swept_pars_names is passed to the self._measurement_result
         to preserve iteration order over self._measurement_result.data structure
-        inside the routines of the self._measurment_result class.
+        inside the routines of the self._measurement_result class.
         self._measurement_result contains numpy array self._measurement_result.data["data"]
         the data in this numpy array coincides with self._raw_data.
         In addition, self._measurement_result.data dict contains paris "swept_par_name":swept_par_values_list
@@ -233,9 +233,19 @@ class Measurement():
         self._swept_pars = {}
         self._last_swept_pars_values = {}
 
-        # self._measurement_result attribute must be filled in the child-class constructor
-        # after the call of super().__init__
+        # data returned by self._recording_iteration()
+        # is stored in the attribute self._raw_data
+        # self._raw_data - multidimensional numpy array
+        # which iterating order coincide with the
+        # self._swept_pars_names sweep parameters order
+        # see NOTE_1 in Measurement class constructor above
+        self._raw_data = None
 
+        # self._measurement_result attribute must be filled
+        # in the child-class constructor
+        # after the call of super().__init__
+        # with the appropriate child-class of the
+        # MeasurementResult class
         self._measurement_result = None
         ## data structures declaration section END ##
 
