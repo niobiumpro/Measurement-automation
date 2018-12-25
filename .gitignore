@@ -13,5 +13,3 @@ log/
 *.log
 Git token/
 tools/
-*.iml
-.idea
