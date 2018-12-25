@@ -55,12 +55,24 @@ class ContextBase():
         return "Equipment with parameters:\n"+str(self._equipment)+\
             "\nComment:\n"+self._comment
 
+    # TODO: 'context' is not defined in the function body
+    '''
     def update_context(self, equipment = {}, comment = ""):
         context._equipment.update(equipment)
         context._comment.join(comment)
+    '''
 
 
 class MeasurementResult():
+    '''
+    @brief: Purely virtual base class that is responsible
+            for data visualization and save/load operations
+    @desc:
+            purely virtual methods:
+                self._prepare_figure() -> fig, axes, caxes
+                self._plot( axes, caxes ) -> None
+
+    '''
 
     def __init__(self, name, sample_name):
         self._name = name
@@ -68,16 +80,16 @@ class MeasurementResult():
         self._data_lock = Lock()
         self._data = {}
         self._context = ContextBase()
-        # Dynamic visualization fileds, see _prepare_figure(...) docstring below
+
+        self._parameter_names = []
+        # Dynamic visualization fields, see _prepare_figure(...) docstring below
 
         self._dynamic_figure = None # the figure that will be dynamically updated
         self._dynamic_axes = None # axes of the subplots contained inside it
         self._dynamic_caxes = None # colorbar axes for heatmaps
 
-
     def set_parameter_names(self, parameter_names):
         self._parameter_names = parameter_names
-
 
     @staticmethod
     def load(sample_name, name, date = '', return_all=False):
@@ -230,31 +242,47 @@ class MeasurementResult():
 
     def _prepare_figure(self):
         '''
-        This method must be implemented for each new measurement type.
+        @brief: This method must be implemented for each new measurement type.
+        @desc:  This method is called once from self._visualize_dynamic()
+                when the measurement process is started
+                method return references to the figures and axes objects
+                that are created and preconfigured in this method
+        @params: None
+        @return:
+            figure: matplotlib figure
+                figure window
+            axes: array of matplotlib.Axes objects
+                axes of the subplots contained inside the figure
+            caxes: array of colorbar axes
+                these axes are obtained by calling matplotlib.colorbar.make_axes(ax)
+                and then may be used to updated colorbars for each subplot
 
         See lib2.SingleToneSpectroscopy.py for an example implementation
-        Should return:
-        figure: matplotlib figure
-            figure window
-        axes: array of matplotlib.Axes objects
-            axes of the subplots contained inside the figure
-        caxes: array of colorbar axes
-            these axes are obtained by calling matplotlib.colorbar.make_axes(ax)
-            and then may be used to updated colorbars for each subplot
         '''
-        pass
+        raise NotImplementedError
 
     def _plot(self, axes, caxes):
         '''
-        This method must be implemented for each new measurement type.
+        @brief: This method must be implemented for each new measurement type.
+        @desc:  The self._plot() method is called from self._visualize_dynamic()
+                on every iteration step in order to update data appearance on the screen.
+                the new data is stored in self.data dictionary
 
-        The axes and caxes are those created by _prepare_figure(...) method and
-        should be used here to visualize the data
+        @params:
+            axes: list of matplotlib.axes objects
+            caxes: list of matplotlib colourbar axes objects
+                axes and caxes are those created by self._prepare_figure(...) method and
+                should be used here to visualize the data.
         '''
-        pass
+        raise NotImplementedError
 
     def finalize(self):
         '''
+        @brief: performs cleanup after the last measurement iteration
+                is executed.
+        @params: None
+        @return: None
+
         This method may be overridden in a child class but super().finalize()
         must be called in the beginning of the overridden method.
 
@@ -287,6 +315,7 @@ class MeasurementResult():
         self._recording_time = recording_time
 
     def get_data(self):
+        # TODO: deepcopy here
         with self._data_lock:
             return copy.deepcopy(self._data)
 
@@ -295,6 +324,7 @@ class MeasurementResult():
 
     def set_data(self, data):
         '''
+        TODO: deepcopy once more
         Data should consist only of built-in data types to be easy to use on
         other computers without the whole measurement library.
         '''
@@ -312,3 +342,7 @@ class MeasurementResult():
     def copy(self):
         with self._data_lock:
             return copy.deepcopy(self)
+
+    def set_devices_context_fixed_parameters(self, **fixed_pars):
+        for dev_name in fixed_pars.keys():
+            self._context.get_equipment()[dev_name] = fixed_pars[dev_name]

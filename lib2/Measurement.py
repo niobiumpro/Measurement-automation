@@ -185,7 +185,10 @@ class Measurement():
         self._sample_name = sample_name
         self._plot_update_interval = plot_update_interval
 
-        self._fixed_par = None
+        self._fixed_pars = None
+        self._swept_pars = None
+        self._swept_pars_names = None
+        self._last_swept_pars_values = None
 
         self._measurement_result = None # declaration of the measurement result attribute
 
@@ -228,7 +231,6 @@ class Measurement():
             if name in Measurement._actual_devices.keys():
                 Measurement._actual_devices.pop(name)._visainstrument.close()
 
-
     def _load_fixed_parameters_into_devices(self):
         '''
         @brief: Loads self.fixed_pars dictionary
@@ -255,13 +257,15 @@ class Measurement():
         @return: None
         '''
         self._fixed_pars = fixed_pars
-        for dev_name in self._fixed_pars.keys():
-            self._measurement_result.get_context().get_equipment()[dev_name] = fixed_pars[dev_name]
+        self._measurement_result.set_devices_context_fixed_parameters(**fixed_pars)
         self._load_fixed_parameters_into_devices()
-
 
     def set_swept_parameters(self, **swept_pars):
         '''
+        @brief: set swept par names into self._swept_pars and
+                also storing their names into
+                    self._measurement_result._parameter_names
+                    self._swept_pars_names
         swept_pars :{'par1': (setter1, [value1, value2, ...]),
                      'par2': (setter2, [value1, value2, ...]), ...}
         '''
