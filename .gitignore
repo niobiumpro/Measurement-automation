@@ -7,11 +7,17 @@ data*
 qubit-measurements*
 log/
 *.pkl
+
+# pyCharm directory #
 .idea/
 *.iml
 *.xml
+
+# output files #
 *.pdf
 *.png
+
+# logging #
 *.log
 Git token/
 tools/
