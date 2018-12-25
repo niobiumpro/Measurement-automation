@@ -8,6 +8,8 @@ qubit-measurements*
 log/
 *.pkl
 .idea/
+*.iml
+*.xml
 *.pdf
 *.png
 *.log
