@@ -177,7 +177,7 @@ class VNATimeResolvedDispersiveMeasurementResult(MeasurementResult):
                       r"$\angle S_{21}$ [%s]" % self._phase_units),
             "abs": (abs, r"$\left.|S_{21}|\right.$ [a.u.]")}
 
-    def _вьшекьшв_fit_arguments(self):
+    def _generate_fit_arguments(self):
         '''
         Should be implemented in child classes.
 

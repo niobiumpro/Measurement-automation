@@ -74,10 +74,20 @@ class MeasurementResult():
 
     '''
 
-    def __init__(self, name, sample_name):
+    def __init__(self, name, sample_name, measurement_class=None):
         self._name = name
         self._sample_name = sample_name
+        # access to measurement class is added due to the
+        # need in setting up proper plot ranges during the
+        # self._prepare_figure method execution
+        # at the stage where self._prepare_figure is called
+        # it is possible that self.data object is not filled with parameter values.
+        self._measurement = measurement_class
         self._data_lock = Lock()
+
+        # see info on the structure of this dict in
+        # NOTE_1: ON ITERATING PROCESS OVER DATA STRUCTURES
+        # from Measurement.py
         self._data = {}
         self._context = ContextBase()
 

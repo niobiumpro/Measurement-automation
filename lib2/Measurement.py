@@ -55,6 +55,8 @@ import traceback
 
 from lib2.LoggingServer import LoggingServer
 
+from collections import OrderedDict
+
 class Measurement():
     '''
     @brief: Purely virtual class that serves as a base to all measurements.
@@ -66,6 +68,9 @@ class Measurement():
     @desc:
             purely virtual methods
                 self._recording_iteration() -> iterable (data received during iteration)
+
+            methods to be overwritten with certain rules:
+
 
             public methods:
                 self.set_fixed_parameters( **kwargs )
@@ -149,7 +154,8 @@ class Measurement():
 
     def __init__(self, name, sample_name, devs_aliases_map, plot_update_interval=5):
         '''
-        @desc: Constructor creates variables for devices passed to it and initialises all devices.
+        @desc:  Constructor creates variables for devices passed to it and initialises all devices.
+                MUST BE OVERWRITTEN IN THE CHILD CLASS.
 
                 Standard names of devices within this driver are:
                     'vna1',vna2','exa','exg','mxg','awg1','awg2','awg3','dso','yok1','yok2','yok3'
@@ -185,13 +191,55 @@ class Measurement():
         self._sample_name = sample_name
         self._plot_update_interval = plot_update_interval
 
-        self._fixed_pars = None
-        self._swept_pars = None
-        self._swept_pars_names = None
-        self._last_swept_pars_values = None
 
-        self._measurement_result = None # declaration of the measurement result attribute
+        ## data structures declaration section START ##
+        '''
+        NOTE_1: ON ITERATING PROCESS OVER DATA STRUCTURES
+        
+        self._swept_pars_names is needed to ensure that order of the iteration over dictionaries is
+        preserved over different iteration cycles throughout the program.
+        instead of using 
+            for par_name in self._swept_pars.keys(): # possible to obtain different order of the iterator return values
+                ...
+        it is preferable to use:
+            for par_name in self._swept_pars_names: # iterator return values are the same all the time
+        
+        For example: 
+        self._record_data relies on the preserved order of the iteration
+        over self._swept_pars_names keys and thus, I assume, self._sept_pars_names
+        was introduced.
+        Also the self._swept_pars_names is passed to the self._measurement_result
+        to preserve iteration order over self._measurement_result.data structure
+        inside the routines of the self._measurment_result class.
+        self._measurement_result contains numpy array self._measurement_result.data["data"]
+        the data in this numpy array coincides with self._raw_data.
+        In addition, self._measurement_result.data dict contains paris "swept_par_name":swept_par_values_list
+        In case you need to iterate over parameters and obtain relevant data values, see following example:
+            self._swept_pars_names = ["current","freq"]
+            this means that data[i1,i2] will contain measurement result with swept parameters: 
+            "current" parameter value - self._swept_parameters["current"][i1] equals to self._measurement_data.data["current"][i1]
+            "freq" parameter value self._swept_parameters["freq"][i2] equals to self._measurement_data.data["freq"][i2]
+            
+        Setting up swept parameters is performed in the self.set_swept_parameters() for Measurement child-class instance.
+        self._measurement_result.data is filled with "swept_par_name":swept_par_values_list pairs during the
+        calls: self._record_data() -> self._prepare_measurement_result_data(pars_names,pars_vals)
+                
+        Note: 
+        OrderedDict is the preferable solution in case we need to preserve iteration order
+        of the dictionary. In this case we can successfuly get rid of the self._swept_pars_names
+        '''
+        self._swept_pars_names = []
+        self._fixed_pars = {}
+        self._swept_pars = {}
+        self._last_swept_pars_values = {}
 
+        # self._measurement_result attribute must be filled in the child-class constructor
+        # after the call of super().__init__
+
+        self._measurement_result = None
+        ## data structures declaration section END ##
+
+        ## Device initialization section START ##
         self._devs_aliases_map = devs_aliases_map
         self._list = ""
         rm = pyvisa.ResourceManager()
@@ -225,7 +273,6 @@ class Measurement():
             else:
                 self.__setattr__("_"+field_name, value)
 
-    @staticmethod
     def close_devs(devs_to_close):
         for name in devs_to_close:
             if name in Measurement._actual_devices.keys():
@@ -266,8 +313,15 @@ class Measurement():
                 also storing their names into
                     self._measurement_result._parameter_names
                     self._swept_pars_names
-        swept_pars :{'par1': (setter1, [value1, value2, ...]),
+        swept_pars - {'par1': (setter1, [value1, value2, ...]),
                      'par2': (setter2, [value1, value2, ...]), ...}
+
+        child-class implementation must have the following structure of the arguments:
+        swept_pars - {'par1': [value1, value2, ...],
+                     'par2': [value1, value2, ...], ...}
+        and reconstruct this dict to the structure accepted by this method
+        by introducting setter1, setter2 and so on
+        after the reconstruction this method must be called in every child-class
         '''
         self._swept_pars = swept_pars
         self._swept_pars_names = list(swept_pars.keys())
@@ -339,12 +393,15 @@ class Measurement():
                     self._raw_data = zeros(raw_data_shape+[len(data)], dtype=complex_)
                 except TypeError: # data has no __len__ attribute
                     self._raw_data = zeros(raw_data_shape, dtype=complex_)
+
             self._raw_data[idx_group] = data
 
-            # This may need to be extended in child classes:
-            measurement_data =\
-                self._prepare_measurement_result_data(par_names, parameters_values)
-            self._measurement_result.set_data(measurement_data) # TODO: calls deepcopy of the whole measurement data
+            # storing parameters rows according
+            if done_iterations == 0:
+                measurement_data = \
+                    self._prepare_measurement_result_data(par_names, parameters_values)
+                self._measurement_result.set_data(
+                    measurement_data)  # TODO: calls deepcopy of the whole measurement data
 
             done_iterations += 1
 
