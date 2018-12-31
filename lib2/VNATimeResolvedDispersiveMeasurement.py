@@ -168,7 +168,7 @@ class VNATimeResolvedDispersiveMeasurementResult(MeasurementResult):
             VNATimeResolvedDispersiveMeasurementContext()
         self._is_finished = False
         self._fit_params = None
-        self._fit_errors = None
+        self._fit_errors = None # contains RMS errors of the parameters (68% confidence)
         self._phase_units = "rad"
         self._data_formats = {
             "imag": (imag, "$\mathfrak{Im}[S_{21}]$ [a.u.]"),

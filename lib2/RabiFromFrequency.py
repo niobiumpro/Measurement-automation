@@ -9,28 +9,11 @@ class DispersiveRabiFromFrequency(Measurement):
     @brief: class is used to measure qubit lifetimes from the flux/qubit frequency
             displacement from the sweet-spot.
 
-            Measurement setup is the same as for the any other dispersive measurements
-
-            class constructor must be provided with the following dictionary key;val pairs
-                vna;"vector_network_analyzer_name"
-                    vector analyzer that performs resonator readout
-                q_lo;"microwave_source_device_name"
-                    microwave source that performs qubit excitation
-                current_source;"current_source_name"
-                    current source that controls flux through the qubit
-                ro_awg;IQAWG class instance
-                    vna mixer object, responsible for readout pulses
-                q_awg;IQAWG class instance
-                    mw_src mixer object, responsible for qubit excitation pulses
-
-                tts_result; TwoToneSpectroscopyResult class instance
-                    contains lust successful TTS result performed around sweet spot
-                ss_current: sweet_spot current, detected manually from the tts_result
-                ss_freq: sweet_spot frequency, detected manually from the tts_result
+            Measurement setup is the same as for the any other dispersive measurements.
     '''
     def __init__(self, name, sample_name,
-                 vna=None, q_lo=None, current_source=None,
-                 ro_awg=None, q_awg=None, tts_result=None,
+                 vna, q_lo,ro_awg, q_awg,ss_current_or_voltage,ss_freq,
+                 lowest_ss=True, current_source=None, q_z_awg=None,tts_result=None,
                  plot_update_interval=5):
         '''
         @params:
@@ -40,12 +23,28 @@ class DispersiveRabiFromFrequency(Measurement):
                 vector network analyzer.
             q_lo: alias address string or driver class
                 qubit frequency generator for lo input of the mixer.
-            current_source: alias address string or driver class
-                            current source used to tune qubit frequency
             ro_awg: alias address string or driver class
                     AWG used to control readout pulse generation mixer
             q_awg: alias address string or driver class
                     AWG used to control qubit excitation pulse generation mixer
+            ss_current_or_voltage: float
+                    sweet spot DC current or voltage depending on wether
+                    current source or AWG is used to bias qubit flux
+            ss_freq: float
+                    frequency of the qubit in the sweet-spot of interest
+            lowest_ss: bool
+                    sign of the second derivative of frequency on flux shift variable
+                    if sign is positive, then this is a lower sweet-spot
+                        and lower_ss=True
+                    if sign is negative -> lower_ss = False
+
+            One of the following DC sources must be provided:
+            current_source: alias address string or driver class
+                            current source used to tune qubit frequency
+            q_z_awg: alias address string or driver class
+                     AWG generator that used to tune qubit frequency
+
+
             plot_update_interval: float
                                 sleep milliseconds between plot updates
         '''
@@ -53,18 +52,46 @@ class DispersiveRabiFromFrequency(Measurement):
         self._vna = None
         self._q_lo = None
         self._current_source = None
+        self._q_z_awg = None
         self._ro_awg = None
         self._q_awg = None
         ## Equipment variables declaration section END ##
 
+        # constructor initializes devices from kwargs.keys() with '_' appended
+        # keys must coincide with the attributes introduced in
+        # "equipment variables declaration section"
+        devs_alias_map = {"vna": vna, "q_lo": q_lo, "current_source": current_source,
+                          "ro_awg": ro_awg, "q_awg": q_awg}
+        super().__init__(name, sample_name, devs_alias_map, plot_update_interval)
+
         # last successful two tone spectroscopy result
-        # that contains sweet-spot
+        # that contains sweet-spot in its area
         self._tts_result = tts_result
 
-        # constructor initializes devices from kwargs.keys() with '_' appended
-        devs_alias_map = {"vna":vna, "q_lo":q_lo, "current_source":current_source,
-                 "ro_awg":ro_awg, "q_awg":q_awg}
-        super().__init__(name, sample_name, devs_alias_map, plot_update_interval)
+        ## Initial and current freq(current or voltage) point control START ##
+        self._ss_freq = ss_freq
+        self._ss_flux_var_value = ss_current_or_voltage
+        self._lowest_ss = lowest_ss
+        # True if current is used, False if voltage source is used
+        self._current_flag = None
+        self._flux_var_setter = None
+
+        self._flux_var = None # flux variable value now
+        self._last_flux_var = None # last flux variable value
+
+        # constructor arguments consistency test
+        if( current_source is not None ):
+            self._current_flag = True
+            self._flux_var_setter = self._current_source.set_current
+        elif( q_z_awg is not None ):
+            self._current_flag = False
+            self._flux_var_setter = self._q_z_awg.set_voltage
+        else:
+            print("RabiFromFreq: You must provide one and only one of the following \
+                  constructor parameters:\n \
+                  current_source or q_z_awg.")
+            raise TypeError
+        ## Initial and current freq(current or voltage) point control END ##
 
         # class that is responsible for rabi measurements
         self._DRO = DispersiveRabiOscillations(name, sample_name, **devs_alias_map)
@@ -88,11 +115,21 @@ class DispersiveRabiFromFrequency(Measurement):
 
         super().set_swept_parameters(ss_shifts=(self._ss_shift_setter, ss_shifts))
 
-    def _ss_shift_setter(self, new_ss_shift):
-        # setting new current
-        self._current_source.set_current(new_ss_shift)
-        # TODO:detecting new qubit frequency
-        qubit_frequency = 0.0
+    def _ss_shift_setter(self, ss_freq_shift):
+        '''
+        @brief: sets new flux bias for a qubit to achieve
+                qubit frequency = ss_freq +- ss_freq_shift
+                '+' or '-' is depending on the qubit freq(flux_bias)
+                function behaviour around sweet_spot value
+        '''
+
+        qubit_frequency = self._ss_freq + ss_freq_shift
+
+        # TODO: detect new qubit flux variable
+
+
+        # setting new flux bias
+        self._flux_var_setter(new_flux_var_val)
 
         device_params = self._DRO._measurement_result.get_context()
         q_z_awg_params = None if "q_z_awg" not in device_params else device_params["q_z_awg"]

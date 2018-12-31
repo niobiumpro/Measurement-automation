@@ -16,6 +16,7 @@ log/
 # output files #
 *.pdf
 *.png
+data_samples/
 
 # logging #
 *.log
