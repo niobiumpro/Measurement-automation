@@ -6,7 +6,7 @@ from scipy.optimize import *
 from IPython.display import clear_output
 from operator import itemgetter
 
-from lib2.fulaut.qubit_spectra import *
+from lib2.fulaut.qubit_spectra import transmon_spectrum
 
 
 class SpectrumOracle():

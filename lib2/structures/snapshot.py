@@ -5,19 +5,29 @@ from itertools import product
 
 import matplotlib
 import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D
+import matplotlib.pyplot as plt
+from matplotlib import cm
+from matplotlib import colorbar
+from matplotlib.ticker import LinearLocator, FormatStrFormatter
 
 # pyCharm is not resolving this package due to the fact that only cv2.pyd file
 # is present in the Python packges dir
 import cv2
 
 
+'''
+Non documented functions are still in development
+'''
+
 class Snapshot:
     # value that is assigned to all self.data entries
     # that are below relative threshold
     # during the call of the self._preproc_data(...)
-    MACROPARAM_PREPROC = 0
+    MACROPARAM_NULLIFY = 0
 
     def __init__(self, data_ma=None):
+        ## data structure attributes ##
         self.x = None
         self.y = None
         self.data = None
@@ -28,6 +38,15 @@ class Snapshot:
             self.y = data_ma["Frequency [Hz]"] / 1e9
             self.data = data_ma["data"].T
             self._init_dependent_attributes()
+
+        ## attributes utilized by various algorithms ##
+        self._connectivity_result = None
+
+    def _handle_inplace(self,inplace):
+        if inplace is True :
+            return self
+        else:
+            return deepcopy(self)
 
     def _init_dependent_attributes(self):
         self.dx = self.x[1] - self.x[0]
@@ -70,10 +89,7 @@ class Snapshot:
                 True - modifies self
                 False - return modified copy of self
         """
-        if (inplace is False):
-            tmp = Snapshot()
-        else:
-            tmp = self
+        tmp = self._handle_inplace(inplace)
 
         x_idxs = (self.x > xlims[0]) & (self.x < xlims[1]) if (xlims is not None) else \
             np.full_like(self.x, True, dtype=np.bool)
@@ -118,7 +134,7 @@ class Snapshot:
                           int(round((self.y[-1] - self.y[0]) / new_dy + 1)))
         return self.resize(new_pixel_size, inplace=inplace)
 
-    def _preproc_data(self, relative_threshold=0.3, inplace=False):
+    def _nullify_rel_threshold(self, relative_threshold=0.4, inplace=False):
         """
         @params:
             relative_threshold : float from interval (0.0 ; 1.0)
@@ -131,16 +147,10 @@ class Snapshot:
                 False - return modified copy of self
         """
 
-        if inplace is False:
-            tmp = Snapshot()
-        else:
-            tmp = self
+        tmp = self._handle_inplace(inplace)
 
-        tmp.data = self._nullify_threshold(deepcopy(self.data),
-                                           self._threshold_rel2abs(relative_threshold))
-        tmp.x = self.x
-        tmp.y = self.y
-        tmp._init_dependent_attributes()
+        abs_threshold = self._threshold_rel2abs(relative_threshold)
+        tmp._nullify_abs_threshold(abs_threshold, inplace=True)
 
         return tmp
 
@@ -159,7 +169,7 @@ class Snapshot:
         minimum = np.amin(np.abs(self.data))
         return minimum * (1 - rel_threshold) + rel_threshold * maximum
 
-    def _nullify_threshold(self, x, threshold, inplace=False):
+    def _nullify_abs_threshold(self, abs_threshold, inplace=False):
         """
         @brief: set all the data entries from x with values
                 below 'threshold' to fixed value close to zero
@@ -167,15 +177,46 @@ class Snapshot:
             inplace : bool
                 True - modifies self
                 False - return modified copy of self
+            abs_threshold : float
+                all self.data values which absolute value is
+                below threshold will be set to Snapshot.MACROPARAM_NULLIFY
         """
-        x[x < threshold] = Snapshot.MACROPARAM_PREPROC
-        return x
+        tmp = self._handle_inplace(inplace)
+
+        tmp.data[np.abs(self.data) < abs_threshold] = Snapshot.MACROPARAM_NULLIFY
+
+        return tmp
+
+    def _normalize(self, inplace=False):
+        """
+        @brief: Transforms x and y to (0.0;1.0) interval
+                by linear transformation (side points included).
+                Transforms data absolute value to (0.0;1.0) interval
+                by dividing all the self.data by its max value.
+        @params:
+            inplace : bool
+                True - modifies self
+                False - return modified copy of self
+        """
+        tmp = self._handle_inplace(inplace)
+
+        max_value = np.amax(np.abs(tmp.data))
+        tmp.data /= max_value
+
+        tmp.y = (tmp.y - tmp.y[0])/(tmp.y[-1] - tmp.y[0])
+        tmp.x = (tmp.x - tmp.x[0])/(tmp.x[-1] - tmp.x[0])
+
+        tmp._init_dependent_attributes()
+
+        return tmp
 
     def _correlate_overX(self, snapshot2find):
         """
-        @brief:     return correlation function over the horizontal (axis = 1) variable
-                    between the self and snapshot2find
-                    returns normalized correlation function and normalization factor array
+        @brief:     Calculates correlation function over the horizontal (axis = 1) variable
+                    between the self and snapshot2find.
+                    Correlation is calculated only on the XY box that is intersection
+                    between 'self' and 'snapshot2find'.
+                    Returns normalized correlation function and normalization factor array
                     in the denominator.
         @desc:      The algorithm is analogous to the opencv.matchTemplate function
                     except that image that's location is to be found only displaced along
@@ -241,10 +282,128 @@ class Snapshot:
         return cross_corr_res, cross_corr_norm
 
     def find_shift_overX(self, snapshot):
+        '''
+        TODO: add description
+        '''
         res, res_norm = self._correlate_overX(snapshot)
         pixel_shift = np.argmax(res)
         xvar_shift = self.dx * (pixel_shift - (len(snapshot.x) - 1))
         return xvar_shift
+
+    def apply_gauss(self, kernel_x, kernel_y, inplace=False):
+        '''
+        TODO: add description
+        '''
+        tmp = self._handle_inplace(inplace)
+
+        kernel_x_px = int(kernel_x / tmp .dx) + 1
+        kernel_y_px = int(kernel_y / tmp .dy) + 1
+
+        tmp.data = cv2.GaussianBlur(np.real(tmp .data), (kernel_x_px, kernel_y_px), 0) + \
+                          1j * cv2.GaussianBlur(np.imag(tmp .data), (kernel_x_px, kernel_y_px), 0)
+        return tmp
+
+    def _connected_components(self, rel_threshold=0.5,
+                              kernel_x=0.1, kernel_y=0.1, largest_N = 3,
+                              connectivity=8):
+        """
+        @brief: Returns cv2.connectedComponentsWithStats result
+                with the preprocessed self.data.
+                Data is normalized with self._normalize()
+                Gauss filter is applied.
+                Data values that lies below rel_threshold are set to fixed value.
+        @params:
+            rel_threshold : float
+                relative threshold from interval (0; 1.0)
+            kernel_x : float
+                size of the gauss filter in 'y' directions for gauss filter
+                applied to normalized data
+            kernel_y : float
+                size of the gauss filter in 'y' directions for gauss filter
+                applied to normalized data
+            connectivity : int
+                This parameter is simply passed to
+                the opencv.connectedComponents(...).
+                Allowed values: 4,8.
+                See opencv.connectedComponents(...)
+                for more info on this parameter
+        @return:
+            return cv2.connectedComponentsWithStats()
+            tuple of 4 elements respectively:
+            (retval, labeled_img, stats, centroids)
+            retval : int
+                number of connected components
+            labeled_img : 2D np.array with shape equal to self.data.shape
+                contains pixels marked to the corresponding connectivity
+                component starting from 0 (uint16 or int32 datatype)
+            stats : 2D numpy array
+                Contains data about each connectivity component
+                that have been aggregated during the components construction
+                see more in opencv.connectedComponents(...) docs.
+            centroid : float tuple (x,y)
+                contains centroids coordinates
+                to the corresponding connectivity components
+        """
+        # duplicating and performing series of transofmations
+        # on self attributes
+        snap_components = self._normalize()
+        snap_components.apply_gauss(kernel_x, kernel_y, inplace=True)
+        snap_components._nullify_rel_threshold(rel_threshold, inplace=True)
+
+        # convert to binary image for opencv.connectedComponents
+        abs_threshold = self._threshold_rel2abs(rel_threshold)
+        img = (np.abs(snap_components.data) > rel_threshold).astype(np.uint8)
+        self._connectivity_result = cv2.connectedComponentsWithStats(img,
+                                                                     connectivity=connectivity)
+        return self._connectivity_result
+
+    def visualize_connectivity_map(self):
+        """
+        @brief: You should construct connected components map
+                self._connectivity_result by calling self._connected_components(...)
+                On details see of self._connected_components structure
+                see self._connected_components() docstring
+        """
+        fig, ax = plt.subplots(1, 1, figsize=(16, 9))
+
+        # preparing z data
+        img_data = self._connectivity_result[1]
+
+        # choosing color map object
+        colors_n = self._connectivity_result[0]
+        cmap = cm.get_cmap("tab20", colors_n)
+
+        # defying rules by which scalar values in img_data
+        # will be transformed into RGB colours from colormap
+        # chosen above
+        norm = matplotlib.colors.BoundaryNorm(np.arange(colors_n+1)-0.5, colors_n)
+
+        # making colorbar axes
+        cax, kw = matplotlib.colorbar.make_axes(ax, ticks=np.arange(1, colors_n+1), aspect="auto")
+        # making axes with image itself
+        img = ax.imshow(img_data, cmap=cmap, norm=norm, origin="lower", aspect="auto")
+
+        # reforging image data, color axes and data axes into
+        # colorbar object
+        cb = fig.colorbar(img, cax, ax, ticks=np.arange(colors_n))
+        cb.ax.set_yticklabels(np.arange(colors_n));
+
+    def _connected_component_mask(self, label_i):
+        """
+        @brief: constructs binary mask of the connected component
+                based on its label index 'label_i'
+                and previously constructed connected components map
+                using self._connected_components
+        TODO: add description
+        """
+
+        connectivity_map = self._connectivity_result[1]
+        max_val = np.iinfo(connectivity_map.dtype).max
+        result_map = deepcopy(connectivity_map)
+        result_map[ connectivity_map == label_i ] = 1
+        result_map[ connectivity_map != label_i ] = 0
+
+        return result_map
 
     def plot(self):
         fig, axes = plt.subplots(1, 2, figsize=(15, 7), sharey=True, sharex=True)
@@ -269,3 +428,22 @@ class Snapshot:
         cb_amps = plt.colorbar(amps_map, cax=cax_amps)
         phas_map = ax_phas.imshow(np.angle(self.data), aspect='auto', origin='lower', cmap="RdBu_r", extent=extent)
         cb_phas = plt.colorbar(phas_map, cax=cax_phas)
+        #print("reloaded 3")
+        return fig, axes
+
+    def plot3d(self):
+        fig = plt.figure()
+        ax = fig.gca(projection='3d')
+
+        # Make data.
+        x, y = np.meshgrid(self.x, self.y)
+        z = np.abs(self.data)
+
+        surf = ax.plot_surface(x, y, z, cmap=cm.coolwarm,
+                               linewidth=0, antialiased=False)
+
+        ax.zaxis.set_major_locator(LinearLocator(10))
+        ax.zaxis.set_major_formatter(FormatStrFormatter('%.02f'))
+        ax_cb = fig.colorbar(surf, shrink=0.5, aspect=5)
+
+        return fig, (ax, ax_cb)
