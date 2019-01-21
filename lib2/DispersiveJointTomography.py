@@ -1,7 +1,10 @@
+from time import sleep
+
 from lib2.VNATimeResolvedDispersiveMeasurement import *
 import numpy as np
-from qutip import sigmax, sigmay, sigmaz, Qobj, expect, tensor
+from qutip import *
 from math import *
+from matplotlib import pyplot as plt, colorbar
 
 from scipy import optimize
 from tqdm import tqdm_notebook
@@ -33,7 +36,7 @@ class Tomo:
         self._measurements = []
 
     @staticmethod
-    def x_to_rho(x):                                # Density matrix parametrization via Cholesky decomposition
+    def x_to_rho(x):                                # Density matrix parametrization via Choletsky decomposition
         dim = int(sqrt(len(x)))
         t = np.identity(dim, complex)
         for i in range(dim):
@@ -53,19 +56,14 @@ class Tomo:
     def rotator_from_command(com):
         """
         Constructs QObj from the string containing command
-        Commands can start from: 'I', 'X', 'Y', 'Z'
+        Commands can start from '+' or '-' determining
+        Axes goes next: 'I', 'X', 'Y' or 'Z'
         Commands also can contain '/' + number which refers to the length of the pulse
-        Commands examples: 'X', 'Y/2', 'Z/6', 'I', ...
+        Commands examples: '+X', '-Y/2', '-Z/6', '+I', ...
         """
         axes = {'I': identity(2), 'X': sigmax(), 'Y': sigmay(), 'Z': sigmaz()}
-        if com[0] == 'I':
-            return identity(2)
-        elif len(com) == 1:
-            amp = 1
-        else:
-            com = com.split('/')
-            amp = 1 / float(com[1])
-        ax = axes[com[0]]
+        ax = axes[com[1]]
+        amp = eval(com[0] + '1' + com[2:])
         return (-1j * amp * pi / 2 * ax).expm()
 
     def upload_rotation_sequence_from_command_list(self, com_list):
@@ -115,21 +113,66 @@ class Tomo:
 
 class DispersiveJointTomography(VNATimeResolvedDispersiveMeasurement):
 
-    def __init__(self):
+    def __init__(self, name, sample_name, **devs_aliases_map):
+        super().__init__(name, sample_name, devs_aliases_map)
+        self._measurement_result = \
+            DispersiveJointTomographyResult(name, sample_name)
+        self._sequence_generator = IQPulseBuilder.build_joint_tomography_pulse_sequences
+
+    def set_fixed_parameters(self, pulse_sequence_parameters, betas,
+                             detect_resonator=True, plot_resonator_fit=True,
+                             **dev_params):
+        super().set_fixed_parameters(pulse_sequence_parameters, **dev_params)
+        self._measurement_result.upload_betas(*betas)
+
+    def set_swept_parameters(self, local_rotations_list):
+        """
+        :param local_rotations_list: should have form:
+                    { (q1_rot_1, q2_rot_1),
+                      (q1_rot_2, q2_rot_2),
+                      ...
+                    }
+            e.g.    { ('+X/2', '-Y'),
+                      ('+X', '+X')
+                    }
+        """
+        swept_pars = {"tomo_local_rotations":
+                          (self._set_tomo_params, local_rotations_list)}
+        super().set_swept_parameters(**swept_pars)
+        self._measurement_result.upload_local_rotations(local_rotations_list)
+
+    def _set_tomo_params(self, local_rotations):
+        self._pulse_sequence_parameters["tomo_local_rotations"] = local_rotations
+        super()._output_pulse_sequence()
 
     # TODO
     #     1. Preparation pulse sequence
     #     2. Rotation pulses on both qubits
+    #     3. set_swept_parameters -- Any changes required?
+    #           Change to
+        '''
+        swept_pars :{'par1': [value1, value2, ...],
+                     'par2': [value1, value2, ...], ...,
+                     'setter' : setter}
+        '''
+    #            Instead of
+        '''
+        swept_pars :{'par1': (setter1, [value1, value2, ...]),
+                     'par2': (setter2, [value1, value2, ...]), ...}
+        '''
 
 
 class DispersiveJointTomographyResult(VNATimeResolvedDispersiveMeasurementResult):      # TODO
 
-    def __init__(self, name, sample_name, smoothing_factor):
+    def __init__(self, name, sample_name):
         super().__init__(name, sample_name)
+        self._local_rotations_list = []
         self._pulse_sequence_parameters = self._context \
             .get_pulse_sequence_parameters()
-        self._smoothing_factor = smoothing_factor
         self._betas = (0, 0, 0, 0)
+
+    def upload_local_rotations(self, _local_rotations_list):
+        self._local_rotations_list = []
 
     def upload_betas(self, *betas):
         self._betas = betas
@@ -143,8 +186,56 @@ class DispersiveJointTomographyResult(VNATimeResolvedDispersiveMeasurementResult
 
         tomo = Tomo(dim=4)
         tomo.upload_measurement_operator(joint_op)
-        tomo.upload_rotation_sequence_from_command_list(??)                     #TODO
+        tomo.upload_rotation_sequence_from_command_list(self._local_rotations_list)  #TODO
 
-        res = self.get_data()['data']                                           #TODO
+        res = self.get_data()['data']                                                   #TODO
         tomo.construct_measurements(res)
         return tomo.find_rho()
+
+    def _prepare_figure(self):
+        fig, axes = plt.subplots(1, 2, figsize=(15, 7), sharex=True)
+        fig.canvas.set_window_title(self._name)
+        axes = ravel(axes)
+        for ax in axes:
+            ax.set_xlabel('Qubit 2 local rotations')
+            ax.set_ylabel('Qubit 1 local rotations')
+        cax_amps, kw = colorbar.make_axes(axes[0], aspect=40)
+        cax_phas, kw = colorbar.make_axes(axes[1], aspect=40)
+        cax_amps.set_title("$|S_{21}|$", position=(0.5, -0.05))
+        cax_phas.set_title("$\\angle S_{21}$\n [%s]" % self._phase_units,
+                           position=(0.5, -0.1))
+        return fig, axes, (cax_amps, cax_phas)
+
+    def _plot(self, data):
+        axes = self._axes
+        caxes = self._caxes
+        if "data" not in data.keys():
+            return
+
+        keys1 = [x[0] for x in data['tomo_local_rotations']]
+        keys2 = [x[1] for x in data['tomo_local_rotations']]
+        data_dict = dict.fromkeys(keys1)
+        for key in data_dict.keys():
+            data_dict[key] = dict.fromkeys(keys2)
+        keys1 = list(data_dict.keys())
+        keys2 = list(data_dict[keys1[0]].keys())
+        list(zip(data['tomo_local_rotations'], data['data']))
+        for ((rot1, rot2), res) in zip(data['tomo_local_rotations'], data['data']):
+            data_dict[rot1][rot2] = res
+
+        data_matrix = [[data_dict[k1][k2] if data_dict[k1][k2] is not None else 0
+                        for k2 in keys2] for k1 in keys1]
+        plots = axes[0].imshow(abs(data_matrix)), axes[1].imshow(angle(data_matrix))
+        plt.colorbar(plots[0], cax=caxes[0])
+        plt.colorbar(plots[1], cax=caxes[1])
+        # axes[0].set_title('Real')
+        # axes[1].set_title('Imag')
+        for (ax, cax) in zip(axes, caxes):
+            ax.set_xticks(range(len(keys2)))
+            ax.set_yticks(range(len(keys1)))
+            ax.set_xticklabels(keys2)
+            ax.set_yticklabels(keys1)
+            for i in range(len(keys1)):
+                for j in range(len(keys2)):
+                    if data_dict[keys1[i]][keys2[j]] is None:
+                        ax.text(j, i, 'No data', ha="center", va="center", color="w")

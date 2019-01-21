@@ -26,7 +26,7 @@ class VNATimeResolvedDispersiveMeasurement(Measurement):
 
         super().__init__(name, sample_name, devs_aliases_map,
                          plot_update_interval=plot_update_interval)
-
+        self._sequence_generator = None
         self._basis = None
         self._ult_calib = False
         self._pulse_sequence_parameters = \
@@ -129,7 +129,7 @@ class VNATimeResolvedDispersiveMeasurement(Measurement):
 
         ro_pb = IQPulseBuilder(ro_calibration)
         q_pb = IQPulseBuilder(q_calibration)
-        self._ro_awg[0].output_pulse_sequence(ro_pb \
+        self._ro_awg[0].output_pulse_sequence(ro_pb
                                               .add_dc_pulse(ro_duration).add_zero_until(rep_period).build())
         self._q_awg[0].output_pulse_sequence(q_pb.add_zero_until(rep_period).build())
 
@@ -147,12 +147,12 @@ class VNATimeResolvedDispersiveMeasurement(Measurement):
 
         q_pbs = [q_awg.get_pulse_builder() for q_awg in self._q_awg]
         ro_pbs = [ro_awg.get_pulse_builder() for ro_awg in self._ro_awg]
-        q_z_pbs = [q_z_awg.get_pulse_builder() for q_z_awg in self._q_z_awg]
+        q_z_pbs = [q_z_awg.get_pulse_builder() for q_z_awg in self._q_z_awg] \
+            if hasattr(self, '_q_z_awg') else [None]
         pbs = {'q_pbs': q_pbs,
                'ro_pbs': ro_pbs,
                'q_z_pbs': q_z_pbs}
-        seqs = self._sequence_generator(self._pulse_sequence_parameters,
-                                        **pbs)
+        seqs = self._sequence_generator(self._pulse_sequence_parameters, **pbs)
 
         for (seq, dev) in zip(seqs['q_seqs'], self._q_awg):
             dev.output_pulse_sequence(seq)

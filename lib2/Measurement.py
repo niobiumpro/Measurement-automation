@@ -138,7 +138,7 @@ class Measurement:
                     if name in Measurement._actual_devices.keys():
                         print(name + ' is already initialized')
                         device_object = Measurement._actual_devices[name]
-                        self.atr_name[index] = device_object
+                        self.__getattribute__(atr_name)[index] = device_object
                         continue
                     if name in Measurement._devs_dict.keys():
                         for device_address in self._devs_info:
@@ -147,7 +147,7 @@ class Measurement:
                                 device_object = getattr(*Measurement._devs_dict[name][1])(device_address)
                                 Measurement._actual_devices[name] = device_object
                                 print("The device %s is detected as %s" % (name, device_address))
-                                self.atr_name[index] = device_object
+                                self.__getattribute__(atr_name)[index] = device_object
                                 break
                     else:
                         print("Device", name, "is unknown!")
@@ -258,10 +258,13 @@ class Measurement:
             time_left = self._format_time_delta(avg_time * (total_iterations - done_iterations))
 
             formatted_values_group = \
-                '[' + "".join(["%s: %.2e, " % (par_names[idx], value) \
+                '[' + "".join(["%s: %.2e, " % (par_names[idx], value)
+                               for idx, value in enumerate(values_group)])[:-2] + ']' \
+                if isinstance(values_group[0], (float, int)) else \
+                '[' + "".join(["%s: %s, " % (par_names[idx], str(value))
                                for idx, value in enumerate(values_group)])[:-2] + ']'
 
-            print("\rTime left: " + time_left + ", %s" % formatted_values_group + \
+            print("\rTime left: " + time_left + ", %s" % formatted_values_group +
                   ", average cycle time: " + str(round(avg_time, 2)) + " s       ",
                   end="", flush=True)
 
@@ -269,8 +272,8 @@ class Measurement:
                 self._interrupted = False
                 return
         self._measurement_result.set_recording_time(dt.now() - start_time)
-        print("\nElapsed time: %s" % \
-              self._format_time_delta((dt.now() - start_time) \
+        print("\nElapsed time: %s" %
+              self._format_time_delta((dt.now() - start_time)
                                       .total_seconds()))
         self._measurement_result.set_is_finished(True)
 

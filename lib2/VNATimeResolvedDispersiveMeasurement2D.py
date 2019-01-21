@@ -10,7 +10,7 @@ class VNATimeResolvedDispersiveMeasurement2D(VNATimeResolvedDispersiveMeasuremen
 
     def set_fixed_parameters(self, pulse_sequence_parameters,
                              detect_resonator=True, **dev_params):
-        dev_params['vna']["power"] = dev_params['ro_awg']["calibration"] \
+        dev_params['vna'][0]["power"] = dev_params['ro_awg'][0]["calibration"] \
             .get_radiation_parameters()["lo_power"]
 
         dev_params['q_lo'][0]["power"] = dev_params['q_awg'][0]["calibration"] \
