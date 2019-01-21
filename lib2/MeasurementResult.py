@@ -31,6 +31,7 @@ import os, fnmatch, platform
 import pickle
 from threading import Lock
 from matplotlib import pyplot as plt
+import matplotlib
 from datetime import datetime
 
 
@@ -308,6 +309,16 @@ class MeasurementResult():
             return r"${0} \times 10^{{{1}}}$".format(base, int(exponent))
         else:
             return base
+
+    @staticmethod
+    def close_figure_by_window_name(window_name):
+        try:
+            idx = int(where(array([manager.canvas.figure.canvas.get_window_title()\
+                                   for manager in matplotlib._pylab_helpers.Gcf\
+                                   .get_all_fig_managers()]) == window_name)[0][0])
+            plt.close(plt.get_fignums()[idx])
+        except IndexError:
+            print("Figure with window name '%s' not found"%window_name)
 
     def copy(self):
         with self._data_lock:
