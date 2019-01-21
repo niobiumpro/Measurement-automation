@@ -242,7 +242,10 @@ class Agilent_PNA_L(Instrument):
         self._visainstrument.write( "CALCulate:PARameter:DEF:EXT "+'CH1_S%s%s_1'%(i,j)+', S%s%s'%(i,j))
 
     def select_S_param(self, S_param):
-        print("No method defined")
+        self.del_all_meas()
+        self.define_Sij(i=int(S_param[1]), j=int(S_param[2]))
+        self._visainstrument.write("CALC:PAR:SEL 'CH1_%s_1'"%S_param)
+        self._visainstrument.write(":DISP:WIND:TRACE:FEED CH1_%s_1"%S_param)
 
     def get_sweep_type(self):
         return self._visainstrument.query("SENS:SWE:TYPE?")[:-1]

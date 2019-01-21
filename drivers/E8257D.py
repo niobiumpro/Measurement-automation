@@ -194,6 +194,9 @@ class MXG(Instrument):
     def set_trig_type_single(self):
         self.write(":TRIG:TYPE SINGLE")
 
+    def preset(self):
+        self._visainstrument.write("SYST:PRES")
+
 
 class EXG(MXG):
 
