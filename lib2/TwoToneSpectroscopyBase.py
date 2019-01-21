@@ -68,7 +68,15 @@ class TwoToneSpectroscopyBase(Measurement):
         self._vna.set_power(vna_parameters["power"])
         self._vna.set_bandwidth(vna_parameters["bandwidth"]*bandwidth_factor)
         self._vna.set_averages(vna_parameters["averages"])
-        return super()._detect_resonator(plot)
+        result = super()._detect_resonator(plot)
+        if result is None:
+            lims = array(vna_parameters["freq_limits"])
+            lims = (lims-mean(lims))*3+mean(lims)
+            vna_parameters["freq_limits"] = lims
+            self._vna.set_freq_limits(*vna_parameters["freq_limits"])
+            result = super()._detect_resonator(plot)
+
+        return result
 
     def _recording_iteration(self):
         vna = self._vna
@@ -139,6 +147,15 @@ class TwoToneSpectroscopyResult(SingleToneSpectroscopyResult):
             return popt[0], popt[1]
         except Exception as e:
             print("Could not find transmon spectral line"+str(e))
+
+    def _prepare_data_for_plot(self, data):
+        s_data = data["data"]
+        parameter_list = data[self._parameter_names[0]]
+        if parameter_list[0] > parameter_list[-1]:
+            parameter_list = parameter_list[::-1]
+            s_data = s_data[::-1, :]
+        # s_data = self.remove_background('avg_cur')
+        return parameter_list, data["Frequency [Hz]"] / 1e9, s_data
 
     def _prepare_measurement_result_data(self, data):
         return data[self._parameter_names[0]], data["Frequency [Hz]"]/1e9, data["data"]

@@ -4,10 +4,10 @@ from time import sleep
 class Instr(object):
 
     def __str__(self):
-        return self._visainstrument
+        return self.visa_name
 
     def __repr__(self):
-        return self._visainstrument
+        return self.visa_name
 
     # def __new__(self):
     #     return self

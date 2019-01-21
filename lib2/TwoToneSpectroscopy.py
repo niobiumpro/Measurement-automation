@@ -16,6 +16,8 @@ class FluxTwoToneSpectroscopy(TwoToneSpectroscopyBase):
     def __init__(self, name, sample_name, line_attenuation_db = 60, **devs_aliases_map):
         super().__init__(name, sample_name,
                 line_attenuation_db, devs_aliases_map)
+        self._last_resonator_result = None
+        self._resonator_fits = []
 
     def set_fixed_parameters(self, vna_parameters, mw_src_parameters,
         sweet_spot_current = None, sweet_spot_voltage = None, adaptive = False):
@@ -56,18 +58,19 @@ class FluxTwoToneSpectroscopy(TwoToneSpectroscopyBase):
             print("Failed to fit resonator, trying to use last successful fit, power = ", power, " A")
             if (self._last_resonator_result is None):
                 print("no successful fit is present, terminating")
-                return None
+                raise ValueError("Couldn't find resonator!")
             else:
                 res_result = self._last_resonator_result
         else:
             self._last_resonator_result = res_result
+        self._resonator_fits.append(res_result)
 
         res_freq, res_amp, res_phase = self._last_resonator_result
         print("\rDetected frequency is %.5f GHz, at %.2f mU and %.2f \
                     degrees"%(res_freq/1e9, res_amp*1e3, res_phase/pi*180), end="")
         self._mw_src.set_output_state("ON")
         vna_parameters["freq_limits"] = (res_freq, res_freq)
-        self._resonator_area = (res_freq-2.5e6, res_freq+2.5e6)
+        self._resonator_area = (res_freq-20e6, res_freq+20e6)
         self._vna.set_parameters(vna_parameters)
 
 class PowerTwoToneSpectroscopy(TwoToneSpectroscopyBase):

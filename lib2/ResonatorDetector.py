@@ -58,14 +58,25 @@ class ResonatorDetector():
         expected_amplitude = abs(self._s_data)[min_idx]
 
         fit_min_idx = argmin(abs(self._port.z_data_sim))
-        fit_frequency = self._freqs[fit_min_idx]
+
+        fine_freqs = linspace(self._freqs[0], self._freqs[-1], 10000)
+        fine_model = self._port._S21_notch(fine_freqs,
+                                           fr=self._port.fitresults["fr"],
+                                           Ql=self._port.fitresults["Ql"],
+                                           Qc=self._port.fitresults["absQc"],
+                                           phi=self._port.fitresults["phi0"],
+                                           a=self._port.fitresults["a"],
+                                           alpha=self._port.fitresults["alpha"],
+                                           delay=self._port.fitresults["delay"])
+
+        #plt.plot(fine_freqs, abs(fine_model))
+        fit_frequency = fine_freqs[argmin(abs(fine_model))]
         fit_amplitude = min(abs(self._port.z_data_sim))
         fit_angle = angle(self._port.z_data_sim)[fit_min_idx]
         res_width = fit_frequency/self._port.fitresults["Ql"]
 
         if abs(fit_frequency-expected_frequency)<0.1*res_width and \
             abs(fit_amplitude-expected_amplitude)<5*expected_amplitude:
-            return fit_frequency, fit_amplitude, fit_angle
+                return fit_frequency, fit_amplitude, fit_angle
         else:
-            pass
-            # print(fit_frequency, expected_frequency)
+            return None
