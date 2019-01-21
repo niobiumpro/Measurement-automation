@@ -38,7 +38,7 @@ class TTSRunner():
                                 "averages": 1,
                                 "sweep_type": "LIN"}
 
-        self._mw_src_parameters = {"power":14}
+        self._mw_src_parameters = {"power":0}
 
         res_freq, g, period, sweet_spot, max_q_freq, d = self._fit_p0
 
@@ -63,7 +63,7 @@ class TTSRunner():
         # else:
         #     mw_limits = (res_freq-0.1e9, expected_q_freq+1e9)
 
-        mw_limits = (expected_q_freq-1e9, expected_q_freq+1e9)
+        mw_limits = (expected_q_freq-2.5e9, expected_q_freq+0.5e9)
 
         self._mw_src_frequencies = linspace(*mw_limits, 201)
 
@@ -102,28 +102,28 @@ class TTSRunner():
         f_res, g, period, sweet_spot, max_q_freq, d = \
             self._fit_p0
 
-        TTS = FluxTwoToneSpectroscopy("%s-two-tone" % self._qubit_name,
+        self._TTS = FluxTwoToneSpectroscopy("%s-two-tone" % self._qubit_name,
                                       self._sample_name,
                                       vna=self._vna,
                                       mw_src=self._mw_src,
                                       current_src=self._cur_src)
 
-        TTS.set_fixed_parameters(self._vna_parameters,
+        self._TTS.set_fixed_parameters(self._vna_parameters,
                                  self._mw_src_parameters,
                                  sweet_spot_current=mean(self._currents),
                                  adaptive=True)
 
-        TTS.set_swept_parameters(self._mw_src_frequencies,
+        self._TTS.set_swept_parameters(self._mw_src_frequencies,
                                  current_values=self._currents)
-        TTS._measurement_result._unwrap_phase = True
+        self._TTS._measurement_result._unwrap_phase = False
 
-        self._tts_result = TTS.launch()
+        self._tts_result = self._TTS.launch()
 
     def _open_mixers(self):
         self._ro_awg.output_continuous_IQ_waves(frequency=0,
                                                 amplitudes=(0, 0),
                                                 relative_phase=0,
-                                                offsets=(1, 1),
+                                                offsets=(.5, .5),
                                                 waveform_resolution=1)
 
         self._q_awg.output_continuous_IQ_waves(frequency=0,

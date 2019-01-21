@@ -266,6 +266,7 @@ class SpectrumOracle():
                                       0).reshape(-1, 2)
 
         if self._plot:
+            plt.figure()
             x = self._parameter_values
             freqs = self._frequencies
             x_plot = concatenate(
@@ -383,7 +384,7 @@ class SpectrumOracle():
             lines_chosen_distances.append(chosen_distances)
             lines_chosen_points.append(chosen_points)
 
-        if len(lines_chosen_distances[0]) < 0.1 * len(self._parameter_values):
+        if len(lines_chosen_distances[0]) < 0.33 * len(self._parameter_values):
             mean_distance = sum(lines_distances[0]) ** 2 / len(
                 lines_distances[0])
             total_nop = 0.1

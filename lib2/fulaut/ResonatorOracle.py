@@ -13,8 +13,8 @@ class ResonatorOracle():
         vna = self._vna
         vna.sweep_hold()
         vna.set_nop(25000)
-        vna.set_xlim(6.4e9, 7e9) # setting the scan area
-        vna.set_bandwidth(1000)
+        vna.set_xlim(6.4e9, 7.5e9) # setting the scan area
+        vna.set_bandwidth(10000)
         vna.set_averages(1)
         vna.set_power(0)
         vna.prepare_for_stb()

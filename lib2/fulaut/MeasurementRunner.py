@@ -16,7 +16,9 @@ from lib2.fulaut.qubit_spectra import transmon_spectrum
 from lib2.LoggingServer import LoggingServer
 
 from drivers.KeysightAWG import *
+from drivers.Tektronix_AWG5014 import *
 from drivers.IQAWG import *
+from drivers.Agilent_EXA import *
 
 import pickle
 
@@ -28,7 +30,7 @@ class MeasurementRunner():
     def __init__(self, sample_name, s_parameter, devs_aliases_map):
         self._sample_name = sample_name
         self._s_parameter = s_parameter
-        self._qubit_names = "I II III IV V VI".split(" ")
+        self._qubit_names = "I II III IV V VI VII VIII".split(" ")
         self._res_limits = {}
         self._sts_runners = {}
         self._sts_fit_params = {}
@@ -42,7 +44,7 @@ class MeasurementRunner():
 
         self._ramsey_offset = 5e3
         # self._vna = Znb("ZNB")
-        # self._exa = Agilent_EXA_N9010A("EXA")
+        self._sa = Agilent_EXA_N9010A("EXA")
         m = Measurement("", "", devs_aliases_map)
         self._vna = m._vna
         # self._sa = m._sa
@@ -50,10 +52,15 @@ class MeasurementRunner():
         self._cur_src = m._cur_src
         self._cur_src.set_status(1)
 
-        self._ro_raw_awg = KeysightAWG("AWG1")
-        self._q_raw_awg = KeysightAWG("AWG2")
-        self._ro_awg = IQAWG(AWGChannel(self._ro_raw_awg, 1), AWGChannel(self._ro_raw_awg, 2))
-        self._q_awg = IQAWG(AWGChannel(self._q_raw_awg, 1), AWGChannel(self._q_raw_awg, 2))
+        try:
+            self._ro_raw_awg = KeysightAWG("AWG1")
+            self._q_raw_awg = KeysightAWG("AWG2")
+            self._ro_awg = IQAWG(AWGChannel(self._ro_raw_awg, 1), AWGChannel(self._ro_raw_awg, 2))
+            self._q_awg = IQAWG(AWGChannel(self._q_raw_awg, 1), AWGChannel(self._q_raw_awg, 2))
+        except:
+            self._raw_awg = Tektronix_AWG5014("TEK1")
+            self._ro_awg = IQAWG(AWGChannel(self._raw_awg, 3), AWGChannel(self._raw_awg, 4))
+            self._q_awg = IQAWG(AWGChannel(self._raw_awg, 1), AWGChannel(self._raw_awg, 2))
         #self._ro_awg = None
         #self._q_awg = None
         self._launch_date = datetime.today()
@@ -64,10 +71,10 @@ class MeasurementRunner():
 
         self._logger.debug("Started measurement for qubits ##:" + str(qubits_to_measure))
 
-        # self._open_only_readout_mixer()
+        self._open_only_readout_mixer()
 
         ro = ResonatorOracle(self._vna, self._s_parameter, 3e6)
-        scan_areas = ro.launch()[:6]
+        scan_areas = ro.launch()[:]
 
         for idx, res_limits in enumerate(scan_areas):
             if idx not in qubits_to_measure:
@@ -82,11 +89,12 @@ class MeasurementRunner():
                                  mean(res_limits),
                                  vna=self._vna,
                                  cur_src=self._cur_src,
-                                 awgs={"q_awg": self._q_awg,"ro_awg": self._ro_awg})  # {"q_awg": self._q_awg,"ro_awg": self._ro_awg}
+                                 awgs={"q_awg": self._q_awg,
+                                       "ro_awg": self._ro_awg})  # {"q_awg": self._q_awg,"ro_awg": self._ro_awg}
 
                 self._sts_runners[qubit_name] = STSR
                 self._sts_fit_params[qubit_name], loss = STSR.run()
-
+                self._res_limits[qubit_name] = STSR.get_scan_area()
             #continue
 
             if qubit_name not in self._tts_fit_params.keys():
@@ -140,7 +148,8 @@ class MeasurementRunner():
         vna_parameters = {"bandwidth": 10,
                           "freq_limits": self._res_limits[qubit_name],
                           "nop": 100,
-                          "averages": 1}
+                          "averages": 1,
+                          "res_find_nop":401}
 
         raadout_delays = linspace(0, 50000, 101)
         exc_frequency = self._exact_qubit_freqs[qubit_name]
@@ -161,7 +170,7 @@ class MeasurementRunner():
                                 exc_frequency,
                                 pulse_sequence_parameters)
         DD.set_swept_parameters(raadout_delays)
-
+        MeasurementResult.close_figure_by_window_name("Resonator fit")
         dd_result = DD.launch()
         self._dd_results[qubit_name] = dd_result
         if save:
@@ -179,7 +188,8 @@ class MeasurementRunner():
         vna_parameters = {"bandwidth": 10,
                           "freq_limits": self._res_limits[qubit_name],
                           "nop": 50,
-                          "averages": 1}
+                          "averages": 1,
+                          "res_find_nop":401}
 
         ramsey_delays = linspace(0, self._max_ramsey_delay, self._ramsey_nop)
         exc_frequency = self._exact_qubit_freqs[qubit_name] - self._ramsey_offset
@@ -201,6 +211,7 @@ class MeasurementRunner():
                                 exc_frequency,
                                 pulse_sequence_parameters)
         DR.set_swept_parameters(ramsey_delays)
+        MeasurementResult.close_figure_by_window_name("Resonator fit")
 
         dr_result = DR.launch()
         self._dr_results[qubit_name] = dr_result
@@ -220,7 +231,8 @@ class MeasurementRunner():
         vna_parameters = {"bandwidth": 10,
                           "freq_limits": self._res_limits[qubit_name],
                           "nop": 20,
-                          "averages": 1}
+                          "averages": 1,
+                          "res_find_nop":401}
 
         exc_frequency = self._exact_qubit_freqs[qubit_name]
         excitation_durations = linspace(0, 500, 251)
@@ -239,6 +251,8 @@ class MeasurementRunner():
                                  rabi_sequence_parameters)
         DRO.set_swept_parameters(excitation_durations)
         DRO.set_ult_calib(False)
+        MeasurementResult.close_figure_by_window_name("Resonator fit")
+
 
         dro_result = DRO.launch()
         self._dro_results[qubit_name] = dro_result
@@ -259,7 +273,7 @@ class MeasurementRunner():
         ro_resonator_frequency = round(ro_resonator_frequency / 1e9, 2) * 1e9
         if_frequency = 0e6
         lo_power=0
-        ssb_power=-60
+        ssb_power = GlobalParameters.ro_ssb_power[qubit_name]
         waveform_resolution=1
 
         db = load_IQMX_calibration_database("CHGRO", 0)
@@ -271,7 +285,7 @@ class MeasurementRunner():
                                       if_frequency=if_frequency,
                                       waveform_resolution=waveform_resolution)\
                                       .items()))
-            if ro_cal is not None:
+            if ro_cal is not None and not GlobalParameters.recalibrate_mixers[qubit_name]:
                 return ro_cal
 
         self._set_vna_to_ro_lo()
@@ -301,7 +315,7 @@ class MeasurementRunner():
         qubit_frequency = round(qubit_frequency / 1e9 / 5, 2) * 5e9  # to 50 MHz
         if_frequency = 100e6
         lo_power = 14
-        ssb_power = -20
+        ssb_power = GlobalParameters.exc_ssb_power[qubit_name]
         waveform_resolution = 1
 
         db = load_IQMX_calibration_database("CHGQ", 0)
@@ -312,7 +326,7 @@ class MeasurementRunner():
                                   if_frequency=if_frequency,
                                   waveform_resolution=waveform_resolution) \
                              .items()))
-        if exc_cal is not None:
+        if exc_cal is not None and not GlobalParameters.recalibrate_mixers[qubit_name]:
             return exc_cal
 
         ig = {"dc_offsets": (-0.017, -0.04),
@@ -320,7 +334,7 @@ class MeasurementRunner():
               "if_phase": -pi * 0.54}
         cal = IQCalibrator(self._q_awg,
                            self._sa,
-                           self._exc_lo,
+                           self._mw_src,
                            "CHGQ",
                            0,
                            sidebands_to_suppress=6)

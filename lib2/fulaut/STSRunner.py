@@ -11,7 +11,7 @@ class STSRunner():
         self._sample_name = sample_name
         self._qubit_name = qubit_name
         self._res_freq = res_freq
-        self._sts_name = "%s-anticrossing" % qubit_name
+        self._sts_name = "%s-sts" % qubit_name
         self._scan_area = 10e6
         self._vna = vna
         self._cur_src = cur_src
@@ -29,9 +29,10 @@ class STSRunner():
                                 "power": self._vna_power,
                                 "averages": 1,
                                 "sweep_type": "LIN"}
-        self._currents = linspace(-.15e-3, .0e-3, 101)
+        self._currents = linspace(-.1e-3, .1e-3, 101)
         self._sts_result = None
         self._launch_datetime = datetime.today()
+        self._cur_src.set_appropriate_range(max(abs(self._currents)))
 
         self._logger = LoggingServer.getInstance()
 
@@ -83,7 +84,7 @@ class STSRunner():
 
             self._logger.debug("Scan: " + str(self._scan_area / 1e6))
             self._logger.debug("Ptp: " + str(ptp(res_points[:, 1]) / 1e6))
-            if 0.01 * self._scan_area < ptp(res_points[:, 1]) < 0.5 * self._scan_area:
+            if 0.1 * self._scan_area < ptp(res_points[:, 1]) < 0.5 * self._scan_area:
                 self._logger.debug("Flux dependence found. Zooming...")
                 self._scan_area = max(ptp(res_points[:, 1]) / 0.25, 3e6)
                 self._res_freq = mean(res_points[:, 1])
@@ -94,7 +95,8 @@ class STSRunner():
                 break
             else:
                 self._logger.debug("No dependence found. Trying to zoom in.")
-                self._scan_area = self._scan_area / 10
+                self._res_freq = mean(res_points[:, 1])
+                self._scan_area = self._scan_area / 5
                 # self._currents = self._currents*5
 
             counter += 1
@@ -107,15 +109,18 @@ class STSRunner():
         N_periods = ptp(self._currents)/period
         self._logger.debug("Periods: %.2f"%N_periods)
 
-        if N_periods > 2:
-            self._currents = self._currents/N_periods
+        if N_periods > 1:
+            self._currents = \
+                (self._currents-mean(self._currents)) / N_periods*1.5 + mean(self._currents)
+
             self._perform_STS()
-        elif N_periods < 2:
+        elif N_periods < 1:
             if max(abs(self._currents)) > 1e-3:
                 raise ValueError("Flux period is too large!")
 
             self._logger.debug("Current range too narrow" + str(N_periods))
-            self._currents = self._currents * 2
+            self._currents =\
+                (self._currents-mean(self._currents)) * 2 + mean(self._currents)
             self._perform_STS()
 
     def _perform_STS(self):

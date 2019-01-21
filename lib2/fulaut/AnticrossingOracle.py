@@ -62,6 +62,12 @@ class AnticrossingOracle():
         # fit among two possibilities:
         for sweet_spot_cur in potential_sweet_spots:
 
+            mean_cur = mean(self._res_points[:, 0])
+            distance_to_sws = abs(mean_cur - sweet_spot_cur)
+            shift = round(distance_to_sws / self._period) * self._period * sign(
+                mean_cur - sweet_spot_cur)
+            sweet_spot_cur += shift
+
             self._iteration_counter = 0
             result = brute(self._brute_cost_function,
                            (f_range, g_range, q_freq_range, d_range), Ns=Ns,
