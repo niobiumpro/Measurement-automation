@@ -1,7 +1,7 @@
 import numpy as np
 from copy import deepcopy
 from scipy.signal import correlate
-from itertools import product
+from scipy.interpolate import interp1d
 
 import matplotlib
 import matplotlib.pyplot as plt
@@ -41,6 +41,16 @@ class Snapshot:
 
         ## attributes utilized by various algorithms ##
         self._connectivity_result = None
+        self._preprocessed_self = None
+
+        # '_target...' is applied to data that refer to the curve
+        # with index 'target_label_i' in self._connectivity_result[2] aka stats
+        self._target_label_i = None
+        self._target_component_mask = None
+        self._target_x_idxs = None
+        self._target_y_idxs = None
+        self._target_y_func = None
+
 
     def _handle_inplace(self,inplace):
         if inplace is True :
@@ -296,15 +306,19 @@ class Snapshot:
         '''
         tmp = self._handle_inplace(inplace)
 
-        kernel_x_px = int(kernel_x / tmp .dx) + 1
-        kernel_y_px = int(kernel_y / tmp .dy) + 1
+        kernel_x_px = int(kernel_x / tmp .dx)
+        if kernel_x_px%2 == 0:
+            kernel_x_px += 1
+        kernel_y_px = int(kernel_y / tmp .dy)
+        if kernel_y_px%2 == 0:
+            kernel_y_px += 1
 
         tmp.data = cv2.GaussianBlur(np.real(tmp .data), (kernel_x_px, kernel_y_px), 0) + \
                           1j * cv2.GaussianBlur(np.imag(tmp .data), (kernel_x_px, kernel_y_px), 0)
         return tmp
 
     def _connected_components(self, rel_threshold=0.5,
-                              kernel_x=0.1, kernel_y=0.1, largest_N = 3,
+                              kernel_x=0.1, kernel_y=0.1,
                               connectivity=8):
         """
         @brief: Returns cv2.connectedComponentsWithStats result
@@ -346,13 +360,14 @@ class Snapshot:
         """
         # duplicating and performing series of transofmations
         # on self attributes
-        snap_components = self._normalize()
-        snap_components.apply_gauss(kernel_x, kernel_y, inplace=True)
-        snap_components._nullify_rel_threshold(rel_threshold, inplace=True)
+        self._preprocessed_self = self._normalize()
+        self._preprocessed_self._nullify_rel_threshold(rel_threshold, inplace=True)
+        self._preprocessed_self.apply_gauss(kernel_x, kernel_y, inplace=True)
+        self._preprocessed_self._nullify_rel_threshold(rel_threshold, inplace=True)
 
         # convert to binary image for opencv.connectedComponents
         abs_threshold = self._threshold_rel2abs(rel_threshold)
-        img = (np.abs(snap_components.data) > rel_threshold).astype(np.uint8)
+        img = (np.abs(self._preprocessed_self.data) > rel_threshold).astype(np.uint8)
         self._connectivity_result = cv2.connectedComponentsWithStats(img,
                                                                      connectivity=connectivity)
         return self._connectivity_result
@@ -381,14 +396,16 @@ class Snapshot:
         # making colorbar axes
         cax, kw = matplotlib.colorbar.make_axes(ax, ticks=np.arange(1, colors_n+1), aspect="auto")
         # making axes with image itself
-        img = ax.imshow(img_data, cmap=cmap, norm=norm, origin="lower", aspect="auto")
+        extent = [self.x[0] - self.dx / 2, self.x[-1] + self.dx / 2, \
+                  self.y[0] - self.dy / 2, self.y[-1] + self.dy / 2, ]
+        img = ax.imshow(img_data, cmap=cmap, norm=norm, origin="lower", aspect="auto", extent=extent)
 
         # reforging image data, color axes and data axes into
         # colorbar object
         cb = fig.colorbar(img, cax, ax, ticks=np.arange(colors_n))
         cb.ax.set_yticklabels(np.arange(colors_n));
 
-    def _connected_component_mask(self, label_i):
+    def _make_target_component_mask(self, label_i):
         """
         @brief: constructs binary mask of the connected component
                 based on its label index 'label_i'
@@ -396,14 +413,43 @@ class Snapshot:
                 using self._connected_components
         TODO: add description
         """
+        self._target_label_i = label_i
 
         connectivity_map = self._connectivity_result[1]
         max_val = np.iinfo(connectivity_map.dtype).max
-        result_map = deepcopy(connectivity_map)
-        result_map[ connectivity_map == label_i ] = 1
-        result_map[ connectivity_map != label_i ] = 0
+        self._target_component_mask = deepcopy(connectivity_map)
+        self._target_component_mask[ connectivity_map == label_i ] = 1
+        self._target_component_mask[ connectivity_map != label_i ] = 0
 
-        return result_map
+        return deepcopy(self._target_component_mask)
+
+    def _return_target_yx_points(self, label_i):
+        stats = self._connectivity_result[2]
+        x_left_i = stats[label_i, cv2.CC_STAT_LEFT]
+        x_right_i = x_left_i + stats[self._target_label_i, cv2.CC_STAT_WIDTH] - 1
+        print( x_left_i, x_right_i, stats[self._target_label_i, cv2.CC_STAT_WIDTH], self._target_label_i )
+        x_mask_idxs = np.arange(x_left_i, x_right_i)
+
+        data_preprocessed = self._preprocessed_self.data
+
+        # target_mask_y_idxs[x_idx] - list of y_idxs that belong to mask for a given x_idx
+        # see np.where(..) documentation for the additional [0] inside list comprehension
+        target_mask_y_idxs = [np.where(self._target_component_mask[:, x_idx] > 0)[0] for x_idx in x_mask_idxs]
+
+        # target_mask_y_idxs_max_idxs[x_idx] - contains index of the maximum value in target_mask_y_idxs[x_idx]
+        target_mask_y_idxs_max_idxs = [np.argmax(self._preprocessed_self.data[target_mask_y_idxs[x_idx], x_idx]) \
+                        for x_idx in x_mask_idxs]
+
+        y_max_mask_idxs = [target_mask_y_idxs[x_idx][target_mask_y_idxs_max_idxs[x_idx]] for x_idx in x_mask_idxs]
+
+        self._target_y_idxs, self._target_x_idxs = (y_max_mask_idxs, x_mask_idxs)
+        return self._target_y_idxs, self._target_x_idxs
+
+    def _interpolate_yx_curve(self):
+        self._target_y_func = interp1d(self.x[self._target_x_idxs], self.y[self._target_y_idxs],
+                                kind="cubic", copy=False, assume_sorted=True)
+
+        return self._target_y_func
 
     def plot(self):
         fig, axes = plt.subplots(1, 2, figsize=(15, 7), sharey=True, sharex=True)
