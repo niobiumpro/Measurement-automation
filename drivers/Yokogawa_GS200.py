@@ -55,7 +55,7 @@ class Yokogawa_GS210(Instrument):
 
 
 
-    def __init__(self, address, volt_compliance = 1, current_compliance = .001):
+    def __init__(self, address, volt_compliance = 3, current_compliance = .001):
         '''Create a default Yokogawa_GS210 object as a current source'''
         Instrument.__init__(self, 'Yokogawa_GS210', tags=['physical'])
         self._address = address
@@ -110,12 +110,12 @@ class Yokogawa_GS210(Instrument):
             print("Tough luck, mode is voltage source, cannot set current.")
             return False
         else:
-            if (self._mincurrent <= current <= self._maxcurrent):
-                self._visainstrument.write("SOUR:LEVEL %e"%current)
-                time.sleep(0.1)
-                sys.stdout.flush()
-            else:
-                print("Error: current limits,",(self._mincurrent, self._maxcurrent)," exceeded.")
+            # if (self._mincurrent <= current <= self._maxcurrent):
+            self._visainstrument.write("SOUR:LEVEL %e"%current)
+            time.sleep(0.1)
+            sys.stdout.flush()
+            # else:
+                # print("Error: current limits,",(self._mincurrent, self._maxcurrent)," exceeded.")
 
     def do_get_current(self):
         '''Get current'''
