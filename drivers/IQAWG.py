@@ -27,10 +27,10 @@ class AWGChannel():
         self._host_awg = host_awg
         self._channel_number = channel_number
 
-    def output_arbitrary_waveform(self, waveform, frequency, async):
+    def output_arbitrary_waveform(self, waveform, frequency, asynchronous):
 
         self._host_awg.output_arbitrary_waveform(waveform, frequency,
-                                self._channel_number, async = async)
+                                self._channel_number, asynchronous = asynchronous)
 
 
 class CalibratedAWG():
@@ -39,13 +39,13 @@ class CalibratedAWG():
         self._channel = channel
 
     def set_parameters(self, parameters):
-        '''
+        """
         Sets various parameters from a dictionary
 
         Parameters:
         -----------
         parameteres: dict {"param_name":param_value, ...}
-        '''
+        """
         par_names = ["calibration"]
         for par_name in par_names:
             if par_name in parameters.keys():
@@ -57,22 +57,22 @@ class CalibratedAWG():
 
 
     def get_pulse_builder(self):
-        '''
+        """
         Returns a PulseBuilder instance using the calibration loaded before
-        '''
+        """
         return PulseBuilder(self._calibration)
 
-    def output_pulse_sequence(self, pulse_sequence, async=False):
-        '''
+    def output_pulse_sequence(self, pulse_sequence, asynchronous=False):
+        """
         Load and output given PulseSequence.
 
         Parameters:
         -----------
         pulse_sequence: PulseSequence instance
-        '''
+        """
         frequency = 1/pulse_sequence.get_duration()*1e9
         self._channel.output_arbitrary_waveform(pulse_sequence\
-                        .get_waveform(), frequency, async=async)
+                        .get_waveform(), frequency, asynchronous=asynchronous)
 
 class IQAWG():
 
@@ -81,13 +81,13 @@ class IQAWG():
         self._triggered = triggered
 
     def set_parameters(self, parameters):
-        '''
+        """
         Sets various parameters from a dictionary
 
         Parameters:
         -----------
         parameteres: dict {"param_name":param_value, ...}
-        '''
+        """
         par_names = ["calibration"]
         for par_name in par_names:
             if par_name in parameters.keys():
@@ -104,14 +104,14 @@ class IQAWG():
     #     pass
 
     def get_pulse_builder(self):
-        '''
+        """
         Returns an IQPulseBuilder instance using the IQ calibration loaded before
-        '''
+        """
         return IQPulseBuilder(self._calibration)
 
     def output_continuous_IQ_waves(self, frequency, amplitudes, relative_phase,
         offsets, waveform_resolution, optimized = True):
-        '''
+        """
         Prepare and output a sine wave of the form: y = A*sin(2*pi*frequency + phase) + offset
         on both of the I and Q channels
         Parameters:
@@ -130,16 +130,16 @@ class IQAWG():
         channel: 1 or 2
             channel which will output the wave
         optimized: boolean
-            first channel will be called with async = True if optimized is True
-        '''
+            first channel will be called with asynchronous = True if optimized is True
+        """
         self._output_continuous_wave(frequency, amplitudes[0], relative_phase,
-            offsets[0], waveform_resolution, 1, async = optimized)
+            offsets[0], waveform_resolution, 1, asynchronous = optimized)
         self._output_continuous_wave(frequency, amplitudes[1], 0,
-            offsets[1], waveform_resolution, 2, async = False)
+            offsets[1], waveform_resolution, 2, asynchronous = False)
 
     def _output_continuous_wave(self, frequency, amplitude, phase, offset,
-            waveform_resolution, channel, async):
-        '''
+            waveform_resolution, channel, asynchronous):
+        """
         Prepare and output a sine wave of the form: y = A*sin(2*pi*frequency + phase) + offset
 
         Parameters:
@@ -157,34 +157,34 @@ class IQAWG():
             of the wave
         channel: 1 or 2
             channel which will output the wave
-        '''
+        """
 
         N_points = 1/frequency/waveform_resolution*1e9+1 if frequency !=0 else 3
         waveform = amplitude*sin(2*pi*linspace(0,1,N_points)+phase) + offset
         self._channels[channel-1].output_arbitrary_waveform(waveform, frequency,
-                                                            async=async)
+                                                            asynchronous=asynchronous)
 
-    def output_pulse_sequence(self, pulse_sequence, async=False):
-        '''
+    def output_pulse_sequence(self, pulse_sequence, asynchronous=False):
+        """
         Load and output given IQPulseSequence.
 
         Parameters:
         -----------
         pulse_sequence: IQPulseSequence instance
-        '''
+        """
         resolution = pulse_sequence.get_waveform_resolution()
         length = len(pulse_sequence.get_I_waveform())
         if self._triggered:
-            duration = pulse_sequence.get_duration()-1000*resolution
+            duration = pulse_sequence.get_duration() - 1000 * resolution
             end_idx = length - 1000
         else:
             duration = pulse_sequence.get_duration()
             end_idx = length
 
-        frequency = 1/duration*1e9
-        self._channels[0].output_arbitrary_waveform(pulse_sequence\
-                                            .get_I_waveform()[:end_idx], frequency,
-                                            async=True)
+        frequency = 1 / duration * 1e9
+        self._channels[0].output_arbitrary_waveform(pulse_sequence \
+                                                    .get_I_waveform()[:end_idx], frequency,
+                                                    asynchronous=True)
         self._channels[1].output_arbitrary_waveform(pulse_sequence
-                                            .get_Q_waveform()[:end_idx], frequency,
-                                            async=async)
+                                                    .get_Q_waveform()[:end_idx], frequency,
+                                                    asynchronous=asynchronous)

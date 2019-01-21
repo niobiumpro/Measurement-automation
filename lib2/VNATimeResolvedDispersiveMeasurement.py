@@ -22,45 +22,46 @@ class VNATimeResolvedDispersiveMeasurementContext(ContextBase):
 
 class VNATimeResolvedDispersiveMeasurement(Measurement):
 
-    def __init__(self, name, sample_name, devs_aliases_map,
-                 line_attenuation_db=60, plot_update_interval=1):
+    def __init__(self, name, sample_name, devs_aliases_map, plot_update_interval=1):
 
         super().__init__(name, sample_name, devs_aliases_map,
                          plot_update_interval=plot_update_interval)
-
+        self._sequence_generator = None
         self._basis = None
         self._ult_calib = False
         self._pulse_sequence_parameters = \
             {"modulating_window": "rectangular", "excitation_amplitude": 1,
              "z_smoothing_coefficient": 0}
 
-    def set_fixed_parameters(self, vna_parameters, q_lo_parameters,
-        ro_awg_parameters, q_awg_parameters, pulse_sequence_parameters,
-        detect_resonator=True, q_z_awg_params = None, plot_resonator_fit = True):
-
+    def set_fixed_parameters(self, pulse_sequence_parameters,
+                             detect_resonator=True, plot_resonator_fit=True,
+                             **dev_params):
+        """
+        :param dev_params:
+            Minimum expected keys and elements expected in each:
+                'vna': 0
+                'q_awg': 0
+                'ro_awg': 0
+        """
+        # TODO check carefully. All single device functions should be deleted?
         self._pulse_sequence_parameters.update(pulse_sequence_parameters)
         self._measurement_result.get_context() \
             .get_pulse_sequence_parameters() \
             .update(pulse_sequence_parameters)
-        vna_parameters["trigger_type"] = "single"
 
-        freq_limits = vna_parameters["freq_limits"]
+        dev_params['vna'][0]["trigger_type"] = "single"
+        freq_limits = dev_params['vna'][0]["freq_limits"]
+
         if detect_resonator and freq_limits[0] != freq_limits[1]:
-            q_z_cal = q_z_awg_params["calibration"] if \
-                q_z_awg_params is not None else None
-            res_freq = self._detect_resonator(vna_parameters,
-                                    ro_awg_parameters["calibration"],
-                                    q_awg_parameters["calibration"],
-                                    q_z_cal, plot_resonator_fit=plot_resonator_fit)
-            vna_parameters["freq_limits"] = (res_freq, res_freq)
+            q_z_cal = dev_params['q_z_awg'][0]["calibration"] if \
+                'q_z_awg' in dev_params.keys() else None
+            res_freq = self._detect_resonator(dev_params['vna'][0],
+                                              dev_params['ro_awg'][0]["calibration"],
+                                              dev_params['q_awg'][0]["calibration"],
+                                              q_z_cal, plot_resonator_fit=plot_resonator_fit)
+            dev_params['vna'][0]["freq_limits"] = (res_freq, res_freq)
 
-        if self._q_z_awg is not None:
-            super().set_fixed_parameters(vna=vna_parameters, q_lo=q_lo_parameters,
-                                         ro_awg=ro_awg_parameters, q_awg=q_awg_parameters,
-                                         q_z_awg=q_z_awg_params)
-        else:
-            super().set_fixed_parameters(vna=vna_parameters, q_lo=q_lo_parameters,
-                                         ro_awg=ro_awg_parameters, q_awg=q_awg_parameters)
+        super().set_fixed_parameters(**dev_params)
 
     def set_basis(self, basis):
         d_real = abs(real(basis[0] - basis[1]))
@@ -85,20 +86,20 @@ class VNATimeResolvedDispersiveMeasurement(Measurement):
         self._ult_calib = value
 
     def _recording_iteration(self):
-        vna = self._vna
-        q_lo = self._q_lo
-        vna.avg_clear();
-        vna.prepare_for_stb();
-        vna.sweep_single();
-        vna.wait_for_stb();
-        data = vna.get_sdata();
+        vna = self._vna[0]
+        q_lo = self._q_lo[0]
+        vna.avg_clear()
+        vna.prepare_for_stb()
+        vna.sweep_single()
+        vna.wait_for_stb()
+        data = vna.get_sdata()
         if self._ult_calib:
             q_lo.set_output_state("OFF")
-            vna.avg_clear();
-            vna.prepare_for_stb();
-            vna.sweep_single();
-            vna.wait_for_stb();
-            bg = vna.get_sdata();
+            vna.avg_clear()
+            vna.prepare_for_stb()
+            vna.sweep_single()
+            vna.wait_for_stb()
+            bg = vna.get_sdata()
             q_lo.set_output_state("ON")
             mean_data = mean(data) / mean(bg)
         else:
@@ -111,53 +112,55 @@ class VNATimeResolvedDispersiveMeasurement(Measurement):
         return p_r + 1j * p_i
 
     def _detect_resonator(self, vna_parameters, ro_calibration, q_calibration,
-        q_z_calibration = None, plot_resonator_fit = True):
+                          q_z_calibration=None, plot_resonator_fit=True):
 
-        self._q_lo.set_output_state("OFF")
+        self._q_lo[0].set_output_state("OFF")
         print("Detecting a resonator within provided frequency range of the VNA %s\
                     " % (str(vna_parameters["freq_limits"])))
 
-        self._vna.set_nop(vna_parameters["res_find_nop"])
-        self._vna.set_freq_limits(*vna_parameters["freq_limits"])
-        self._vna.set_power(vna_parameters["power"])
-        self._vna.set_bandwidth(vna_parameters["bandwidth"] * 10)
-        self._vna.set_averages(vna_parameters["averages"])
+        self._vna[0].set_nop(vna_parameters["res_find_nop"])
+        self._vna[0].set_freq_limits(*vna_parameters["freq_limits"])
+        self._vna[0].set_power(vna_parameters["power"])
+        self._vna[0].set_bandwidth(vna_parameters["bandwidth"] * 10)
+        self._vna[0].set_averages(vna_parameters["averages"])
 
         rep_period = self._pulse_sequence_parameters["repetition_period"]
         ro_duration = self._pulse_sequence_parameters["readout_duration"]
 
         ro_pb = IQPulseBuilder(ro_calibration)
         q_pb = IQPulseBuilder(q_calibration)
-        self._ro_awg.output_pulse_sequence(ro_pb \
-                                           .add_dc_pulse(ro_duration).add_zero_until(rep_period).build())
-        self._q_awg.output_pulse_sequence(q_pb.add_zero_until(rep_period).build())
+        self._ro_awg[0].output_pulse_sequence(ro_pb
+                                              .add_dc_pulse(ro_duration).add_zero_until(rep_period).build())
+        self._q_awg[0].output_pulse_sequence(q_pb.add_zero_until(rep_period).build())
 
-        if self._q_z_awg is not None:
+        if self._q_z_awg[0] is not None:
             q_z_pb = PulseBuilder(q_z_calibration)
-            self._q_z_awg.output_pulse_sequence(q_z_pb.add_zero_until(rep_period).build())
+            self._q_z_awg[0].output_pulse_sequence(q_z_pb.add_zero_until(rep_period).build())
 
         res_freq, res_amp, res_phase = super()._detect_resonator(plot_resonator_fit)
-        print("Detected frequency is %.5f GHz, at %.2f mU and %.2f degrees"%\
-                    (res_freq/1e9, res_amp*1e3, res_phase/pi*180))
-        self._q_lo.set_output_state("ON")
+        print("Detected frequency is %.5f GHz, at %.2f mU and %.2f degrees" % \
+              (res_freq / 1e9, res_amp * 1e3, res_phase / pi * 180))
+        self._q_lo[0].set_output_state("ON")
         return res_freq
 
     def _output_pulse_sequence(self):
-        q_pb = self._q_awg.get_pulse_builder()
-        ro_pb = self._ro_awg.get_pulse_builder()
-        if self._q_z_awg is not None:
-            q_z_pb = self._q_z_awg.get_pulse_builder()
-            q_seq, q_z_seq, ro_seq = \
-                self._sequence_generator(q_pb, q_z_pb, ro_pb,
-                                         self._pulse_sequence_parameters)
-            self._q_z_awg.output_pulse_sequence(q_z_seq, async=True)
-            self._ro_awg.output_pulse_sequence(ro_seq, async=True)
-            self._q_awg.output_pulse_sequence(q_seq)
-        else:
-            q_seq, ro_seq = self._sequence_generator(q_pb, ro_pb,
-                                                     self._pulse_sequence_parameters)
-            self._ro_awg.output_pulse_sequence(ro_seq, async=True)
-            self._q_awg.output_pulse_sequence(q_seq, async=False)
+
+        q_pbs = [q_awg.get_pulse_builder() for q_awg in self._q_awg]
+        ro_pbs = [ro_awg.get_pulse_builder() for ro_awg in self._ro_awg]
+        q_z_pbs = [q_z_awg.get_pulse_builder() for q_z_awg in self._q_z_awg] \
+            if hasattr(self, '_q_z_awg') else [None]
+        pbs = {'q_pbs': q_pbs,
+               'ro_pbs': ro_pbs,
+               'q_z_pbs': q_z_pbs}
+        seqs = self._sequence_generator(self._pulse_sequence_parameters, **pbs)
+
+        for (seq, dev) in zip(seqs['q_seqs'], self._q_awg):
+            dev.output_pulse_sequence(seq)
+        for (seq, dev) in zip(seqs['ro_seqs'], self._ro_awg):
+            dev.output_pulse_sequence(seq, asynchronous=True)
+        if 'q_z_seqs' in seqs.keys():
+            for (seq, dev) in zip(seqs['q_z_seqs'], self._q_z_awg):
+                dev.output_pulse_sequence(seq, asynchronous=True)
 
 
 class VNATimeResolvedDispersiveMeasurementResult(MeasurementResult):
@@ -177,8 +180,8 @@ class VNATimeResolvedDispersiveMeasurementResult(MeasurementResult):
                       r"$\angle S_{21}$ [%s]" % self._phase_units),
             "abs": (abs, r"$\left.|S_{21}|\right.$ [a.u.]")}
 
-    def _вьшекьшв_fit_arguments(self):
-        '''
+    def _generate_fit_arguments(self):
+        """
         Should be implemented in child classes.
 
         Returns:
@@ -188,13 +191,13 @@ class VNATimeResolvedDispersiveMeasurementResult(MeasurementResult):
             characteristic scale of the parameters
         bounds: tuple of 2 arrays
             See scipy.optimize.least_squares(...) documentation
-        '''
+        """
         pass
 
     def _model(self, *params):
-        '''
+        """
         Fit theoretical function. Should be implemented in child classes
-        '''
+        """
         return None
 
     def _unwrapped_phase(self, sdata):

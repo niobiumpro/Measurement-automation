@@ -10,7 +10,8 @@ class FastFluxTwoToneSpectroscopy(FastTwoToneSpectroscopyBase):
                          line_attenuation_db, devs_aliases_map)
 
     def set_fixed_parameters(self, vna_parameters, mw_src_parameters,
-                             sweet_spot_current=None, sweet_spot_voltage=None, adaptive=False, bandwidth_factor=10):
+                             sweet_spot_current=None, sweet_spot_voltage=None, adaptive=False,
+                             bandwidth_factor=10):
         self._resonator_area = vna_parameters["freq_limits"]
         self._adaptive = adaptive
 
@@ -18,7 +19,8 @@ class FastFluxTwoToneSpectroscopy(FastTwoToneSpectroscopyBase):
 
         super().set_fixed_parameters(vna_parameters, mw_src_parameters,
                                      current=sweet_spot_current, voltage=sweet_spot_voltage,
-                                     detect_resonator=not adaptive, bandwidth_factor=bandwidth_factor)
+                                     detect_resonator=not adaptive,
+                                     bandwidth_factor=bandwidth_factor)
 
     def set_swept_parameters(self, mw_src_frequencies, current_values=None,
                              voltage_values=None):
@@ -36,7 +38,8 @@ class FastPowerTwoToneSpectroscopy(FastTwoToneSpectroscopyBase):
         super().__init__(name, sample_name, line_attenuation_db, devs_aliases_map)
 
     def set_fixed_parameters(self, vna_parameters, mw_src_parameters,
-                             sweet_spot_current=None, sweet_spot_voltage=None, adaptive=False, bandwidth_factor=10):
+                             sweet_spot_current=None, sweet_spot_voltage=None, adaptive=False,
+                             bandwidth_factor=10):
         self._resonator_area = vna_parameters["freq_limits"]
         self._adaptive = adaptive
         # trigger layout is detected via mw_src_parameters in TTSBase class
@@ -102,7 +105,8 @@ class FastAcStarkTwoToneSpectroscopy(FastTwoToneSpectroscopyBase):
             res_result = self._detect_resonator(vna_parameters, plot=False)
 
             if (res_result is None):
-                print("Failed to fit resonator, trying to use last successful fit, power = ", power, " A")
+                print("Failed to fit resonator, trying to use last successful fit, power = ", power,
+                      " A")
                 if (self._last_resonator_result is None):
                     print("no successful fit is present, terminating")
                     return None

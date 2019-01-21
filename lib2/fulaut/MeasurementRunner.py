@@ -20,6 +20,7 @@ from drivers.Tektronix_AWG5014 import *
 from drivers.IQAWG import *
 from drivers.Agilent_EXA import *
 
+from scipy.constants import pi
 import pickle
 
 from time import sleep
@@ -61,8 +62,8 @@ class MeasurementRunner():
             self._raw_awg = Tektronix_AWG5014("TEK1")
             self._ro_awg = IQAWG(AWGChannel(self._raw_awg, 3), AWGChannel(self._raw_awg, 4))
             self._q_awg = IQAWG(AWGChannel(self._raw_awg, 1), AWGChannel(self._raw_awg, 2))
-        #self._ro_awg = None
-        #self._q_awg = None
+        # self._ro_awg = None
+        # self._q_awg = None
         self._launch_date = datetime.today()
 
         self._logger = LoggingServer.getInstance()
@@ -272,25 +273,25 @@ class MeasurementRunner():
         ro_resonator_frequency = self._sts_fit_params[qubit_name][0]
         ro_resonator_frequency = round(ro_resonator_frequency / 1e9, 2) * 1e9
         if_frequency = 0e6
-        lo_power=0
+        lo_power = 0
         ssb_power = GlobalParameters.ro_ssb_power[qubit_name]
         waveform_resolution=1
 
         db = load_IQMX_calibration_database("CHGRO", 0)
         if db is not None:
-            ro_cal =\
+            ro_cal = \
                 db.get(frozenset(dict(lo_power=lo_power,
                                       ssb_power=ssb_power,
                                       lo_frequency=ro_resonator_frequency,
                                       if_frequency=if_frequency,
                                       waveform_resolution=waveform_resolution)\
-                                      .items()))
+                                 .items()))
             if ro_cal is not None and not GlobalParameters.recalibrate_mixers[qubit_name]:
                 return ro_cal
 
         self._set_vna_to_ro_lo()
 
-        ig = {"dc_offsets":(0.1, +0.1), "dc_offset_open":0.3}
+        ig = {"dc_offsets": (0.1, +0.1), "dc_offset_open": 0.3}
         cal = IQCalibrator(self._ro_awg,
                            self._sa,
                            self._vna,
@@ -353,12 +354,16 @@ class MeasurementRunner():
 
     def _open_only_readout_mixer(self):
         self._ro_awg.output_continuous_IQ_waves(frequency=0, amplitudes=(0, 0),
-                                                relative_phase=0, offsets=(1, 1), waveform_resolution=1)
+                                                relative_phase=0, offsets=(1, 1),
+                                                waveform_resolution=1)
         self._q_awg.output_continuous_IQ_waves(frequency=0, amplitudes=(0, 0),
-                                               relative_phase=0, offsets=(0, 0), waveform_resolution=1)
+                                               relative_phase=0, offsets=(0, 0),
+                                               waveform_resolution=1)
 
     def _open_mixers(self):
         self._ro_awg.output_continuous_IQ_waves(frequency=0, amplitudes=(0, 0),
-                                                relative_phase=0, offsets=(1, 1), waveform_resolution=1)
+                                                relative_phase=0, offsets=(1, 1),
+                                                waveform_resolution=1)
         self._q_awg.output_continuous_IQ_waves(frequency=0, amplitudes=(0, 0),
-                                               relative_phase=0, offsets=(1, 1), waveform_resolution=1)
+                                               relative_phase=0, offsets=(1, 1),
+                                               waveform_resolution=1)

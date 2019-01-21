@@ -57,7 +57,7 @@ DAQmx_Val_CountDown         = 10124
 DAQmx_Val_ExtControlled     = 10326
 
 def CHK(err):
-    '''Error checking routine'''
+    """Error checking routine"""
 
     if err < 0:
         buf_size = 100
@@ -83,7 +83,7 @@ def buf_to_list(buf):
     return namelist
 
 def get_device_names():
-    '''Return a list of available NIDAQ devices.'''
+    """Return a list of available NIDAQ devices."""
 
     bufsize = 1024
     buf = ctypes.create_string_buffer('\000' * bufsize)
@@ -91,11 +91,11 @@ def get_device_names():
     return buf_to_list(buf)
 
 def reset_device(dev):
-    '''Reset device "dev"'''
+    """Reset device "dev""""
     nidaq.DAQmxResetDevice(dev)
 
 def get_physical_input_channels(dev):
-    '''Return a list of physical input channels on a device.'''
+    """Return a list of physical input channels on a device."""
 
     bufsize = 1024
     buf = ctypes.create_string_buffer('\000' * bufsize)
@@ -103,7 +103,7 @@ def get_physical_input_channels(dev):
     return buf_to_list(buf)
 
 def get_physical_output_channels(dev):
-    '''Return a list of physical output channels on a device.'''
+    """Return a list of physical output channels on a device."""
 
     bufsize = 1024
     buf = ctypes.create_string_buffer('\000' * bufsize)
@@ -111,7 +111,7 @@ def get_physical_output_channels(dev):
     return buf_to_list(buf)
 
 def get_digital_output_channels(dev):
-    '''Return a list of physical output channels on a device.'''
+    """Return a list of physical output channels on a device."""
 
     bufsize = 1024
     buf = ctypes.create_string_buffer('\000' * bufsize)
@@ -119,7 +119,7 @@ def get_digital_output_channels(dev):
     return buf_to_list(buf)
 
 def get_physical_counter_channels(dev):
-    '''Return a list of physical counter channels on a device.'''
+    """Return a list of physical counter channels on a device."""
 
     bufsize = 1024
     buf = ctypes.create_string_buffer('\000' * bufsize)
@@ -128,7 +128,7 @@ def get_physical_counter_channels(dev):
 
 def read(devchan, samples=1, freq=10000.0, minv=-10.0, maxv=10.0,
             timeout=10.0, config=DAQmx_Val_Cfg_Default):
-    '''
+    """
     Read up to max_samples from a channel. Seems to have trouble reading
     1 sample!
 
@@ -143,7 +143,7 @@ def read(devchan, samples=1, freq=10000.0, minv=-10.0, maxv=10.0,
 
     Output:
         A numpy.array with the data on success, None on error
-    '''
+    """
 
     if type(config) is types.StringType:
         if config in _config_map:
@@ -200,7 +200,7 @@ def read(devchan, samples=1, freq=10000.0, minv=-10.0, maxv=10.0,
 
 def write(devchan, data, freq=10000.0, minv=-10.0, maxv=10.0,
                 timeout=10.0):
-    '''
+    """
     Write values to channel
 
     Input:
@@ -212,7 +212,7 @@ def write(devchan, data, freq=10000.0, minv=-10.0, maxv=10.0,
 
     Output:
         Number of values written
-    '''
+    """
 
     if type(data) in (types.IntType, types.FloatType):
         data = numpy.array([data], dtype=numpy.float64)
@@ -251,10 +251,10 @@ def write(devchan, data, freq=10000.0, minv=-10.0, maxv=10.0,
     return written.value
 
 def read_counter(devchan="/Dev1/ctr0", samples=1, freq=1.0, timeout=1.0, src=""):
-    '''
+    """
     Read counter 'devchan'.
     Specify source pin with 'src'.
-    '''
+    """
 
     taskHandle = TaskHandle(0)
     try:
@@ -363,10 +363,10 @@ def read_counters(devchans=["/Dev1/ctr0","/Dev1/ctr1"], samples=1, freq=1.0, tim
     return ret
 
 def write_dig_port8(channel, val, timeout=1.0):
-    '''
+    """
     Set digital output of channels.
     The value is sent to the specified channels, LSB to MSB.
-    '''
+    """
 
     taskHandle = TaskHandle(0)
     try:
@@ -398,14 +398,14 @@ def write_dig_port8(channel, val, timeout=1.0):
 
 
 def write_dig_port_stream(channel, samples, rate, timeout=1.0):
-    '''
+    """
     Output a binary waveform
     
     Input:
         channel - channels to output data to
         samples - a 2d numpy array of booleans, 2nd index is the channel
         rate - sample rate in Hz
-    '''
+    """
 
     taskHandle = TaskHandle(0)
     try:

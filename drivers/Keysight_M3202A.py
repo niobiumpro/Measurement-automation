@@ -1,4 +1,3 @@
-
 import sys
 from drivers.instrument import Instrument
 
@@ -13,18 +12,19 @@ class KeysightM3202ABase(Instrument):
         super().__init__(name, tags=['physical'])
         self.mask = 0
         self.module = keysightSD1.SD_AOU()
-        self.module_id = self.module.openWithSlotCompatibility("M3202A", chassis, slot, compatibility=keysightSD1.SD_Compatibility.LEGACY)
-        self.amplitudes = [0.2]*4
-        self.offsets = [0.0]*4
+        self.module_id = self.module.openWithSlotCompatibility("M3202A", chassis, slot,
+                                                               compatibility=keysightSD1.SD_Compatibility.LEGACY)
+        self.amplitudes = [0.2] * 4
+        self.offsets = [0.0] * 4
         self.clock = None
         self.add_parameter('amplitude_channel_{}', type=float,
-                            flags=Instrument.FLAG_SOFTGET,
-                            channels = (1, 4),
-                            unit='Volts', minval=-2, maxval=2, channel_prefix='ch%d_')
+                           flags=Instrument.FLAG_SOFTGET,
+                           channels=(1, 4),
+                           unit='Volts', minval=-2, maxval=2, channel_prefix='ch%d_')
         self.add_parameter('offset_channel_{}', type=float,
-                            flags=Instrument.FLAG_SOFTGET,
-                            channels = (1, 4),
-                            unit='Volts', minval=-2, maxval=2, channel_prefix='ch%d_')
+                           flags=Instrument.FLAG_SOFTGET,
+                           channels=(1, 4),
+                           unit='Volts', minval=-2, maxval=2, channel_prefix='ch%d_')
         for channel_id in range(4):
             self.set_amplitude(0.2, channel_id)
             self.set_offset(0.0, channel_id)
@@ -46,7 +46,7 @@ class KeysightM3202ABase(Instrument):
 
     def set_clock(self, clock):
         self.module.clockSetFrequency(clock)
-        self.clock=clock
+        self.clock = clock
 
     def run(self):
         self.module.AWGstartMultiple(self.mask)
@@ -85,4 +85,4 @@ class KeysightM3202ABase(Instrument):
     def get_clock(self):
         return self.clock
 
-#from qsweepy.instrument_drivers._Keysight_M3202A.simple_sync import *
+# from qsweepy.instrument_drivers._Keysight_M3202A.simple_sync import *

@@ -8,7 +8,7 @@ class AWGVoltageSource():
     def set_voltage(self, voltage):
         self._voltage = voltage
         self._awg.output_arbitrary_waveform([voltage]*3, 1e6,
-            channel=self._channel_number, async=False)
+            channel=self._channel_number, asynchronous=False)
 
     def get_voltage(self):
         return self._voltage

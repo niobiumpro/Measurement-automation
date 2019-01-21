@@ -13,7 +13,7 @@ class ResonatorOracle():
         vna = self._vna
         vna.sweep_hold()
         vna.set_nop(25000)
-        vna.set_xlim(6.4e9, 7.5e9) # setting the scan area
+        vna.set_xlim(6.4e9, 7.5e9)  # setting the scan area
         vna.set_bandwidth(10000)
         vna.set_averages(1)
         vna.set_power(0)
@@ -47,7 +47,7 @@ class ResonatorOracle():
 
 
     def guess_scan_areas(self, freqs, s_data, area_size, depth):
-        '''
+        """
         Function to get the approximate positions of the resonator dips
         and return small areas around them
         Parameters:
@@ -63,7 +63,7 @@ class ResonatorOracle():
             scan_areas : list
                 A list of tuples each representing an area in frequency
                 presumably around the resonator dips
-        '''
+        """
         amps = 20*log10(abs(s_data))
         window = 100
         extrema = argrelextrema(amps, less, order=window)[0]

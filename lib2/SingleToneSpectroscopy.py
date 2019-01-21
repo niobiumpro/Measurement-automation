@@ -1,9 +1,8 @@
-'''
+"""
 Paramatric single-tone spectroscopy is perfomed with a Vector Network Analyzer
 (VNA) for each parameter value which is set by a specific function that must be
 passed to the SingleToneSpectroscopy class when it is created.
-'''
-
+"""
 from numpy import *
 from lib2.MeasurementResult import *
 from datetime import datetime as dt
@@ -14,7 +13,7 @@ from time import sleep
 
 
 class SingleToneSpectroscopy(Measurement):
-    '''
+    """
     Class provides all the necssary methods for single-tone spectrscopy with VNA.
     Current is changed with Yokohawa GS-210
 
@@ -35,32 +34,28 @@ class SingleToneSpectroscopy(Measurement):
             --  remove_delay(self)
             --  _remove_delay(self,frequencies, s_data)
     ----------------
-    '''
+    """
 
-    def __init__(self, name, sample_name, line_attenuation_db=60,
-                 plot_update_interval=5, **devs_aliases_map):
-        super().__init__(name, sample_name, devs_aliases_map,
-                         plot_update_interval)
+    def __init__(self, name, sample_name, plot_update_interval=5, **devs_aliases_map):
+        super().__init__(name, sample_name, devs_aliases_map, plot_update_interval)
+        self._measurement_result = SingleToneSpectroscopyResult(name, sample_name)
+        self._frequencies = []
 
-        self._measurement_result = SingleToneSpectroscopyResult(name,
-                                                                sample_name)
-
-
-    def set_fixed_parameters(self, vna_parameters):
-        '''
+    def set_fixed_parameters(self, **dev_params):
+        """
         SingleToneSpectroscopy only requires vna parameters in format
         {"bandwidth":int, ...}
-        '''
-        super().set_fixed_parameters(vna=vna_parameters)
-        self._frequencies = linspace(*vna_parameters["freq_limits"], \
-                                     vna_parameters["nop"])
-        self._vna.sweep_hold()
+        """
+        super().set_fixed_parameters(**dev_params)
+        self._frequencies = linspace(*dev_params['vna'][0]["freq_limits"],
+                                     dev_params['vna'][0]["nop"])
+        self._vna[0].sweep_hold()
 
     def set_swept_parameters(self, swept_parameter):
-        '''
+        """
         SingleToneSpectroscopy only takes one swept parameter in format
         {"parameter_name":(setter, values)}
-        '''
+        """
         super().set_swept_parameters(**swept_parameter)
         par_name = list(swept_parameter.keys())[0]
         par_setter, par_values = swept_parameter[par_name]
@@ -68,11 +63,12 @@ class SingleToneSpectroscopy(Measurement):
         sleep(1)
 
     def _recording_iteration(self):
-        vna = self._vna
-        vna.avg_clear();
-        vna.prepare_for_stb();
-        vna.sweep_single();
-        vna.wait_for_stb();
+        vna = self._vna[0]
+        vna.avg_clear()
+        vna.prepare_for_stb()
+        vna.sweep_single()
+
+        vna.wait_for_stb()
         return vna.get_sdata()
 
     def _prepare_measurement_result_data(self, parameter_names, parameters_values):
@@ -94,6 +90,10 @@ class SingleToneSpectroscopyResult(MeasurementResult):
         self.max_abs = 1
         self.min_abs = 0
         self._unwrap_phase = False
+        self._amps_map = None
+        self._phas_map = None
+        self._amp_cb = None
+        self._phas_cb = None
 
         self._amps_map = None
         self._phas_map = None
@@ -121,43 +121,42 @@ class SingleToneSpectroscopyResult(MeasurementResult):
         return fig, axes, (cax_amps, cax_phas)
 
     def set_phase_units(self, units):
-        '''
+        """
         Sets the units of the phase in the plots
 
         Parameters:
         -----------
         units: "rad" or "deg"
             units in which the phase will be displayed
-        '''
+        """
         if units in ["deg", "rad"]:
             self._phase_units = units
         else:
             print("Phase units invalid")
 
     def set_unwrap_phase(self, unwrap_phase):
-        '''
+        """
         Set if the phase plot should be unwrapped
 
         Parameters:
         -----------
         unwrap_phase: boolean
             True or False to control the unwrapping
-        '''
+        """
         self._unwrap_phase = unwrap_phase
 
-    def _plot(self, axes, caxes, dynamic = False):
+    def _plot(self, data):
 
-        ax_amps, ax_phas = axes
-        cax_amps, cax_phas = caxes
+        ax_amps, ax_phas = self._axes
+        cax_amps, cax_phas = self._caxes
 
-        data = self.get_data()
         if "data" not in data.keys():
             return
 
         X, Y, Z = self._prepare_data_for_plot(data)
         phases = abs(angle(Z).T) if not self._unwrap_phase else unwrap(angle(Z)).T
-        phases[Z.T==0] = 0
-        phases = phases if self._phase_units == "rad" else phases*180/pi
+        phases[Z.T == 0] = 0
+        phases = phases if self._phase_units == "rad" else phases * 180 / pi
 
         if self._plot_limits_fixed is False:
             self.max_abs = max(abs(Z)[abs(Z) != 0])
@@ -168,8 +167,7 @@ class SingleToneSpectroscopyResult(MeasurementResult):
         step_x = X[1] - X[0]
         step_y = Y[1] - Y[0]
         extent = [X[0] - step_x / 2, X[-1] + step_x / 2, Y[0] - step_y / 2, Y[-1] + step_y / 2]
-
-        if self._amps_map is None or not dynamic:
+        if self._amps_map is None or not self._dynamic:
             self._amps_map = ax_amps.imshow(abs(Z).T, origin='lower', cmap="RdBu_r",
                                             aspect='auto', vmax=self.max_abs, vmin=self.min_abs,
                                             extent=extent)
@@ -180,9 +178,7 @@ class SingleToneSpectroscopyResult(MeasurementResult):
             self._amps_map.set_data(abs(Z).T)
             self._amps_map.set_clim(self.min_abs, self.max_abs)
             self._amp_cb.set_clim(self.min_abs, self.max_abs)
-            plt.draw()
-
-        if self._phas_map is None or not dynamic:
+        if self._phas_map is None or not self._dynamic:
             self._phas_map = ax_phas.imshow(phases, origin='lower', aspect='auto',
                                             cmap="RdBu_r", vmin=self.min_phase, vmax=self.max_phase,
                                             extent=extent)
@@ -192,7 +188,6 @@ class SingleToneSpectroscopyResult(MeasurementResult):
             self._phas_map.set_clim(self.min_phase, self.max_phase)
             self._phas_cb.set_clim(self.min_phase, self.max_phase)
             plt.draw()
-
 
     def set_plot_range(self, min_abs, max_abs, min_phas=None, max_phas=None):
         self.max_phase = max_phas
@@ -224,7 +219,7 @@ class SingleToneSpectroscopyResult(MeasurementResult):
         return corr_s_data
 
     def remove_background(self, direction):
-        '''
+        """
         Remove background
 
         Parameters:
@@ -233,13 +228,12 @@ class SingleToneSpectroscopyResult(MeasurementResult):
             "h" for horizontal slice subtraction
             "v" for vertical slice subtraction
 
-        '''
+        """
         s_data = self.get_data()["data"]
         len_freq = s_data.shape[1]
         len_cur = s_data.shape[0]
         if direction is "avg_cur":
             avg = zeros(len_freq, dtype=complex)
-            counter_av = 0
             for j in range(len_freq):
                 counter_av = 0
                 for i in range(len_cur):
@@ -250,7 +244,6 @@ class SingleToneSpectroscopyResult(MeasurementResult):
                 s_data[:, j] = s_data[:, j] / avg[j]
         elif direction is "avg_freq":
             avg = zeros(len_cur, dtype=complex)
-            counter_av = 0
             for j in range(len_cur):
                 counter_av = 0
                 for i in range(len_freq):

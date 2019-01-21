@@ -38,7 +38,7 @@ class TTSRunner():
                                 "averages": 1,
                                 "sweep_type": "LIN"}
 
-        self._mw_src_parameters = {"power":0}
+        self._mw_src_parameters = {"power": 0}
 
         res_freq, g, period, sweet_spot, max_q_freq, d = self._fit_p0
 
@@ -63,7 +63,7 @@ class TTSRunner():
         # else:
         #     mw_limits = (res_freq-0.1e9, expected_q_freq+1e9)
 
-        mw_limits = (expected_q_freq-2.5e9, expected_q_freq+0.5e9)
+        mw_limits = (expected_q_freq - 2.5e9, expected_q_freq + 0.5e9)
 
         self._mw_src_frequencies = linspace(*mw_limits, 201)
 
@@ -72,7 +72,7 @@ class TTSRunner():
 
     def run(self):
 
-        #Check if today's spectrum is present
+        # Check if today's spectrum is present
 
         known_results = \
             MeasurementResult.load(self._sample_name,
@@ -89,7 +89,7 @@ class TTSRunner():
                             self._tts_result,
                             self._fit_p0[2:], plot=True)
         params = so.launch()
-        self._logger.debug("Two-tone fit: %s"%str(params))
+        self._logger.debug("Two-tone fit: %s" % str(params))
         if known_results is None:
             print("Saving...", end="")
             self._tts_result.save()

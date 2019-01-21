@@ -30,13 +30,13 @@ class Channel(Enum):
     FOUR = "CHAN4"
 
 class Keysight_DSOX2014(Instrument):
-    '''
+    """
     This is the python driver for the Keysight DSO-X 2014
 
     Usage:
     Initialise with
     <name> = instruments.create(address='<VISA address>')
-    '''
+    """
     def __init__(self, address):
         self.logger = logging.getLogger()
         self.logger.setLevel(logging.WARNING)
@@ -64,16 +64,16 @@ class Keysight_DSOX2014(Instrument):
         self.set_offset(0, *Channel.ALL)
 
     def digitize(self):
-        '''
+        """
         Initiates a measurement, blocks until measurement finished.
-        '''
+        """
         self._visainstrument.timeout = 100e3
         self._visainstrument.write(":DIGitize")
         self._visainstrument.query("*OPC?")
         self._visainstrument.timeout = 1000
 
     def get_data(self, *channels):
-        '''
+        """
         Get the data points from the specified channel.
         The channel must be displayed on the screen of the DSO for this function
         to work!
@@ -95,7 +95,7 @@ class Keysight_DSOX2014(Instrument):
         >>> dso.digitize() # acquire data for all channels, blocks until finished
         >>> channel1data, channel2data = dso.get_data(Channel.ONE, Channel.TWO)
 
-        '''
+        """
         data = []
         for channel in channels:
             preamble = self.get_preamble(channel)
@@ -103,7 +103,7 @@ class Keysight_DSOX2014(Instrument):
         return self.get_times(preamble), data if len(data)>1 else data[0]
 
     def get_data_raw(self, *channels):
-        '''
+        """
         To convert these values to the actual scale use the PREamble:
         Structure:
         FORMAT
@@ -119,14 +119,14 @@ class Keysight_DSOX2014(Instrument):
                     256 (if FORMAT = BYTE)
         YORIGIN - value is the voltage at center screen.
         YREFERENCE - specifies the data point where y-origin occurs
-        '''
+        """
         raw_data = []
         for channel in channels:
             raw_data.append(np.array(self._visainstrument.query_binary_values(":WAV:SOURce "+channel.value+"; :WAV:DATA?", "h", True)))
         return raw_data if len(raw_data)>1 else raw_data[0]
 
     def get_preamble(self, *channels):
-        '''
+        """
         Returns the preamble value for the specified channel(s)
 
         Parameters:
@@ -137,7 +137,7 @@ class Keysight_DSOX2014(Instrument):
         Returns:
         preambles: list of dictionary objects
             Preamble for the channel(s)
-        '''
+        """
         preambles = []
         for channel in channels:
             channel_preamble = {}
@@ -153,17 +153,17 @@ class Keysight_DSOX2014(Instrument):
         return preambles if len(preambles)>1 else preambles[0]
 
     def apply_preamble(self, raw_data, preamble):
-        '''
+        """
         Get scaled Y data from the raw data and the preamble
-        '''
+        """
         return raw_data*preamble["yincrement"]
 
         #### Getters and setters
 
     def get_times(self, preamble=None):
-        '''
+        """
         Get the time points of the X axis
-        '''
+        """
         if preamble is None:
             preamble = self.get_preamble(Channel.ONE)
 
@@ -171,7 +171,7 @@ class Keysight_DSOX2014(Instrument):
         return np.linspace(0, total_time, preamble["nop"])
 
     def set_time_range(self, time_range):
-        '''
+        """
         Sets the full-scale horizontal time for the oscilloscope.
         The range is 10 times the current time-per-division setting
 
@@ -179,44 +179,44 @@ class Keysight_DSOX2014(Instrument):
         -----------
         time_range: float
             The new range for the time axis, in seconds
-        '''
+        """
         self._visainstrument.write(":TIMebase:RANGe %.2e"%time_range)
 
     def get_time_range(self):
-        '''
+        """
         Returns the full-scale horizontal time in seconds for the oscilloscope.
         The range is 10 times the current time-per-division setting
-        '''
+        """
         return float(self._visainstrument.query(":TIMebase:RANGe?"))
 
     def get_time_offset(self):
-        '''
+        """
         Returns the time offset from the trigger event in seconds
-        '''
+        """
         return float(self._visainstrument.query(":TIMebase:POSition?"))
 
     def set_time_offset(self, time_offset):
-        '''
+        """
         Set the time offset from the trigger event in seconds
-        '''
+        """
         self._visainstrument.write(":TIMebase:POSition %.2e"%time_offset)
         return self.get_time_offset()
 
     def do_set_nop(self, nop):
-        '''
+        """
         Set the number of data points to be acquired from DSO
 
         Parameters:
         ----------
         nop: int
             Channel number of points, from 100 to 1000 in NORMal mode
-        '''
+        """
         self._visainstrument.write(":WAV:POINts "+str(nop))
 
     def do_get_nop(self):
-        '''
+        """
         Get the number of points for the specified channels
-        '''
+        """
         return int(self._visainstrument.query(":WAV:POINts?"))
 
     def do_set_averages(self, averages):
@@ -243,7 +243,7 @@ class Keysight_DSOX2014(Instrument):
             return self._visainstrument.query(":ACQuire:COUNt?")
 
     def set_offset(self, offset, *channels):
-        '''
+        """
         Set offset in volts for the specified channel(s)
 
         Parameters:
@@ -252,19 +252,19 @@ class Keysight_DSOX2014(Instrument):
             offset in volts
         channels: Keysight_DSOX2014.Channel objects
             Channel enum value, i.e. Channel.ONE
-        '''
+        """
         for channel in channels:
             self._visainstrument.write("%s:OFFSet %f"%(channel.value, offset))
 
     def get_offset(self, *channels):
-        '''
+        """
         Get offset of the specified channel(s)
 
         Paramaters:
         -----------
         channels: Keysight_DSOX2014.Channel objects
             Channel enum value, i.e. Channel.ONE
-        '''
+        """
         offsets = []
         for channel in channels:
             offsets.append(self._visainstrument.query("%s:OFFSet?"%channel.value))

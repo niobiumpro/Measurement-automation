@@ -3,13 +3,10 @@ from lib2.VNATimeResolvedDispersiveMeasurement1D import *
 
 class DispersiveAPE(VNATimeResolvedDispersiveMeasurement1D):
 
-    def __init__(self, name, sample_name, vna_name, ro_awg, q_awg,
-                q_lo_name, line_attenuation_db = 60):
-        super().__init__(name, sample_name, vna_name, ro_awg, q_awg,
-                    q_lo_name, line_attenuation_db)
+    def __init__(self, name, sample_name, **devs_aliases_map):
+        super().__init__(name, sample_name, devs_aliases_map)
 
-        self._measurement_result = DispersiveAPEResult(name,
-                    sample_name)
+        self._measurement_result = DispersiveAPEResult(name, sample_name)
         self._sequence_generator = IQPulseBuilder.build_dispersive_APE_sequences
         self._swept_parameter_name = "ramsey_angle"
 
