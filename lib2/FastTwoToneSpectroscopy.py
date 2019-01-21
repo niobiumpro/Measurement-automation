@@ -5,44 +5,49 @@ from time import sleep
 
 class FastFluxTwoToneSpectroscopy(FastTwoToneSpectroscopyBase):
 
-    def __init__(self, name, sample_name, line_attenuation_db=60, **devs_aliases_map):
-        super().__init__(name, sample_name,
-                         line_attenuation_db, devs_aliases_map)
-
     def set_fixed_parameters(self, vna_parameters, mw_src_parameters,
-                             sweet_spot_current=None, sweet_spot_voltage=None, adaptive=False, bandwidth_factor=10):
+                             adaptive=False, bandwidth_factor=10):
         self._resonator_area = vna_parameters["freq_limits"]
         self._adaptive = adaptive
 
         # trigger layout is detected via mw_src_parameters in TTSBase class
 
         super().set_fixed_parameters(vna_parameters, mw_src_parameters,
-                                     current=sweet_spot_current, voltage=sweet_spot_voltage,
                                      detect_resonator=not adaptive, bandwidth_factor=bandwidth_factor)
 
     def set_swept_parameters(self, mw_src_frequencies, current_values=None,
                              voltage_values=None):
-        base_parameter_values = current_values if voltage_values is None else voltage_values
-        base_parameter_setter = self._adaptive_setter if self._adaptive else self._base_setter
+        # look cautiously, this is !xor implementation:
+        if( (current_values is None) == (voltage_values is None) ):
+            print( "FFTTS.set_swept_parameters: provide one and only one of the \
+                   optional arguments: 'current_values' or 'voltage_values'")
+            raise ValueError
 
-        swept_pars = {self._base_parameter_name: (base_parameter_setter, base_parameter_values),
+        if( voltage_values is None ):
+            base_parameter_values = current_values
+            self._base_parameter_name = "Current [A]"
+            self._base_parameter_setter = self._current_src.set_current
+        else:
+            base_parameter_values = voltage_values
+            self._base_parameter_name = "Voltage [V]"
+            self._base_parameter_setter = self._voltage_src.set_voltage
+
+        advanced_parameter_setter = self._adaptive_setter if self._adaptive else self._base_setter
+
+        swept_pars = {self._base_parameter_name: (advanced_parameter_setter, base_parameter_values),
                       "Frequency [Hz]": (self._mw_src.set_frequency, mw_src_frequencies)}
         super().set_swept_parameters(**swept_pars)
 
 
 class FastPowerTwoToneSpectroscopy(FastTwoToneSpectroscopyBase):
 
-    def __init__(self, name, sample_name, line_attenuation_db=60, **devs_aliases_map):
-        super().__init__(name, sample_name, line_attenuation_db, devs_aliases_map)
-
     def set_fixed_parameters(self, vna_parameters, mw_src_parameters,
-                             sweet_spot_current=None, sweet_spot_voltage=None, adaptive=False, bandwidth_factor=10):
+                             adaptive=False, bandwidth_factor=10):
         self._resonator_area = vna_parameters["freq_limits"]
         self._adaptive = adaptive
         # trigger layout is detected via mw_src_parameters in TTSBase class
 
         super().set_fixed_parameters(vna_parameters, mw_src_parameters,
-                                     current=sweet_spot_current, voltage=sweet_spot_voltage,
                                      detect_resonator=not adaptive, bandwidth_factor=10)
 
     def set_swept_parameters(self, mw_src_frequencies, power_values):
@@ -57,15 +62,10 @@ class FastPowerTwoToneSpectroscopy(FastTwoToneSpectroscopyBase):
 
 class FastAcStarkTwoToneSpectroscopy(FastTwoToneSpectroscopyBase):
 
-    def __init__(self, name, sample_name, line_attenuation_db=60, **devs_aliases_map):
-
-        super().__init__(name, sample_name, line_attenuation_db, devs_aliases_map)
-
-    def set_fixed_parameters(self, vna_parameters, mw_src_parameters, current=None,
-                             voltage=None, bandwidth_factor=10):
+    def set_fixed_parameters(self, vna_parameters, mw_src_parameters,
+                             bandwidth_factor=10):
         self._resonator_area = vna_parameters["freq_limits"]
         super().set_fixed_parameters(vna_parameters, mw_src_parameters,
-                                     voltage=voltage, current=current, detect_resonator=False,
                                      bandwidth_factor=bandwidth_factor)
 
     def set_swept_parameters(self, mw_src_frequencies, current_values=None,

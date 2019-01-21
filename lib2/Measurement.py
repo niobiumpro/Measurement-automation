@@ -83,6 +83,10 @@ class Measurement():
             methods that could be overwritten:
                 self._prepare_measurement_result_data
 
+            child-specific attributes that should be initialized
+            after the base class constructor call:
+                self._measurement_result
+
             Usage:
             1. create a class instance using needed devices names
             2. set fixed parameters
@@ -370,6 +374,7 @@ class Measurement():
             self._interrupted = True
             traceback.print_exc()
 
+        self._finalize_measurement()
         self._measurement_result.finalize()
         return self._measurement_result
 
@@ -403,15 +408,16 @@ class Measurement():
                     self._raw_data = zeros(raw_data_shape+[len(data)], dtype=complex_)
                 except TypeError: # data has no __len__ attribute
                     self._raw_data = zeros(raw_data_shape, dtype=complex_)
-
+            # print(idx_group)
+            # print(data)
             self._raw_data[idx_group] = data
 
             # storing parameters rows according
-            if done_iterations == 0:
-                measurement_data = \
-                    self._prepare_measurement_result_data(par_names, parameters_values)
-                self._measurement_result.set_data(
-                    measurement_data)  # TODO: calls deepcopy of the whole measurement data
+            # if done_iterations == 0:
+            measurement_data = \
+                self._prepare_measurement_result_data(par_names, parameters_values)
+            self._measurement_result.set_data(
+                measurement_data)  # TODO: calls deepcopy of the whole measurement data
 
             done_iterations += 1
 
@@ -444,6 +450,15 @@ class Measurement():
         See lib2.SingleToneSpectroscopy.py as an example implementation
         '''
         raise NotImplementedError
+
+    def _finalize_measurement(self):
+        '''
+        @brief: This function is called after the last measurement iteration.
+                Can be implemented to set devices parameters to some idle state
+                for example see TwoToneSpectroscopyBase.py implementation
+                (nullify DC flux biases that are applied to the sample)
+        '''
+        pass
 
     def _prepare_measurement_result_data(self, parameter_names, parameter_values):
         '''

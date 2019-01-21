@@ -13,17 +13,46 @@ from scipy.optimize import curve_fit
 
 class FastTwoToneSpectroscopyBase(Measurement):
 
-    def __init__(self, name, sample_name, line_attenuation_db,
-                 devs_aliases_map, plot_update_interval=5):
+    def __init__(self, name, sample_name,
+                 vna=None, mw_src=None, current_src=None, voltage_src=None,
+                 line_attenuation_db=0,
+                 plot_update_interval=5):
+        '''
+        @params:
+            name: string.
+            sample_name: string.
+            vna: alias address string or driver class
+                vector network analyzer.
+            vna: alias address string or driver class
+                readout continious wave measurement
+            mw_src: alias address string or driver class
+                generates continious wave wich frequency varies
+                during the iteration. When this frequency coincides
+                with one of the qubit transition frequencies
+                near-resonanse response is obtained in the vicinity
+                of this frequency
+
+            One of the following DC sources must be provided:
+            current_src: alias address string or driver class
+                    current source that is used as a flux bias device
+            voltage_src: alias address string or driver class
+                    voltage source that is used as a flux bias device
+
+            plot_update_interval: float
+                                sleep milliseconds between plot updates
+        '''
+
+        self._vna = None
+        self._mw_src = None
+        self._voltage_src = None
+        self._current_src = None
+
+        devs_aliases_map = {"vna": vna, "mw_src": mw_src,
+                            "current_src": current_src,
+                            "voltage_src": voltage_src}
 
         super().__init__(name, sample_name, devs_aliases_map,
                          plot_update_interval)
-
-        # devs_names = [vna_name, mw_src_name, current_src_name]
-        # super().__init__(name, sample_name, devs_names)
-        # self._vna = self._actual_devices[vna_name]
-        # self._mw_src = self._actual_devices[mw_src_name]
-        # self._current_src = self._actual_devices[current_src_name]
 
         self._measurement_result = TwoToneSpectroscopyResult(name, sample_name)
         self._interrupted = False
@@ -32,8 +61,8 @@ class FastTwoToneSpectroscopyBase(Measurement):
 
         self._last_resonator_result = None
 
-    def set_fixed_parameters(self, vna_parameters, mw_src_parameters, current=None,
-                             voltage=None, detect_resonator=True, bandwidth_factor=1):
+    def set_fixed_parameters(self, vna_parameters, mw_src_parameters,
+                             detect_resonator=True, bandwidth_factor=1):
 
         if "ext_trig_channel" in mw_src_parameters.keys():
             # internal adjusted trigger parameters for vna
@@ -48,24 +77,11 @@ class FastTwoToneSpectroscopyBase(Measurement):
 
         self._bandwidth_factor = bandwidth_factor
 
-        if voltage is None:
-            self._base_parameter_setter = self._current_src.set_current
-            base_parameter_value = current
-            self._base_parameter_name = "Current [A]"
-            msg1 = "at %.4f mA" % (current * 1e3)
-        else:
-            self._base_parameter_setter = self._voltage_src.set_voltage
-            base_parameter_value = voltage
-            self._base_parameter_name = "Voltage [V]"
-            msg1 = "at %.1f V" % (voltage)
-
-        self._base_parameter_setter(base_parameter_value)
-
         if detect_resonator:
             self._mw_src.set_output_state("OFF")
             msg = "Detecting a resonator within provided frequency range of the VNA %s \
                             " % (str(vna_parameters["freq_limits"]))
-            print(msg + msg1, flush=True)
+            print(msg, flush=True)
             res_freq, res_amp, res_phase = self._detect_resonator(vna_parameters, plot=True)
             print("Detected frequency is %.5f GHz, at %.2f mU and %.2f degrees" % (
             res_freq / 1e9, res_amp * 1e3, res_phase / pi * 180))
@@ -197,6 +213,14 @@ class FastTwoToneSpectroscopyBase(Measurement):
         vna_parameters["freq_limits"] = (res_freq, res_freq)
         self._vna.set_parameters(vna_parameters)
         self._mw_src.send_sweep_trigger()  # telling mw_src to be ready to start
+
+    def _finalize_measurement(self):
+        if( self._voltage_src is not None ):
+            self._voltage_src.set_voltage(0)
+
+        if( self._current_src is not None ):
+            self._current_src.set_current(0)
+
 
 
 class TwoToneSpectroscopyResult(SingleToneSpectroscopyResult):
