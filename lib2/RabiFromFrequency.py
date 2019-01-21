@@ -4,6 +4,11 @@ from lib2.DispersiveRabiOscillations import DispersiveRabiOscillations
 
 from copy import deepcopy
 
+from importlib import reload
+from . import structures
+reload(structures)
+from .structures import Snapshot
+
 class DispersiveRabiFromFrequency(Measurement):
     '''
     @brief: class is used to measure qubit lifetimes from the flux/qubit frequency
@@ -13,7 +18,8 @@ class DispersiveRabiFromFrequency(Measurement):
     '''
     def __init__(self, name, sample_name,
                  vna, q_lo,ro_awg, q_awg,ss_current_or_voltage,ss_freq,
-                 lowest_ss=True, current_source=None, q_z_awg=None,tts_result=None,
+                 tts_result,
+                 lowest_ss=True, current_source=None, q_z_awg=None,
                  plot_update_interval=5):
         '''
         @params:
@@ -60,13 +66,19 @@ class DispersiveRabiFromFrequency(Measurement):
         # constructor initializes devices from kwargs.keys() with '_' appended
         # keys must coincide with the attributes introduced in
         # "equipment variables declaration section"
-        devs_alias_map = {"vna": vna, "q_lo": q_lo, "current_source": current_source,
+        devs_aliases_map = {"vna": vna, "q_lo": q_lo, "current_source": current_source,
                           "ro_awg": ro_awg, "q_awg": q_awg}
-        super().__init__(name, sample_name, devs_alias_map, plot_update_interval)
+        super().__init__(name, sample_name, devs_aliases_map, plot_update_interval)
+
+        ## initializing base class elements with child specific values ##
+        self._measurement_result = RabiFromFrequencyResult()
 
         # last successful two tone spectroscopy result
         # that contains sweet-spot in its area
+        # as well as all the qubit frequencies that
+        # are going to be measured in this class
         self._tts_result = tts_result
+        self._snap = Snapshot(self._tts_result.data)
 
         ## Initial and current freq(current or voltage) point control START ##
         self._ss_freq = ss_freq
@@ -98,6 +110,35 @@ class DispersiveRabiFromFrequency(Measurement):
         # self._DRO.launch().data will be stored in the following list
         self._DRO_results = []
 
+    def plot_tts_connectivity_map(self,rel_threshold=0.5,
+                              kernel_x=0.1, kernel_y=0.1,
+                              connectivity=8):
+        """
+        @brief: This function is ought to be called before the
+                self.launch() in order to perform visual control
+                of the spectrum fitting
+        """
+        self._snap._connected_components()
+        self._snap.visualize_connectivity_map()
+
+    def set_connectivity_component_index(self, cc_index):
+        """
+        @brief: This function is ought to be called before the
+                self.launch() in order to perform visual control
+                of the spectrum fitting.
+                Function is called right after the call to the
+                self.plot_fft_connectivity_map(...)
+
+        :param cc_index: integer
+            index that were chosen manually by operator after
+            examining self.plot_fft_connectivity_map(...) output
+        :return:    interpolation function y(x) that is returned by
+                    scipy.interp1d(...)
+        """
+        self._snap._make_target_component_mask(label_i=cc_index)
+        self._snap._interpolate_yx_curve()
+        return self._snap._target_y_func
+
     def set_fixed_parameters(self, vna_parameters, ro_awg_parameters,
                              q_awg_parameters, qubit_frequency, pulse_sequence_parameters,
                              q_z_awg_params=None):
@@ -128,6 +169,7 @@ class DispersiveRabiFromFrequency(Measurement):
         # TODO: detect new qubit flux variable
 
 
+
         # setting new flux bias
         self._flux_var_setter(new_flux_var_val)
 
@@ -135,8 +177,8 @@ class DispersiveRabiFromFrequency(Measurement):
         q_z_awg_params = None if "q_z_awg" not in device_params else device_params["q_z_awg"]
 
         # TODO: detecting and setting a new resonator point is not optimized.
-        # TODO: propose to collect all neccessary code from the call chain of\
-        # TODO: self._DRO.set_fixed_parameters
+        # Propose to collect all neccessary code from the call chain of\
+        # self._DRO.set_fixed_parameters
         # detecting and setting a new resonator point
         self._DRO.set_fixed_parameters(device_params["vna"],
                                        device_params["ro_awg"],device_params["q_awg"],
