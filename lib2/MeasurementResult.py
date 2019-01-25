@@ -23,6 +23,7 @@ Classes implementing this interface should implement following features:
             Useful data, specific to each measurement type,
     -- Thread safety of the data (already implemented here)
 """
+import traceback
 
 from numpy import *
 import copy
@@ -34,6 +35,7 @@ from matplotlib import pyplot as plt
 from matplotlib import animation
 from datetime import datetime
 
+from IPython.display import clear_output
 
 def find(pattern, path):
     result = []
@@ -75,6 +77,8 @@ class MeasurementResult:
         self._dynamic_figure = None  # the figure that will be dynamically updated
         self._dynamic_axes = None  # axes of the subplots contained inside it
         self._dynamic_caxes = None  # colorbar axes for heatmaps
+
+        self._exception_info = None
 
     def set_parameter_names(self, parameter_names):
         self._parameter_names = parameter_names
@@ -158,6 +162,7 @@ class MeasurementResult:
     def __getstate__(self):
         d = dict(self.__dict__)
         del d['_data_lock']
+        del d['_anim']
         return d
 
     def __setstate__(self, state):
@@ -206,9 +211,13 @@ class MeasurementResult:
         figManager = plt.get_current_fig_manager()
         if maximized:
             try:
-                figManager.window.showMaximized()
+                try:
+                    figManager.window.showMaximized()
+                except:
+                    figManager.window.state('zoomed')
             except:
-                figManager.window.state('zoomed')
+                fig.set_size_inches(10,5)
+
         return fig, axes, caxes
 
     def _yield_data(self):
@@ -230,12 +239,16 @@ class MeasurementResult:
         self._caxes = caxes
         figManager = plt.get_current_fig_manager()
         try:
-            figManager.window.showMaximized()
+            try:
+                figManager.window.showMaximized()
+            except:
+                figManager.window.state('zoomed')
         except:
-            figManager.window.state('zoomed')
+            # we are probably in the notebook regime
+            fig.set_size_inches(10,5)
 
         self._anim = animation.FuncAnimation(fig, self._plot, frames=self._yield_data, repeat=False)
-        plt.show()
+        plt.show(block = True)
 
     def _prepare_figure(self):
         """
@@ -277,6 +290,11 @@ class MeasurementResult:
         self._dynamic_axes = None
         self._dynamic_caxes = None
 
+        if self._exception_info is not None:
+            clear_output()
+            traceback.print_tb(self._exception_info[-1])
+            print(*self._exception_info[:2])
+            
     def set_is_finished(self, is_finished):
         self._is_finished = is_finished
 
@@ -331,3 +349,6 @@ class MeasurementResult:
     def copy(self):
         with self._data_lock:
             return copy.deepcopy(self)
+
+    def set_exception_info(self, exception_info):
+        self._exception_info = exception_info

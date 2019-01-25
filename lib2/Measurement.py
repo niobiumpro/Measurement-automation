@@ -29,6 +29,8 @@ some other bullshit:
         launch (возможно, целиком должен быть реализован здесь, так как он универсальный)
         _record_data (будет содержать логику измерения, пользуясь приборами и параметрами, определенными выше)\
 """
+from time import sleep
+
 from numpy import *
 import copy
 import pyvisa
@@ -47,11 +49,14 @@ from matplotlib import pyplot as plt, animation
 from datetime import datetime as dt
 from threading import Thread
 from resonator_tools import circuit
+
+from lib2.MeasurementResult import MeasurementResult
 from lib2.ResonatorDetector import *
 from itertools import product
 from functools import reduce
 from operator import mul
 import traceback
+import sys
 
 from lib2.LoggingServer import LoggingServer
 
@@ -62,7 +67,7 @@ class Measurement:
     The class contains methods to help with the implementation of measurement classes.
 
     """
-    # _logger = LoggingServer.getInstance()
+    logger = LoggingServer.getInstance()
     _actual_devices = {}
     _log = []
     _devs_dict = \
@@ -123,8 +128,8 @@ class Measurement:
         self._list = ""
         rm = pyvisa.ResourceManager()
         temp_list = list(rm.list_resources_info().values())
-        Measurement._logger.debug("Measurement " + name + " init")
-        Measurement._logger.debug("Measurement " + name + " devs:" + str(devs_aliases_map))
+        Measurement.logger.debug("Measurement " + name + " init")
+        Measurement.logger.debug("Measurement " + name + " devs:" + str(devs_aliases_map))
         self._devs_info = [item[4] for item in list(temp_list)]
         # returns list of tuples: (IP Address string, alias) for all
         # devices present in VISA
@@ -200,12 +205,14 @@ class Measurement:
 
     def launch(self):
 
+        self._interrupted = False  # ensure
+
         self._measurement_result.set_start_datetime(dt.now())
         if self._measurement_result.is_finished():
             print("Starting with a result from a previous launch")
             self._measurement_result.set_is_finished(False)
         print("Started at: ", self._measurement_result.get_start_datetime())
-        t = Thread(target=self._record_data)
+        t = Thread(target=self.measure)
         t.start()
 
         self._measurement_result._visualize_dynamic()
@@ -216,6 +223,23 @@ class Measurement:
         print('Measurement was interrupted! \n')
         self._interrupted = True
         self._measurement_result.set_is_finished(True)
+
+    def join(self):
+        try:
+            while not self._measurement_result.is_finished():
+                plt.pause(1)
+        except KeyboardInterrupt:
+            self.stop()
+
+    def measure(self):
+        try:
+            self._record_data()
+        except Exception:
+            self._measurement_result.set_is_finished(True)
+            self._measurement_result.set_exception_info(sys.exc_info())
+
+    def set_measurement_result(self, measurement_result : MeasurementResult):
+        self._measurement_result = measurement_result
 
     def _record_data(self):
 
@@ -269,8 +293,9 @@ class Measurement:
                   end="", flush=True)
 
             if self._interrupted:
-                self._interrupted = False
+                self._measurement_result.set_is_finished(True)
                 return
+
         self._measurement_result.set_recording_time(dt.now() - start_time)
         print("\nElapsed time: %s" %
               self._format_time_delta((dt.now() - start_time)

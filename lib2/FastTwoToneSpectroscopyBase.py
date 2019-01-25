@@ -35,33 +35,37 @@ class FastTwoToneSpectroscopyBase(Measurement):
     def set_fixed_parameters(self, vna_parameters, mw_src_parameters, current=None,
                              voltage=None, detect_resonator=True, bandwidth_factor=1):
 
-        if "ext_trig_channel" in mw_src_parameters.keys():
+        if "ext_trig_channel" in mw_src_parameters[0].keys():
             # internal adjusted trigger parameters for vna
-            vna_parameters["trig_per_point"] = True  # trigger output once per sweep point
-            vna_parameters["pos"] = True  # positive edge
-            vna_parameters["bef"] = False  # trigger sent before measurement is started
+            vna_parameters[0]["trig_per_point"] = True  # trigger output once per sweep point
+            vna_parameters[0]["pos"] = True  # positive edge
+            vna_parameters[0]["bef"] = False  # trigger sent before measurement is started
 
             # internal adjusted trigger parameters for microwave source
-            mw_src_parameters["unit"] = "Hz"
-            mw_src_parameters["InSweep_trg_src"] = "EXT"
-            mw_src_parameters["sweep_trg_src"] = "BUS"
+            mw_src_parameters[0]["unit"] = "Hz"
+            mw_src_parameters[0]["InSweep_trg_src"] = "EXT"
+            mw_src_parameters[0]["sweep_trg_src"] = "BUS"
 
         self._bandwidth_factor = bandwidth_factor
 
-        if voltage is None:
-            self._base_parameter_setter = self._current_src.set_current
-            base_parameter_value = current
-            self._base_parameter_name = "Current [A]"
-            msg1 = "at %.4f mA" % (current * 1e3)
-        else:
-            self._base_parameter_setter = self._voltage_src.set_voltage
-            base_parameter_value = voltage
-            self._base_parameter_name = "Voltage [V]"
-            msg1 = "at %.1f V" % (voltage)
-
-        self._base_parameter_setter(base_parameter_value)
-
+        
         if detect_resonator:
+            
+            if voltage is None:
+                self._base_parameter_setter = self._current_src[0].set_current
+                base_parameter_value = current
+                self._base_parameter_name = "Current [A]"
+                msg1 = "at %.4f mA" % (current * 1e3)
+            elif current is None:
+                self._base_parameter_setter = self._voltage_src.set_voltage
+                base_parameter_value = voltage
+                self._base_parameter_name = "Voltage [V]"
+                msg1 = "at %.1f V" % (voltage)
+            else:
+                raise ValueError("Missing current or voltage to detect resonator at!")
+
+            self._base_parameter_setter(base_parameter_value)
+
             self._mw_src.set_output_state("OFF")
             msg = "Detecting a resonator within provided frequency range of the VNA %s \
                             " % (str(vna_parameters["freq_limits"]))
@@ -77,21 +81,22 @@ class FastTwoToneSpectroscopyBase(Measurement):
         super().set_fixed_parameters(vna=vna_parameters, mw_src=mw_src_parameters)
 
     def _detect_resonator(self, vna_parameters, plot=True):
-        self._vna.set_nop(100)
-        self._vna.set_freq_limits(*vna_parameters["freq_limits"])
+        
+        self._vna[0].set_nop(100)
+        self._vna[0].set_freq_limits(*vna_parameters["freq_limits"])
         if "res_find_power" in vna_parameters.keys():
-            self._vna.set_power(vna_parameters["res_find_power"])
+            self._vna[0].set_power(vna_parameters["res_find_power"])
         else:
-            self._vna.set_power(vna_parameters["power"])
+            self._vna[0].set_power(vna_parameters["power"])
         if "res_find_nop" in vna_parameters.keys():
-            self._vna.set_nop(vna_parameters["res_find_nop"])
+            self._vna[0].set_nop(vna_parameters["res_find_nop"])
         else:
-            self._vna.set_nop(vna_parameters["nop"])
-        self._vna.set_bandwidth(vna_parameters["bandwidth"] * self._bandwidth_factor)
-        self._vna.set_averages(vna_parameters["averages"])
+            self._vna[0].set_nop(vna_parameters["nop"])
+        self._vna[0].set_bandwidth(vna_parameters["bandwidth"] * self._bandwidth_factor)
+        self._vna[0].set_averages(vna_parameters["averages"])
         result = super()._detect_resonator(plot)
-        self._vna.do_set_power(vna_parameters["power"])
-        self._vna.do_set_power(vna_parameters["nop"])
+        self._vna[0].do_set_power(vna_parameters["power"])
+        self._vna[0].do_set_power(vna_parameters["nop"])
         return result
 
     def _record_data(self):
@@ -157,7 +162,7 @@ class FastTwoToneSpectroscopyBase(Measurement):
         self._measurement_result.set_is_finished(True)
 
     def _recording_iteration(self):
-        vna = self._vna
+        vna = self._vna[0]
         vna.avg_clear()
         vna.prepare_for_stb()
         vna.sweep_single()
@@ -167,14 +172,14 @@ class FastTwoToneSpectroscopyBase(Measurement):
 
     def _base_setter(self, value):
         self._base_parameter_setter(value)
-        self._mw_src.send_sweep_trigger()  # telling mw_src to be ready to start
+        self._mw_src[0].send_sweep_trigger()  # telling mw_src to be ready to start
 
     def _adaptive_setter(self, value):
         self._base_parameter_setter(value)
-        vna_parameters = self._fixed_pars["vna"]
+        vna_parameters = self._fixed_pars["vna"][0]
         vna_parameters["freq_limits"] = self._resonator_area
 
-        self._mw_src.set_output_state("OFF")
+        self._mw_src[0].set_output_state("OFF")
         # print("\rDetecting a resonator within provided frequency range of the VNA %s\
         #            "%(str(vna_parameters["freq_limits"])), flush=True, end="")
 
@@ -195,10 +200,10 @@ class FastTwoToneSpectroscopyBase(Measurement):
 
         # print("\rDetected frequency is %.5f GHz, at %.2f mU and %.2f \
         #            degrees"%(res_freq/1e9, res_amp*1e3, res_phase/pi*180), end="")
-        self._mw_src.set_output_state("ON")
+        self._mw_src[0].set_output_state("ON")
         vna_parameters["freq_limits"] = (res_freq, res_freq)
-        self._vna.set_parameters(vna_parameters)
-        self._mw_src.send_sweep_trigger()  # telling mw_src to be ready to start
+        self._vna[0].set_parameters(vna_parameters)
+        self._mw_src[0].send_sweep_trigger()  # telling mw_src to be ready to start
 
 
 class TwoToneSpectroscopyResult(SingleToneSpectroscopyResult):

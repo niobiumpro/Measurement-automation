@@ -9,10 +9,8 @@ class ResonatorDetector():
 
     def __init__(self, frequencies=None, s_data=None, plot=True, fast=False):
 
-        self._freqs = frequencies
-        self._s_data = s_data
         self._plot = plot
-        self._port = notch_port(frequencies, s_data)
+        self.set_data(frequencies, s_data)
         # self._s_data_filtered = (savgol_filter(real(self._s_data), 21, 2)\
         #                         + 1j*savgol_filter(imag(self._s_data), 21, 2))
         # self._filtered_port = notch_port(frequencies, self._s_data_filtered)
@@ -21,6 +19,8 @@ class ResonatorDetector():
     def set_data(self, frequencies, s_data):
         self._freqs = frequencies
         self._s_data = s_data
+        self._port = notch_port(frequencies, s_data)
+
 
     def set_plot(self, plot):
         self._plot = plot
@@ -46,13 +46,7 @@ class ResonatorDetector():
 
         scan_range = self._freqs[-1] - self._freqs[0]
 
-        try:
-            self._port.autofit()
-        except Exception as e:
-            print(e)
-            # print(self._s_data, self._freqs)
-            # exit()
-            return None
+        self._port.autofit()
 
         if not self._freqs[0] < self._port.fitresults["fr"] < self._freqs[-1] \
                 or self._port.fitresults["Ql"] > 20000:
