@@ -8,3 +8,5 @@ qubit-measurements*
 log/
 *.pkl
 .idea/*
+Git token
+spectrum_code
