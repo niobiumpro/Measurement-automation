@@ -9,20 +9,23 @@ class FastFluxTwoToneSpectroscopy(FastTwoToneSpectroscopyBase):
         super().__init__(name, sample_name,
                          line_attenuation_db, devs_aliases_map)
 
-    def set_fixed_parameters(self, vna_parameters, mw_src_parameters,
+    def set_fixed_parameters(self,
                              sweet_spot_current=None, sweet_spot_voltage=None, adaptive=False,
-                             bandwidth_factor=10):
-        self._resonator_area = vna_parameters[0]["freq_limits"]
+                              bandwidth_factor=10, **dev_params):
+
+        vna_parameters = dev_params['vna'][0]
+        mw_src_parameters = dev_params['mw_src'][0]
+        self._resonator_area = vna_parameters["freq_limits"]
         self._adaptive = adaptive
 
         # trigger layout is detected via mw_src_parameters in TTSBase class
 
-        super().set_fixed_parameters(vna_parameters, mw_src_parameters,
+        super().set_fixed_parameters(vna=dev_params['vna'], mw_src=dev_params['mw_src'],
                                      current=sweet_spot_current, voltage=sweet_spot_voltage,
                                      detect_resonator=not adaptive,
                                      bandwidth_factor=bandwidth_factor)
 
-    def set_swept_parameters(self, mw_src_frequencies, current_values=None,
+    def set_swept_parameters(self, current_values=None,
                              voltage_values=None):
         
         base_parameter_values = current_values if voltage_values is None else voltage_values
@@ -30,10 +33,9 @@ class FastFluxTwoToneSpectroscopy(FastTwoToneSpectroscopyBase):
                                         if voltage_values is None else self._voltage_src[0].set_voltage
         
         base_parameter_setter = self._adaptive_setter if self._adaptive else self._base_setter
-        self._base_parameter_name = "Volage [V]" if voltage_values is not None else "Current [A]"
+        self._base_parameter_name = "Voltage [V]" if voltage_values is not None else "Current [A]"
 
-        swept_pars = {self._base_parameter_name: (base_parameter_setter, base_parameter_values),
-                      "Frequency [Hz]": (self._mw_src[0].set_frequency, mw_src_frequencies)}
+        swept_pars = {self._base_parameter_name: (base_parameter_setter, base_parameter_values)}
         super().set_swept_parameters(**swept_pars)
 
 
