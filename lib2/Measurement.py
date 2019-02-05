@@ -1,61 +1,15 @@
-"""
-Base interface for all measurements.
-
-Should define the raw_data type (???)
-я бы сказал что он обязательно должен требовать (как-то) чтобы наследники задавали вид сырых данных, я подумаю как это сделать пока на ум не приходит
-
-Should perform following actions:
-
- --  automatically call all nesessary devices for a certain measurement. (with the names of devices passed through the constructor)
-    of course
- --  implementation of parallel plotting (the part with Treads, the actual plot is adjusted in class with actual measurement)
-    yes, but not with threads yet with Processes, still thinking about how exactly it should be hidden from the end-user
- --  some universal data operations on-fly (background substraction, normalization, dispersion calculation, etc.)
-    the implementation of these operations should go into each MeasurementResult class, so only the calls of the
-    corresponding methods should be left here (may be to allow user to choose exact operation to perform during the dynamic plotting)
- --  universal functions for presetting devices in a number of frequently used regimes (creating windows/channels/sweeps/markers)
-    я думаю это лучше поместить в драверы
- --  frequently used functions of standart plotting like single trace (but made fancy, like final figures for presentation/)
-    это тоже в классы данных по идее лучше пойдет
- --  a logging of launched measurements from ALL certain classes (chronologically, in a single file, like laboratory notebook, with comments)
-    может быть, может быть полезно, если 100500 человек чето мерют одними и теми же приборами и что-то сломалось/нагнулось
-some other bullshit?is this class necessary at all?
-
-some other bullshit:
- -- должен нести описания методов, которые должны быть обязательено реализованы в дочерних классах:
-        set_devices (устанавливает, какие приборы используются, получает на вход обекты)
-        set_control_parameters (установить неизменные параметры приборов)
-        set_varied_parameters (установить изменяемые параметры и их значения; надо написать для STS)
-        launch (возможно, целиком должен быть реализован здесь, так как он универсальный)
-        _record_data (будет содержать логику измерения, пользуясь приборами и параметрами, определенными выше)\
-"""
-from time import sleep
-
-from numpy import *
-import copy
 import pyvisa
-# import sys.stdout.flush
-# from sys.stdout import flush
-import os, fnmatch
-import pickle
+from matplotlib._pylab_helpers import Gcf
+
 from drivers import *
-# from drivers.Agilent_PNA_L import *
-# from drivers.Agilent_PNA_L import *
-# from drivers.Yokogawa_GS200 import *
-# from drivers.KeysightAWG import *
-# from drivers.E8257D import MXG,EXG
-# from drivers.Agilent_DSO import *
-from matplotlib import pyplot as plt, animation
 from datetime import datetime as dt
 from threading import Thread
-from resonator_tools import circuit
 
 from lib2.MeasurementResult import MeasurementResult
 from lib2.ResonatorDetector import *
 from itertools import product
 from functools import reduce
 from operator import mul
-import traceback
 import sys
 
 from lib2.LoggingServer import LoggingServer
@@ -215,21 +169,25 @@ class Measurement:
         t = Thread(target=self.measure)
         t.start()
 
-        self._measurement_result._visualize_dynamic()
+        self._measurement_result.visualize_dynamic()
+        self.join()
 
         return self._measurement_result
 
-    def stop(self):
-        print('Measurement was interrupted! \n')
-        self._interrupted = True
-        self._measurement_result.set_is_finished(True)
-
     def join(self):
+        stop_messages = {KeyboardInterrupt: "\nMeasurement interrupted!",
+                         AttributeError: "\nPlot has been closed, aborting!"}
         try:
+            # wait for the measurement to end or for an interrupt
             while not self._measurement_result.is_finished():
-                plt.pause(1)
-        except KeyboardInterrupt:
-            self.stop()
+                # check if the window is still there
+                manager = Gcf.get_fig_manager(self._measurement_result.get_figure_number())
+                manager.canvas.start_event_loop(.1)
+        except (KeyboardInterrupt, AttributeError) as e:
+            print(stop_messages[type(e)])
+            self._interrupted = True
+            self._measurement_result.set_is_finished(True)
+            self._measurement_result.finalize()
 
     def measure(self):
         try:
@@ -244,8 +202,6 @@ class Measurement:
     def _record_data(self):
 
         par_names = self._swept_pars_names
-        parameters_values = []
-        parameters_idxs = []
         done_iterations = 0
         start_time = self._measurement_result.get_start_datetime()
 
