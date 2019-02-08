@@ -152,7 +152,7 @@ class MeasurementRunner():
                           "averages": 1,
                           "res_find_nop":401}
 
-        raadout_delays = linspace(0, 50000, 101)
+        readout_delays = linspace(0, 50000, 101)
         exc_frequency = self._exact_qubit_freqs[qubit_name]
         pi_pulse_duration = \
             self._dro_results[qubit_name].get_pi_pulse_duration() * 1e3
@@ -170,7 +170,7 @@ class MeasurementRunner():
                                 q_awg_params,
                                 exc_frequency,
                                 pulse_sequence_parameters)
-        DD.set_swept_parameters(raadout_delays)
+        DD.set_swept_parameters(readout_delays)
         MeasurementResult.close_figure_by_window_name("Resonator fit")
         dd_result = DD.launch()
         self._dd_results[qubit_name] = dd_result
