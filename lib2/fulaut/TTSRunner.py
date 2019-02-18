@@ -27,7 +27,7 @@ class TTSRunner():
             self._ro_awg = awgs["ro_awg"]
             self._q_awg = awgs["q_awg"]
             self._open_mixers()
-            self._vna_power = -20
+            self._vna_power = -25
         else:
             self._vna_power = -50
 
@@ -38,7 +38,7 @@ class TTSRunner():
                                 "averages": 1,
                                 "sweep_type": "LIN"}
 
-        self._mw_src_parameters = {"power": 0}
+        self._mw_src_parameters = {"power": -5}
 
         res_freq, g, period, sweet_spot, max_q_freq, d = self._fit_p0
 
@@ -63,7 +63,7 @@ class TTSRunner():
         # else:
         #     mw_limits = (res_freq-0.1e9, expected_q_freq+1e9)
 
-        mw_limits = (expected_q_freq - 2.5e9, expected_q_freq + 0.5e9)
+        mw_limits = (expected_q_freq - .7e9, expected_q_freq + 0.5e9)
 
         self._mw_src_frequencies = linspace(*mw_limits, 201)
 
@@ -108,9 +108,9 @@ class TTSRunner():
                                       mw_src=self._mw_src,
                                       current_src=self._cur_src)
 
-        self._TTS.set_fixed_parameters(self._vna_parameters,
-                                 self._mw_src_parameters,
-                                 sweet_spot_current=mean(self._currents),
+        self._TTS.set_fixed_parameters(vna = [self._vna_parameters],
+                                 mw_src = [self._mw_src_parameters],
+                                 sweet_spot_current=float(mean(self._currents)),
                                  adaptive=True)
 
         self._TTS.set_swept_parameters(self._mw_src_frequencies,

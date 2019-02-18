@@ -20,7 +20,7 @@ class STSRunner():
             self._ro_awg = awgs["ro_awg"]
             self._q_awg = awgs["q_awg"]
             self._open_only_readout_mixer()
-            self._vna_power = -20
+            self._vna_power = -25
         else:
             self._vna_power = -50
 
@@ -32,7 +32,7 @@ class STSRunner():
         self._currents = linspace(-.1e-3, .1e-3, 101)
         self._sts_result = None
         self._launch_datetime = datetime.today()
-        self._cur_src.set_appropriate_range(max(abs(self._currents)))
+        self._cur_src[0].set_appropriate_range(max(abs(self._currents)))
 
         self._logger = LoggingServer.getInstance()
 
@@ -132,9 +132,9 @@ class STSRunner():
                                            self._sample_name, plot_update_interval=1,
                                            vna=self._vna, src=self._cur_src)
 
-        self._STS.set_fixed_parameters(self._vna_parameters)
+        self._STS.set_fixed_parameters(vna=[self._vna_parameters])
         self._STS.set_swept_parameters({'Current [A]': \
-                                            (self._STS._src.set_current, self._currents)})
+                                            (self._STS._src[0].set_current, self._currents)})
 
         self._sts_result = self._STS.launch()
 

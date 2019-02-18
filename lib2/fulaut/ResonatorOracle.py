@@ -5,7 +5,7 @@ from matplotlib import pyplot as plt
 class ResonatorOracle():
 
     def __init__(self, vna, s_param, area_size):
-        self._vna = vna
+        self._vna = vna[0]
         self._vna.select_S_param(s_param)
         self._area_size = area_size
 
