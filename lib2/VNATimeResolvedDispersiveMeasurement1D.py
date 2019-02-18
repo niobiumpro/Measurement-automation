@@ -162,9 +162,13 @@ class VNATimeResolvedDispersiveMeasurement1DResult( \
             self._anno[idx] = ax.annotate(annotation_string, (h_pos, v_pos),
                                           bbox=self._annotation_bbox_props, ha="center")
         else:
-            self._anno[idx].set_text(annotation_string)
-            self._anno[idx].set_x(h_pos)
-            self._anno[idx].set_y(v_pos)
+            self._anno[idx].remove()
+            self._anno[idx] = ax.annotate(annotation_string, (h_pos, v_pos),
+                                          bbox=self._annotation_bbox_props, ha="center")
+            # print(h_pos, v_pos)
+            # print(self._anno[idx])
+
+
 
     def _plot_fit(self, axes):
         self.fit(verbose=False)

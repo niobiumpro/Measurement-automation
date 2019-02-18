@@ -1,41 +1,18 @@
-"""
-Base class for all measurement results.
-
-Classes implementing this interface should implement following features:
-    -- Sample name, experiment title
-    -- Time data
-        Start datetime, recording time
-    -- Experimental data processing
-        -- Storage and basic manipulation necessary for each measurement type
-        -- Export to human-readable text files
-    -- Visualization
-        Nice and detailed plots. Should support:
-        -- Static mode
-            To visualize the data on user demand
-        -- Dynamic mode
-            To perform live updates during the recording
-    -- Context
-        MeasurementResult objects should contain information about the state
-        of the equipment and general measurement parameters:
-        -- List of the equipment involved in the experiment
-            Each device should contain a snapshot of all control parameters
-        -- Other data
-            Useful data, specific to each measurement type,
-    -- Thread safety of the data (already implemented here)
-"""
-import traceback
-
-from numpy import *
-import copy
-
-import os, fnmatch, platform
+import fnmatch
+import os
 import pickle
-from threading import Lock
-from matplotlib import pyplot as plt
-from matplotlib import animation
+import platform
+import traceback
 from datetime import datetime
+from threading import Lock
 
 from IPython.display import clear_output
+import matplotlib
+from matplotlib import animation, pyplot as plt
+from matplotlib._pylab_helpers import Gcf
+from numpy import array, where
+import copy
+
 
 def find(pattern, path):
     result = []
@@ -59,9 +36,9 @@ class ContextBase():
         return "Equipment with parameters:\n" + str(self._equipment) + \
                "\nComment:\n" + self._comment
 
-    def update_context(self, equipment={}, comment=""):
-        context._equipment.update(equipment)
-        context._comment.join(comment)
+    def update(self, equipment={}, comment=""):
+        self._equipment.update(equipment)
+        self._comment.join(comment)
 
 
 class MeasurementResult:
@@ -72,8 +49,10 @@ class MeasurementResult:
         self._data_lock = Lock()
         self._data = {}
         self._context = ContextBase()
-        # Dynamic visualization fileds, see _prepare_figure(...) docstring below
 
+        self._parameter_names = None
+
+        # Dynamic visualization fields, see _prepare_figure(...) docstring below
         self._dynamic_figure = None  # the figure that will be dynamically updated
         self._dynamic_axes = None  # axes of the subplots contained inside it
         self._dynamic_caxes = None  # colorbar axes for heatmaps
@@ -163,6 +142,10 @@ class MeasurementResult:
         d = dict(self.__dict__)
         del d['_data_lock']
         del d['_anim']
+        del d['_figure']
+        del d['_axes']
+        del d['_caxes']
+        del d['_exception_info']
         return d
 
     def __setstate__(self, state):
@@ -185,6 +168,8 @@ class MeasurementResult:
         child methods should save additional files in their overridden methods,
         i.e. plot pictures
         """
+        fig, axes, caxes = self.visualize()
+
         with self._data_lock:
             with open(self.get_save_path() + self._name + '.pkl', 'w+b') as f:
                 pickle.dump(self, f)
@@ -193,7 +178,6 @@ class MeasurementResult:
             with open(self.get_save_path() + self._name + '_context.txt', 'w+') as f:
                 f.write(self.get_context().to_string())
 
-        fig, axes, caxes = self.visualize()
         plt.savefig(self.get_save_path() + self._name + ".png", bbox_inches='tight')
         plt.savefig(self.get_save_path() + self._name + ".pdf", bbox_inches='tight')
         plt.close(fig)
@@ -223,13 +207,11 @@ class MeasurementResult:
     def _yield_data(self):
         while not self.is_finished():
             yield self.get_data()
-        self._dynamic = False
-        self.finalize()
 
-    def _visualize_dynamic(self):
+    def visualize_dynamic(self):
         """
         Dynamically visualizes the measurement data. To be used in the recording
-        scripts (note the underscore which makes this method private)
+        scripts.
         """
 
         fig, axes, caxes = self._prepare_figure()
@@ -237,18 +219,21 @@ class MeasurementResult:
         self._figure = fig
         self._axes = axes
         self._caxes = caxes
-        figManager = plt.get_current_fig_manager()
+        fig_manager = Gcf.get_fig_manager(fig.number)
+
         try:
             try:
-                figManager.window.showMaximized()
+                fig_manager.window.showMaximized()
             except:
-                figManager.window.state('zoomed')
+                fig_manager.window.state('zoomed')
         except:
             # we are probably in the notebook regime
-            fig.set_size_inches(10,5)
+            fig.set_size_inches(10, 5)
 
-        self._anim = animation.FuncAnimation(fig, self._plot, frames=self._yield_data, repeat=False)
-        plt.show(block = True)
+        self._anim = animation.FuncAnimation(fig, self._plot,
+                                             frames=self._yield_data,
+                                             repeat=False, interval=100)
+
 
     def _prepare_figure(self):
         """
@@ -285,10 +270,10 @@ class MeasurementResult:
 
         Should at least close the dynamically updated figure (implemented)
         """
-        plt.close(self._dynamic_figure)
         self._dynamic_figure = None
         self._dynamic_axes = None
         self._dynamic_caxes = None
+        self._dynamic = False
 
         if self._exception_info is not None:
             clear_output()
@@ -335,6 +320,9 @@ class MeasurementResult:
             return r"${0} \times 10^{{{1}}}$".format(base, int(exponent))
         else:
             return base
+
+    def get_figure_number(self):
+        return self._figure.number
 
     @staticmethod
     def close_figure_by_window_name(window_name):

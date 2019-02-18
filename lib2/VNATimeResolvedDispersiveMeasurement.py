@@ -133,7 +133,7 @@ class VNATimeResolvedDispersiveMeasurement(Measurement):
                                               .add_dc_pulse(ro_duration).add_zero_until(rep_period).build())
         self._q_awg[0].output_pulse_sequence(q_pb.add_zero_until(rep_period).build())
 
-        if self._q_z_awg[0] is not None:
+        if hasattr(self, "_q_z_awg"):
             q_z_pb = PulseBuilder(q_z_calibration)
             self._q_z_awg[0].output_pulse_sequence(q_z_pb.add_zero_until(rep_period).build())
 
@@ -157,10 +157,10 @@ class VNATimeResolvedDispersiveMeasurement(Measurement):
         for (seq, dev) in zip(seqs['q_seqs'], self._q_awg):
             dev.output_pulse_sequence(seq)
         for (seq, dev) in zip(seqs['ro_seqs'], self._ro_awg):
-            dev.output_pulse_sequence(seq, asynchronous=True)
+            dev.output_pulse_sequence(seq, asynchronous=False)
         if 'q_z_seqs' in seqs.keys():
             for (seq, dev) in zip(seqs['q_z_seqs'], self._q_z_awg):
-                dev.output_pulse_sequence(seq, asynchronous=True)
+                dev.output_pulse_sequence(seq, asynchronous=False)
 
 
 class VNATimeResolvedDispersiveMeasurementResult(MeasurementResult):

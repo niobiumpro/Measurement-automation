@@ -178,6 +178,7 @@ class SingleToneSpectroscopyResult(MeasurementResult):
             self._amps_map.set_data(abs(Z).T)
             self._amps_map.set_clim(self.min_abs, self.max_abs)
             self._amp_cb.set_clim(self.min_abs, self.max_abs)
+
         if self._phas_map is None or not self._dynamic:
             self._phas_map = ax_phas.imshow(phases, origin='lower', aspect='auto',
                                             cmap="RdBu_r", vmin=self.min_phase, vmax=self.max_phase,
@@ -188,6 +189,7 @@ class SingleToneSpectroscopyResult(MeasurementResult):
             self._phas_map.set_clim(self.min_phase, self.max_phase)
             self._phas_cb.set_clim(self.min_phase, self.max_phase)
             plt.draw()
+
 
     def set_plot_range(self, min_abs, max_abs, min_phas=None, max_phas=None):
         self.max_phase = max_phas

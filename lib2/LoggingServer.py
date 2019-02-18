@@ -8,7 +8,7 @@ from logging.handlers import TimedRotatingFileHandler
 
 class LoggingServer():
     loggingHandler = TimedRotatingFileHandler(
-        'log/fulaut.log', when="midnight", backupCount=1)
+        'log/fulaut.log', when="midnight", backupCount=-1)
     loggingFormat = '%(asctime)s.%(msecs)03d [%(levelname)s] %(message)s'
     loggingFormatter = Formatter(fmt=loggingFormat, datefmt='%I:%M:%S')
     loggingHandler.setFormatter(loggingFormatter)

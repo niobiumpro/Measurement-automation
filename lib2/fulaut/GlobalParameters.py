@@ -9,12 +9,12 @@ class GlobalParameters():
 
 
     recalibrate_mixers = {"I": True, "II":False, "III":False,
-                        "IV":False, "VI":False, "V":False,
+                        "IV":False, "V":False, "VI":True,
                         "VII":False, "VIII":False}
 
 
     ro_ssb_power = {"I": -50, "II":-50, "III":-50,
-                        "IV":-50, "VI":-50, "V":-50,
+                        "IV":-50, "VI":-40, "V":-50,
                         "VII":-50, "VIII":-50}
 
     exc_ssb_power = {"I": -20, "II":-20, "III":-20,

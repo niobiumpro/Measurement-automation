@@ -1,61 +1,15 @@
-"""
-Base interface for all measurements.
-
-Should define the raw_data type (???)
-я бы сказал что он обязательно должен требовать (как-то) чтобы наследники задавали вид сырых данных, я подумаю как это сделать пока на ум не приходит
-
-Should perform following actions:
-
- --  automatically call all nesessary devices for a certain measurement. (with the names of devices passed through the constructor)
-    of course
- --  implementation of parallel plotting (the part with Treads, the actual plot is adjusted in class with actual measurement)
-    yes, but not with threads yet with Processes, still thinking about how exactly it should be hidden from the end-user
- --  some universal data operations on-fly (background substraction, normalization, dispersion calculation, etc.)
-    the implementation of these operations should go into each MeasurementResult class, so only the calls of the
-    corresponding methods should be left here (may be to allow user to choose exact operation to perform during the dynamic plotting)
- --  universal functions for presetting devices in a number of frequently used regimes (creating windows/channels/sweeps/markers)
-    я думаю это лучше поместить в драверы
- --  frequently used functions of standart plotting like single trace (but made fancy, like final figures for presentation/)
-    это тоже в классы данных по идее лучше пойдет
- --  a logging of launched measurements from ALL certain classes (chronologically, in a single file, like laboratory notebook, with comments)
-    может быть, может быть полезно, если 100500 человек чето мерют одними и теми же приборами и что-то сломалось/нагнулось
-some other bullshit?is this class necessary at all?
-
-some other bullshit:
- -- должен нести описания методов, которые должны быть обязательено реализованы в дочерних классах:
-        set_devices (устанавливает, какие приборы используются, получает на вход обекты)
-        set_control_parameters (установить неизменные параметры приборов)
-        set_varied_parameters (установить изменяемые параметры и их значения; надо написать для STS)
-        launch (возможно, целиком должен быть реализован здесь, так как он универсальный)
-        _record_data (будет содержать логику измерения, пользуясь приборами и параметрами, определенными выше)\
-"""
-from time import sleep
-
-from numpy import *
-import copy
 import pyvisa
-# import sys.stdout.flush
-# from sys.stdout import flush
-import os, fnmatch
-import pickle
+from matplotlib._pylab_helpers import Gcf
+
 from drivers import *
-# from drivers.Agilent_PNA_L import *
-# from drivers.Agilent_PNA_L import *
-# from drivers.Yokogawa_GS200 import *
-# from drivers.KeysightAWG import *
-# from drivers.E8257D import MXG,EXG
-# from drivers.Agilent_DSO import *
-from matplotlib import pyplot as plt, animation
 from datetime import datetime as dt
 from threading import Thread
-from resonator_tools import circuit
 
 from lib2.MeasurementResult import MeasurementResult
 from lib2.ResonatorDetector import *
 from itertools import product
 from functools import reduce
 from operator import mul
-import traceback
 import sys
 
 from lib2.LoggingServer import LoggingServer
@@ -210,42 +164,46 @@ class Measurement:
         self._measurement_result.set_start_datetime(dt.now())
         if self._measurement_result.is_finished():
             print("Starting with a result from a previous launch")
-            self._measurement_result.set_is_finished(False)
+
         print("Started at: ", self._measurement_result.get_start_datetime())
         t = Thread(target=self.measure)
         t.start()
 
-        self._measurement_result._visualize_dynamic()
+        self._measurement_result.visualize_dynamic()
+        self.join()
 
         return self._measurement_result
 
-    def stop(self):
-        print('Measurement was interrupted! \n')
-        self._interrupted = True
-        self._measurement_result.set_is_finished(True)
-
     def join(self):
+        stop_messages = {KeyboardInterrupt: "\nMeasurement interrupted!",
+                         AttributeError: "\nPlot has been closed, aborting!"}
+        figure_number = self._measurement_result.get_figure_number()
         try:
+            # wait for the measurement to end or for an interrupt
             while not self._measurement_result.is_finished():
-                plt.pause(1)
-        except KeyboardInterrupt:
-            self.stop()
+                # check if the window is still there
+                manager = Gcf.get_fig_manager(figure_number)
+                manager.canvas.start_event_loop(.1)
+        except (KeyboardInterrupt, AttributeError) as e:
+            print(stop_messages[type(e)])
+            self._interrupted = True
+        finally:
+            self._measurement_result.finalize()
+            plt.close(figure_number)
 
     def measure(self):
+        self._measurement_result.set_is_finished(False)  # ensure
+
         try:
             self._record_data()
         except Exception:
-            self._measurement_result.set_is_finished(True)
             self._measurement_result.set_exception_info(sys.exc_info())
-
-    def set_measurement_result(self, measurement_result : MeasurementResult):
-        self._measurement_result = measurement_result
+        finally:
+            self._measurement_result.set_is_finished(True)
 
     def _record_data(self):
 
         par_names = self._swept_pars_names
-        parameters_values = []
-        parameters_idxs = []
         done_iterations = 0
         start_time = self._measurement_result.get_start_datetime()
 
@@ -284,23 +242,23 @@ class Measurement:
             formatted_values_group = \
                 '[' + "".join(["%s: %.2e, " % (par_names[idx], value)
                                for idx, value in enumerate(values_group)])[:-2] + ']' \
-                if isinstance(values_group[0], (float, int)) else \
-                '[' + "".join(["%s: %s, " % (par_names[idx], str(value))
-                               for idx, value in enumerate(values_group)])[:-2] + ']'
+                    if isinstance(values_group[0], (float, int)) else \
+                    '[' + "".join(["%s: %s, " % (par_names[idx], str(value))
+                                   for idx, value in enumerate(values_group)])[:-2] + ']'
 
             print("\rTime left: " + time_left + ", %s" % formatted_values_group +
                   ", average cycle time: " + str(round(avg_time, 2)) + " s       ",
                   end="", flush=True)
 
             if self._interrupted:
-                self._measurement_result.set_is_finished(True)
                 return
 
         self._measurement_result.set_recording_time(dt.now() - start_time)
-        print("\nElapsed time: %s" %
-              self._format_time_delta((dt.now() - start_time)
-                                      .total_seconds()))
-        self._measurement_result.set_is_finished(True)
+        print("\nElapsed time: %s" % self._format_time_delta((dt.now() - start_time)
+                                                             .total_seconds()))
+
+    def set_measurement_result(self, measurement_result: MeasurementResult):
+        self._measurement_result = measurement_result
 
     def _recording_iteration(self):
         """
@@ -326,15 +284,17 @@ class Measurement:
         measurement_data["data"] = self._raw_data
         return measurement_data
 
-    def _detect_resonator(self, plot=False, tries_number=3):
+    def _detect_resonator(self, plot=False, tries_number=10):
         """
         Finds frequency of the resonator visible on the VNA screen
         """
         vna = self._vna[0]
-        for i in range(0, tries_number):
-            vna.avg_clear();
-            vna.prepare_for_stb();
-            vna.sweep_single();
+        init_averages = vna.get_averages()
+        for i in range(1, tries_number+1):
+            vna.set_averages(init_averages*i)
+            vna.avg_clear()
+            vna.prepare_for_stb()
+            vna.sweep_single()
             vna.wait_for_stb()
             frequencies, sdata = vna.get_frequencies(), vna.get_sdata()
             vna.autoscale_all()
@@ -348,6 +308,7 @@ class Measurement:
                 print("\rFit was inaccurate (try #%d), retrying" % i, end="")
         # if result is None:
         # print(frequencies, sdata)
+        vna.set_averages(init_averages)
         return result
 
     def _detect_qubit(self):
