@@ -168,6 +168,8 @@ class MeasurementResult:
         child methods should save additional files in their overridden methods,
         i.e. plot pictures
         """
+        fig, axes, caxes = self.visualize()
+
         with self._data_lock:
             with open(self.get_save_path() + self._name + '.pkl', 'w+b') as f:
                 pickle.dump(self, f)
@@ -176,7 +178,6 @@ class MeasurementResult:
             with open(self.get_save_path() + self._name + '_context.txt', 'w+') as f:
                 f.write(self.get_context().to_string())
 
-        fig, axes, caxes = self.visualize()
         plt.savefig(self.get_save_path() + self._name + ".png", bbox_inches='tight')
         plt.savefig(self.get_save_path() + self._name + ".pdf", bbox_inches='tight')
         plt.close(fig)
@@ -206,7 +207,6 @@ class MeasurementResult:
     def _yield_data(self):
         while not self.is_finished():
             yield self.get_data()
-        self.finalize()
 
     def visualize_dynamic(self):
         """
@@ -270,7 +270,6 @@ class MeasurementResult:
 
         Should at least close the dynamically updated figure (implemented)
         """
-        plt.close(self._dynamic_figure)
         self._dynamic_figure = None
         self._dynamic_axes = None
         self._dynamic_caxes = None
