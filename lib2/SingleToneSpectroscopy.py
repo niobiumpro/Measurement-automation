@@ -263,3 +263,11 @@ class SingleToneSpectroscopyResult(MeasurementResult):
         self._amps_map = None
         self._phas_map = None
         super().__setstate__(state)
+
+    def __getstate__(self):
+        d = super().__getstate__()
+        del d["_amps_map"]
+        del d["_phas_map"]
+        del d["_amp_cb"]
+        del d["_phas_cb"]
+        return d

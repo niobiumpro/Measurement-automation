@@ -52,10 +52,10 @@ class MeasurementResult:
 
         self._parameter_names = None
 
-        # Dynamic visualization fields, see _prepare_figure(...) docstring below
-        self._dynamic_figure = None  # the figure that will be dynamically updated
-        self._dynamic_axes = None  # axes of the subplots contained inside it
-        self._dynamic_caxes = None  # colorbar axes for heatmaps
+        # visualization fields, see _prepare_figure(...) docstring below
+        self._figure = None  # the figure that will be dynamically updated
+        self._axes = None  # axes of the subplots contained inside it
+        self._caxes = None  # colorbar axes for heatmaps
 
         self._exception_info = None
 
