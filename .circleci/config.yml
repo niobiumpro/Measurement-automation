@@ -8,10 +8,10 @@ pip-run:  &pip-install
     python -mpip install --upgrade --user wheel
     python -mpip install --upgrade --user setuptools
 
-deps-run: &pip-install
+deps-run: &deps-install
   command: |
-    python -mpip install --user matplotlib
-
+    python -mpip install --user matplotlib pytest pyvisa scipy
+    python -mpip install --user git+https://github.com/vdrhtc/resonator_tools
 
 jobs:
   build:
@@ -19,4 +19,5 @@ jobs:
       - image: circleci/python:3.6 # the primary container, where your job's commands are run
     steps:
       - checkout # check out the code in the project directory
+      - run: *deps-install
       - run: pytest --cov=lib2 tests/ --cov-report html
