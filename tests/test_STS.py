@@ -1,8 +1,5 @@
 
-import sys
-
 from matplotlib._pylab_helpers import Gcf
-from lib2.MeasurementResult import *
 from lib2.SingleToneSpectroscopy import *
 import datetime
 import numpy as np

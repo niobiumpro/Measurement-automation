@@ -20,9 +20,9 @@ def result():
 
 def test_get_state(result):
     d = result.__getstate__()
-    assert "_lines" not in d.keys()
-    assert "_fit_lines" not in d.keys()
-    assert "_anno" not in d.keys()
+    assert d["_lines"] == [None]*2
+    assert d["_fit_lines"] == [None]*2
+    assert d["_anno"] == [None]*2
 
 def test_save_load_no_excess_plot(result):
 
@@ -32,3 +32,5 @@ def test_save_load_no_excess_plot(result):
     # assert np.all(result1.get_data()["data"] == result1.get_data()["data"])
     # assert np.all(result1.get_data()["echo_delay"] == result1.get_data()["echo_delay"])
     assert len(Gcf.get_all_fig_managers()) == 0
+
+    MeasurementResult.delete("test", "test_no_excess_plot", delete_all=True)

@@ -12,7 +12,7 @@ from functools import reduce
 from operator import mul
 import sys
 
-from lib2.LoggingServer import LoggingServer
+from loggingserver import LoggingServer
 
 
 class Measurement:

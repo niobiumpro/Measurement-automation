@@ -191,7 +191,7 @@ class VNATimeResolvedDispersiveMeasurement1DResult( \
 
     def __getstate__(self):
         d = super().__getstate__()
-        del d['_lines']
-        del d['_fit_lines']
-        del d['_anno']
+        d['_lines'] = [None]*2
+        d['_fit_lines'] = [None]*2
+        d['_anno'] = [None]*2
         return d

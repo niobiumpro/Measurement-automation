@@ -13,7 +13,7 @@ from lib2.MeasurementResult import *
 from lib2.SingleToneSpectroscopy import *
 from lib2.TwoToneSpectroscopy import *
 from lib2.fulaut.qubit_spectra import transmon_spectrum
-from lib2.LoggingServer import LoggingServer
+from loggingserver import LoggingServer
 
 from drivers.KeysightAWG import *
 from drivers.Tektronix_AWG5014 import *
