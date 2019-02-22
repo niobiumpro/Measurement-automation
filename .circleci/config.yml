@@ -1,5 +1,8 @@
 version: 2
 
+orbs:
+  codecov: codecov/codecov@1.0.2
+
 pip-run:  &pip-install
   # Upgrade pip and setuptools and wheel to get as clean an install as possible
   name: Upgrade pip, setuptools, wheel
@@ -21,4 +24,6 @@ jobs:
     steps:
       - checkout # check out the code in the project directory
       - run: *deps-install
-      - run: python -mpytest --cov=lib2 tests/ --cov-report html
+      - run: python -mpytest --cov=lib2 tests/ --cov-report xml
+      - codecov/upload:
+          file: coverage.xml
