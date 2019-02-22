@@ -10,7 +10,7 @@ pip-run:  &pip-install
 
 deps-run: &deps-install
   command: |
-    python -mpip install --user matplotlib pytest pyvisa scipy
+    python -mpip install --user matplotlib pytest pyvisa scipy pytest-cov
     python -mpip install --user git+https://github.com/vdrhtc/resonator_tools
 
 jobs:
