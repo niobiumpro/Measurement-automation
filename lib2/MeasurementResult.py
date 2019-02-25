@@ -14,6 +14,8 @@ from numpy import array, where
 import copy
 import shutil
 
+import locale
+locale.setlocale(locale.LC_TIME, "en_US")
 
 def find(pattern, path):
     result = []
