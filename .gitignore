@@ -2,7 +2,6 @@
 *cache*
 *.pyc
 *.bak
-data*
 *.ipynb
 qubit-measurements*
 log/
