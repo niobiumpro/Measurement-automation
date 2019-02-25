@@ -15,7 +15,7 @@ import copy
 import shutil
 
 import locale
-locale.setlocale(locale.LC_TIME, "en_GB")
+locale.setlocale(locale.LC_TIME, "C")
 
 def find(pattern, path):
     result = []
