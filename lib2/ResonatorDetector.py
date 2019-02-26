@@ -1,9 +1,6 @@
-from scipy import *
+from scipy import angle, argmin, linspace
 from resonator_tools.circuit import notch_port
 from numpy import abs
-from matplotlib import pyplot as plt
-from scipy.signal import savgol_filter
-
 
 class ResonatorDetector():
 

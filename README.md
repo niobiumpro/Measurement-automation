@@ -1,5 +1,7 @@
 # Measurement automation
 
+[![CircleCI](https://circleci.com/gh/vdrhtc/Measurement-automation/tree/master.svg?style=svg)](https://circleci.com/gh/vdrhtc/Measurement-automation/tree/master) [![codecov](https://codecov.io/gh/vdrhtc/Measurement-automation/branch/master/graph/badge.svg)](https://codecov.io/gh/vdrhtc/Measurement-automation)
+
 This is the system designed to perform various experiments with superconducting quantum circuits. It was developed in response to the increasing number and diversity of tasks and provides a common framework for all of them.
 
 It is fully open-source and is based on pyvisa, matplotlib, scipy, ipython (jupyter) and some other open-source packages (i.e. [resonator tools](https://github.com/sebastianprobst/resonator_tools) by S. Probst)

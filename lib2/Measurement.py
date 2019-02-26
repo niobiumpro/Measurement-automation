@@ -10,9 +10,11 @@ from lib2.ResonatorDetector import *
 from itertools import product
 from functools import reduce
 from operator import mul
+from matplotlib import pyplot as plt
 import sys
+from numpy import zeros, complex_
 
-from lib2.LoggingServer import LoggingServer
+from loggingserver import LoggingServer
 
 
 class Measurement:
@@ -164,7 +166,7 @@ class Measurement:
         self._measurement_result.set_start_datetime(dt.now())
         if self._measurement_result.is_finished():
             print("Starting with a result from a previous launch")
-            self._measurement_result.set_is_finished(False)
+
         print("Started at: ", self._measurement_result.get_start_datetime())
         t = Thread(target=self.measure)
         t.start()
@@ -177,27 +179,29 @@ class Measurement:
     def join(self):
         stop_messages = {KeyboardInterrupt: "\nMeasurement interrupted!",
                          AttributeError: "\nPlot has been closed, aborting!"}
+        figure_number = self._measurement_result.get_figure_number()
         try:
             # wait for the measurement to end or for an interrupt
             while not self._measurement_result.is_finished():
                 # check if the window is still there
-                manager = Gcf.get_fig_manager(self._measurement_result.get_figure_number())
+                manager = Gcf.get_fig_manager(figure_number)
                 manager.canvas.start_event_loop(.1)
         except (KeyboardInterrupt, AttributeError) as e:
             print(stop_messages[type(e)])
             self._interrupted = True
-            self._measurement_result.set_is_finished(True)
+        finally:
             self._measurement_result.finalize()
+            plt.close(figure_number)
 
     def measure(self):
+        self._measurement_result.set_is_finished(False)  # ensure
+
         try:
             self._record_data()
         except Exception:
-            self._measurement_result.set_is_finished(True)
             self._measurement_result.set_exception_info(sys.exc_info())
-
-    def set_measurement_result(self, measurement_result : MeasurementResult):
-        self._measurement_result = measurement_result
+        finally:
+            self._measurement_result.set_is_finished(True)
 
     def _record_data(self):
 
@@ -240,23 +244,23 @@ class Measurement:
             formatted_values_group = \
                 '[' + "".join(["%s: %.2e, " % (par_names[idx], value)
                                for idx, value in enumerate(values_group)])[:-2] + ']' \
-                if isinstance(values_group[0], (float, int)) else \
-                '[' + "".join(["%s: %s, " % (par_names[idx], str(value))
-                               for idx, value in enumerate(values_group)])[:-2] + ']'
+                    if isinstance(values_group[0], (float, int)) else \
+                    '[' + "".join(["%s: %s, " % (par_names[idx], str(value))
+                                   for idx, value in enumerate(values_group)])[:-2] + ']'
 
             print("\rTime left: " + time_left + ", %s" % formatted_values_group +
                   ", average cycle time: " + str(round(avg_time, 2)) + " s       ",
                   end="", flush=True)
 
             if self._interrupted:
-                self._measurement_result.set_is_finished(True)
                 return
 
         self._measurement_result.set_recording_time(dt.now() - start_time)
-        print("\nElapsed time: %s" %
-              self._format_time_delta((dt.now() - start_time)
-                                      .total_seconds()))
-        self._measurement_result.set_is_finished(True)
+        print("\nElapsed time: %s" % self._format_time_delta((dt.now() - start_time)
+                                                             .total_seconds()))
+
+    def set_measurement_result(self, measurement_result: MeasurementResult):
+        self._measurement_result = measurement_result
 
     def _recording_iteration(self):
         """
@@ -282,15 +286,17 @@ class Measurement:
         measurement_data["data"] = self._raw_data
         return measurement_data
 
-    def _detect_resonator(self, plot=False, tries_number=3):
+    def _detect_resonator(self, plot=False, tries_number=10):
         """
         Finds frequency of the resonator visible on the VNA screen
         """
         vna = self._vna[0]
-        for i in range(0, tries_number):
-            vna.avg_clear();
-            vna.prepare_for_stb();
-            vna.sweep_single();
+        init_averages = vna.get_averages()
+        for i in range(1, tries_number+1):
+            vna.set_averages(init_averages*i)
+            vna.avg_clear()
+            vna.prepare_for_stb()
+            vna.sweep_single()
             vna.wait_for_stb()
             frequencies, sdata = vna.get_frequencies(), vna.get_sdata()
             vna.autoscale_all()
@@ -304,6 +310,7 @@ class Measurement:
                 print("\rFit was inaccurate (try #%d), retrying" % i, end="")
         # if result is None:
         # print(frequencies, sdata)
+        vna.set_averages(init_averages)
         return result
 
     def _detect_qubit(self):
