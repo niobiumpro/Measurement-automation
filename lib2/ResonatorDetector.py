@@ -1,6 +1,7 @@
 from scipy import angle, argmin, linspace
 from resonator_tools.circuit import notch_port
 from numpy import abs
+from matplotlib import pyplot as plt
 
 class ResonatorDetector():
 
@@ -65,7 +66,8 @@ class ResonatorDetector():
                                            alpha=self._port.fitresults["alpha"],
                                            delay=self._port.fitresults["delay"])
 
-        #plt.plot(fine_freqs, abs(fine_model))
+        if verbose:
+            plt.plot(fine_freqs, abs(fine_model))
         fit_min_idx = argmin(abs(fine_model))
         fit_frequency = fine_freqs[fit_min_idx]
         fit_amplitude = min(abs(fine_model))
