@@ -76,7 +76,7 @@ class VNATimeResolvedDispersiveMeasurement2DResult(VNATimeResolvedDispersiveMeas
                 self._cbs[idx].update_ticks()
                 self._annotate_axes(axes)
             else:
-                self._maps[idx].set_data(abs(Z).T)
+                self._maps[idx].set_data(Z)
                 self._maps[idx].set_clim(min_Z, max_Z)
                 self._cbs[idx].set_clim(min_Z, max_Z)
 
