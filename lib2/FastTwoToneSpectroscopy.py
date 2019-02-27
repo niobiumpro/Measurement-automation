@@ -9,9 +9,8 @@ class FastFluxTwoToneSpectroscopy(FastTwoToneSpectroscopyBase):
         super().__init__(name, sample_name,
                          line_attenuation_db, devs_aliases_map)
 
-    def set_fixed_parameters(self,
-                             sweet_spot_current=None, sweet_spot_voltage=None, adaptive=False,
-                              bandwidth_factor=10, **dev_params):
+    def set_fixed_parameters(self, sweet_spot_current=None, sweet_spot_voltage=None, adaptive=False,
+                             bandwidth_factor=10, **dev_params):
 
         vna_parameters = dev_params['vna'][0]
         mw_src_parameters = dev_params['mw_src'][0]
@@ -44,24 +43,21 @@ class FastPowerTwoToneSpectroscopy(FastTwoToneSpectroscopyBase):
     def __init__(self, name, sample_name, line_attenuation_db=60, **devs_aliases_map):
         super().__init__(name, sample_name, line_attenuation_db, devs_aliases_map)
 
-    def set_fixed_parameters(self, vna_parameters, mw_src_parameters,
-                             sweet_spot_current=None, sweet_spot_voltage=None, adaptive=False,
-                             bandwidth_factor=10):
+    def set_fixed_parameters(self, current=None, voltage=None,
+                             bandwidth_factor=10, **dev_params):
+
+        vna_parameters = dev_params['vna'][0]
         self._resonator_area = vna_parameters["freq_limits"]
-        self._adaptive = adaptive
         # trigger layout is detected via mw_src_parameters in TTSBase class
 
-        super().set_fixed_parameters(vna_parameters, mw_src_parameters,
-                                     current=sweet_spot_current, voltage=sweet_spot_voltage,
-                                     detect_resonator=not adaptive, bandwidth_factor=10)
+        super().set_fixed_parameters(vna=dev_params['vna'], mw_src=dev_params['mw_src'],
+                                     current=current, voltage=voltage,
+                                     detect_resonator=True,
+                                     bandwidth_factor=bandwidth_factor)
 
-    def set_swept_parameters(self, mw_src_frequencies, power_values):
-        self._base_parameter_setter = self._mw_src.set_power
-        base_parameter_setter = self._adaptive_setter if self._adaptive else self._base_setter
-
-        swept_pars = {"Power [dBm]": (base_parameter_setter, power_values),
-                      "Frequency [Hz]": (self._mw_src.set_frequency, mw_src_frequencies)}
-
+    def set_swept_parameters(self, power_values):
+        self._base_parameter_setter = self._mw_src[0].set_power
+        swept_pars = {"Power [dBm]": (self._base_setter, power_values)}
         super().set_swept_parameters(**swept_pars)
 
 
