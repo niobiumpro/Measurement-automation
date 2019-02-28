@@ -14,7 +14,6 @@ import copy
 import shutil
 
 import locale
-locale.setlocale(locale.LC_TIME, "C")
 
 def find(pattern, path):
     result = []
@@ -129,6 +128,7 @@ class MeasurementResult:
             print("Measurement result '%s' for the sample '%s' not found" % (name, sample_name))
             return
 
+        locale.setlocale(locale.LC_TIME, "C")
         dates = [datetime.strptime(path.split(os.sep)[2], "%b %d %Y")
                  for path in paths]
         z = zip(dates, paths)
@@ -156,6 +156,7 @@ class MeasurementResult:
         if not os.path.exists(sample_directory):
             os.makedirs(sample_directory)
 
+        locale.setlocale(locale.LC_TIME, "C")
         date_directory = os.path.join(sample_directory,
                                       self.get_start_datetime().strftime("%b %d %Y"))
         if not os.path.exists(date_directory):
