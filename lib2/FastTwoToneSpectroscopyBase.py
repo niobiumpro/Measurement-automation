@@ -19,12 +19,6 @@ class FastTwoToneSpectroscopyBase(Measurement):
         super().__init__(name, sample_name, devs_aliases_map,
                          plot_update_interval)
 
-        # devs_names = [vna_name, mw_src_name, current_src_name]
-        # super().__init__(name, sample_name, devs_names)
-        # self._vna = self._actual_devices[vna_name]
-        # self._mw_src = self._actual_devices[mw_src_name]
-        # self._current_src = self._actual_devices[current_src_name]
-
         self._measurement_result = TwoToneSpectroscopyResult(name, sample_name)
         self._interrupted = False
         self._base_parameter_setter = None
@@ -61,7 +55,7 @@ class FastTwoToneSpectroscopyBase(Measurement):
                 self._base_parameter_name = "Current [A]"
                 msg1 = "at %.4f mA" % (current * 1e3)
             elif current is None:
-                self._base_parameter_setter = self._voltage_src.set_voltage
+                self._base_parameter_setter = self._voltage_src[0].set_voltage
                 base_parameter_value = voltage
                 self._base_parameter_name = "Voltage [V]"
                 msg1 = "at %.1f V" % (voltage)
@@ -70,7 +64,7 @@ class FastTwoToneSpectroscopyBase(Measurement):
 
             self._base_parameter_setter(base_parameter_value)
 
-            self._mw_src.set_output_state("OFF")
+            self._mw_src[0].set_output_state("OFF")
             msg = "Detecting a resonator within provided frequency range of the VNA %s \
                             " % (str(vna_parameters["freq_limits"]))
             print(msg + msg1, flush=True)
@@ -80,7 +74,7 @@ class FastTwoToneSpectroscopyBase(Measurement):
             vna_parameters["freq_limits"] = (res_freq, res_freq)
             self._measurement_result.get_context() \
                 .get_equipment()["vna"] = vna_parameters
-            self._mw_src.set_output_state("ON")
+            self._mw_src[0].set_output_state("ON")
 
         super().set_fixed_parameters(vna=dev_params['vna'], mw_src=dev_params['mw_src'])
 
@@ -107,75 +101,6 @@ class FastTwoToneSpectroscopyBase(Measurement):
         self._vna[0].do_set_power(vna_parameters["power"])
         self._vna[0].do_set_power(vna_parameters["nop"])
         return result
-
-    # def _record_data(self):
-    #
-    #     par_names = self._swept_pars_names
-    #     parameters_values = []
-    #     parameters_idxs = []
-    #     done_iterations = 0
-    #     start_time = self._measurement_result.get_start_datetime()
-    #
-    #     parameters_values = \
-    #         [self._swept_pars[parameter_name][1] for parameter_name in par_names]
-    #     parameters_idxs = \
-    #         [list(range(len(self._swept_pars[parameter_name][1]))) for parameter_name in par_names]
-    #
-    #     cycle_par_idxs = [list(range(len(self._swept_pars[parameter_name][1]))) for parameter_name
-    #                       in par_names if
-    #                       parameter_name != "Frequency [Hz]"]
-    #     cycle_par_vals = [self._swept_pars[parameter_name][1] for parameter_name in par_names if
-    #                       parameter_name != "Frequency [Hz]"]
-    #     raw_data_shape = \
-    #         [len(indices) for indices in cycle_par_idxs]
-    #     total_iterations = reduce(mul, [len(indices) for indices in cycle_par_idxs], 1)
-    #
-    #     for idx_group, values_group in zip(product(*cycle_par_idxs), product(*cycle_par_vals)):
-    #
-    #         self._call_setters(values_group)
-    #
-    #         # This should be implemented in child classes:
-    #         data = self._recording_iteration()
-    #
-    #         if done_iterations == 0:
-    #             try:
-    #                 self._raw_data = zeros(raw_data_shape + [len(data)], dtype=complex_)
-    #             except TypeError:  # data has no __len__ attribute
-    #                 self._raw_data = zeros(raw_data_shape, dtype=complex_)
-    #         self._raw_data[idx_group] = data
-    #
-    #         # This may need to be extended in child classes:
-    #         measurement_data = self._prepare_measurement_result_data(par_names, parameters_values)
-    #         self._measurement_result.set_data(measurement_data)
-    #
-    #         done_iterations += 1
-    #
-    #         avg_time = (dt.now() - start_time).total_seconds() / done_iterations
-    #         time_left = self._format_time_delta(avg_time * (total_iterations - done_iterations))
-    #
-    #         formatted_values_group = \
-    #             '[' + "".join(["%s: %.2e, " % (par_names[idx], value) \
-    #                            for idx, value in enumerate(values_group)])[:-2] + ']'
-    #
-    #         print("\rTime left: " + time_left + ", %s" % formatted_values_group + \
-    #               ", average cycle time: " + str(round(avg_time, 2)) + " s       ",
-    #               end="", flush=True)
-    #
-    #         if self._interrupted:
-    #             self._interrupted = False
-    #             return
-    #     self._measurement_result.set_recording_time(dt.now() - start_time)
-    #     print("\nElapsed time: %s" % \
-    #           self._format_time_delta((dt.now() - start_time) \
-    #                                   .total_seconds()))
-    #     self._measurement_result.set_is_finished(True)
-        
-    # def _prepare_measurement_result_data(self, parameter_names, parameter_values):
-    #
-    #     measurement_data = self._measurement_result.get_data()
-    #     measurement_data.update(zip(parameter_names, parameter_values))
-    #     measurement_data["data"] = self._raw_data
-    #     return measurement_data
 
     def _recording_iteration(self):
         vna = self._vna[0]

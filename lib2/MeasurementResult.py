@@ -13,6 +13,8 @@ from numpy import array, where
 import copy
 import shutil
 
+import locale
+locale.setlocale(locale.LC_TIME, "C")
 
 def find(pattern, path):
     result = []
@@ -170,19 +172,19 @@ class MeasurementResult:
 
     def __getstate__(self):
         d = dict(self.__dict__)
-        del d['_data_lock']
-        del d['_anim']
-        del d['_figure']
-        del d['_axes']
-        del d['_caxes']
-        del d['_exception_info']
+        d['_data_lock'] = None
+        d['_anim'] = None
+        d['_figure'] = None
+        d['_axes'] = None
+        d['_caxes'] = None
+        d['_exception_info'] = None
         return d
 
     def __setstate__(self, state):
         self.__dict__.update(state)
         self._data_lock = Lock()
 
-    def save(self):
+    def save(self, plot_maximized = True):
         """
         This method may be overridden in a child class but super().save()
         must be called in the beginning of the overridden method.
@@ -198,7 +200,7 @@ class MeasurementResult:
         child methods should save additional files in their overridden methods,
         i.e. plot pictures
         """
-        fig, axes, caxes = self.visualize()
+        fig, axes, caxes = self.visualize(plot_maximized)
 
         with self._data_lock:
             with open(os.path.join(self.get_save_path(), self._name + '.pkl'), 'w+b') as f:
@@ -231,7 +233,8 @@ class MeasurementResult:
                     figManager.window.state('zoomed')
             except:
                 fig.set_size_inches(10, 5)
-
+        else:
+            fig.set_size_inches(10, 5)
         return fig, axes, caxes
 
     def _yield_data(self):
