@@ -132,6 +132,7 @@ class Measurement:
             for pars, dev in zip(self._fixed_pars[dev_name], dev_list):
                 dev.set_parameters(pars)
 
+
     def set_fixed_parameters(self, **fixed_pars):
         """
         fixed_pars: {'dev1': {'par1': value1, 'par2': value2},
