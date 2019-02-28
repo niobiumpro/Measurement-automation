@@ -90,9 +90,9 @@ class Measurement:
             # returns list of tuples: (IP Address string, alias) for all
             # devices present in VISA
             temp_list = list(rm.list_resources_info().values())
+            self._devs_info = [item[4] for item in list(temp_list)]
         except ValueError:
             print("NI Visa implementation not found; automatic device discovery unavailable")
-        self._devs_info = [item[4] for item in list(temp_list)]
         
         for field_name, dev_list in self._devs_aliases_map.items():
             atr_name = "_" + field_name
