@@ -22,5 +22,5 @@ jobs:
     steps:
       - checkout # check out the code in the project directory
       - run: *deps-install
-      - run: python -mpytest --cov=lib2 tests/ --cov-report xml
+      - run: python -mpytest --cov . --cov-report xml tests/
       - run: python -mcodecov
