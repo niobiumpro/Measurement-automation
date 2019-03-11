@@ -1,7 +1,6 @@
 import fnmatch
 import os
 import pickle
-import platform
 import traceback
 from datetime import datetime
 from threading import Lock
@@ -15,7 +14,6 @@ import copy
 import shutil
 
 import locale
-locale.setlocale(locale.LC_TIME, "C")
 
 def find(pattern, path):
     result = []
@@ -70,16 +68,18 @@ class MeasurementResult:
     def delete(sample_name, name, date='', delete_all=False):
         """
         Finds all files with matching result name within the file structure of ./data/
-        folder, prompts user to resolve any ambiguities. Then deletes selected measurement data.
+        folder, prompts user to resolve any ambiguities. Then deletes selected
+        measurement data.
 
         Example usage:
         >>> from lib2.MeasurementResult import MeasurementResult
         >>> result = MeasurementResult.delete("<sample_name>", "<name>")
 
-        If the user hits EOF (*nix: Ctrl-D, Windows: Ctrl-Z+Return), raise EOFError.
-        On *nix systems, readline is used if available.
+        If the user hits EOF (*nix: Ctrl-D, Windows: Ctrl-Z+Return),
+        raise EOFError. On *nix systems, readline is used if available.
         """
-        paths = MeasurementResult._find_paths_by(sample_name, name, ".pkl", date, delete_all)
+        paths = MeasurementResult._find_paths_by(sample_name, name,
+                                                 ".pkl", date, delete_all)
 
         time_locations = set()
         for path in paths:
@@ -93,8 +93,8 @@ class MeasurementResult:
     @staticmethod
     def load(sample_name, name, date='', return_all=False):
         """
-        Finds all files with matching result name within the file structure of ./data/
-        folder and prompts user to resolve any ambiguities.
+        Finds all files with matching result name within the file structure
+        of ./data/ folder and prompts user to resolve any ambiguities.
 
         Returns:
             an instance of the child class containing the specific measurement
@@ -128,7 +128,8 @@ class MeasurementResult:
             print("Measurement result '%s' for the sample '%s' not found" % (name, sample_name))
             return
 
-        dates = [datetime.strptime(path.split(os.sep)[2], "%b %d %Y") \
+        locale.setlocale(locale.LC_TIME, "C")
+        dates = [datetime.strptime(path.split(os.sep)[2], "%b %d %Y")
                  for path in paths]
         z = zip(dates, paths)
         sorted_dates, sorted_paths = zip(*sorted(z))
@@ -155,6 +156,7 @@ class MeasurementResult:
         if not os.path.exists(sample_directory):
             os.makedirs(sample_directory)
 
+        locale.setlocale(locale.LC_TIME, "C")
         date_directory = os.path.join(sample_directory,
                                       self.get_start_datetime().strftime("%b %d %Y"))
         if not os.path.exists(date_directory):
